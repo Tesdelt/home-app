@@ -499,6 +499,26 @@ export async function commentCounts() {
   return counts;
 }
 
+// Nepřečtené komentáře: ty od druhého, které přibyly od chvíle, kdy jsem měl
+// úkol naposledy otevřený. Kdy to bylo, si pamatuje každý telefon zvlášť
+// (meta "commentsSeen": { [taskId]: čas }). Vrací { [taskId]: počet }.
+export async function unreadComments() {
+  const [me, seen, comments] = await Promise.all([getMe(), getMeta('commentsSeen', {}), live('comments')]);
+  const counts = {};
+  for (const c of comments) {
+    if (c.author === me || c.createdAt <= (seen[c.taskId] ?? 0)) continue;
+    counts[c.taskId] = (counts[c.taskId] ?? 0) + 1;
+  }
+  return counts;
+}
+
+// Volá stránka úkolu, když jsou komentáře opravdu na očích
+export async function markCommentsRead(taskId) {
+  if (!(await unreadComments())[taskId]) return;
+  const seen = await getMeta('commentsSeen', {});
+  await setMeta('commentsSeen', { ...seen, [taskId]: Date.now() });
+}
+
 export async function addComment(taskId, body) {
   const clean = String(body).trim();
   if (!clean) return null;

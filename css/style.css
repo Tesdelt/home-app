@@ -759,3 +759,19 @@ button.opt:active { background: var(--surface-2); }
 .opt-bell { padding: 0 10px; }
 .opt-bell.is-set { background: var(--accent-soft); }
 .opt-bell.is-set svg { fill: currentColor; }
+
+/* Nepřečtený komentář: tečka a barva v řádku úkolu, tečka u záložky Úkoly */
+.item-sub .is-unread { color: var(--accent); font-weight: 600; }
+.item-sub .is-unread::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--accent); vertical-align: 1px; }
+.tab { position: relative; }
+.tab.has-dot::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: calc(50% + 9px);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+}

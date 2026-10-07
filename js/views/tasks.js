@@ -35,6 +35,12 @@ const UNIT_NAMES = { day: 'dní', week: 'týdnů', month: 'měsíců', year: 'le
 export const repeatValue = (repeat) => (repeat ? `${repeat.every}:${repeat.unit}` : '');
 export const repeatLabel = (repeat) => REPEAT_SHORT[repeatValue(repeat)] ?? `co ${repeat.every} ${UNIT_NAMES[repeat.unit] ?? ''}`.trim();
 
+function newComments(n) {
+  if (n === 1) return '1 nový komentář';
+  if (n >= 2 && n <= 4) return `${n} nové komentáře`;
+  return `${n} nových komentářů`;
+}
+
 // Zvolená záložka vydrží, dokud je appka otevřená
 let tab = 'today';
 
@@ -81,6 +87,7 @@ export async function render(el, { params, subEl, extraEl }) {
   let me = await store.getMe();
   let members = await store.listMembers();
   let comments = {};
+  let unread = {};
   let renderToken = 0;
 
   tabsEl.addEventListener('click', (e) => {
@@ -117,10 +124,12 @@ export async function render(el, { params, subEl, extraEl }) {
     const steps = task.steps ?? [];
     const current = steps.find((step) => !step.done);
     if (steps.length && current && !checked) meta.push(`krok ${steps.indexOf(current) + 1}/${steps.length}: ${escapeHtml(current.title)}`);
-    if (comments[task.id]) meta.push(`komentáře: ${comments[task.id]}`);
+    // Nepřečtený komentář od druhého je zvýrazněný, po otevření úkolu zase zešedne
+    if (unread[task.id]) meta.push(`<span class="is-unread">${newComments(unread[task.id])}</span>`);
+    else if (comments[task.id]) meta.push(`komentáře: ${comments[task.id]}`);
     const note = task.note ? `<span class="item-sub item-note">${escapeHtml(task.note)}</span>` : '';
     const priority = task.priority ?? 2;
-    return `<li class="item ${whoClass(task.assignee, members)}${checked ? ' is-done' : ''}${mine ? ' is-mine' : ''}" data-id="${escapeHtml(task.id)}">
+    return `<li class="item ${whoClass(task.assignee, members)}${checked ? ' is-done' : ''}${mine ? ' is-mine' : ''}${unread[task.id] ? ' has-unread' : ''}" data-id="${escapeHtml(task.id)}">
       <div class="item-bg" aria-hidden="true">Smazat</div>
       <button type="button" class="item-main has-stripe" aria-pressed="${checked}">
         <span class="check-tap"><span class="check">${ICONS.check}</span></span>
@@ -143,7 +152,7 @@ export async function render(el, { params, subEl, extraEl }) {
   async function renderList() {
     const token = ++renderToken;
     const tasks = await store.listTasks();
-    [me, members, comments] = await Promise.all([store.getMe(), store.listMembers(), store.commentCounts()]);
+    [me, members, comments, unread] = await Promise.all([store.getMe(), store.listMembers(), store.commentCounts(), store.unreadComments()]);
     if (token !== renderToken) return;
 
     const s = splitTasks(tasks);

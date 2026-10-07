@@ -174,7 +174,9 @@ Hotovo (0.6.0):
   (pro koho, důležitost, termín, opakování, kroky; volby v nabídce přímo u tlačítka)
   a podrobnosti sbalené na tři řádky. Hlavní obsah jsou komentáře. V seznamu splní úkol jen ťuknutí na kolečko, ťuknutí na řádek ho otevře.
 - Komentáře k úkolům (tabulka `task_comments`, sklad `comments`): řazené podle přidání,
-  s autorem, vlastní jdou upravit i smazat.
+  s autorem, vlastní jdou upravit i smazat. Nepřečtené komentáře od druhého jsou v seznamu
+  zvýrazněné (a tečkou u záložky Úkoly), dokud úkol neotevřu. Kdy jsem úkol viděl, si
+  pamatuje každý telefon zvlášť (meta `commentsSeen`), nesynchronizuje se.
 - Kroky úkolu (`steps` v úkolu): jdou po sobě, každý má vlastní termín, termín úkolu se řídí
   krokem, který je na řadě, po posledním je úkol hotový. Schválně schované pod
   „Rozdělit na kroky“, většina úkolů je nemá. Úkol s kroky se neopakuje a naopak.

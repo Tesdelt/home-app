@@ -262,6 +262,8 @@ export async function renderTask(el, id, { subEl }) {
     drawSteps();
     drawNote();
     await drawComments();
+    // Komentáře jsou přečtené, jen když je appka opravdu na obrazovce
+    if (document.visibilityState === 'visible') await store.markCommentsRead(id);
   }
 
   // ---------- Název ----------
@@ -475,5 +477,11 @@ export async function renderTask(el, id, { subEl }) {
     titleEl.focus();
     return undefined;
   }
-  return store.subscribe(draw);
+  const unsubscribe = store.subscribe(draw);
+  const onVisible = () => { if (document.visibilityState === 'visible') draw(); };
+  document.addEventListener('visibilitychange', onVisible);
+  return () => {
+    unsubscribe();
+    document.removeEventListener('visibilitychange', onVisible);
+  };
 }

@@ -2,6 +2,7 @@ import { addRoute, startRouter } from './router.js';
 import { openDB, requestPersistentStorage } from './db.js';
 import { escapeHtml } from './ui.js';
 import * as auth from './auth.js';
+import * as store from './store.js';
 import * as login from './views/login.js';
 import * as home from './views/home.js';
 import * as shopping from './views/shopping.js';
@@ -93,6 +94,15 @@ async function init() {
         <p class="muted">${escapeHtml(err?.message ?? String(err))}</p></section>`;
     }
   }
+
+  // Tečka u záložky Úkoly, dokud je někde nepřečtený komentář
+  const tasksTab = document.querySelector('.tab[data-route="ukoly"]');
+  const updateDots = async () => {
+    if (auth.getState().status !== 'ready') return;
+    tasksTab.classList.toggle('has-dot', Object.keys(await store.unreadComments()).length > 0);
+  };
+  store.subscribe(updateDots);
+  auth.onChange(updateDots);
 
   tabbar.hidden = true;
   login.render(viewEl, auth.getState());
