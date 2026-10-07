@@ -25,6 +25,7 @@ js/store.js           DATOVÁ VRSTVA: jediné API pro data + subscribe() na změ
 js/sync.js            synchronizace se Supabase: fronta změn (outbox), push, pull, Realtime
 js/auth.js            přihlášení, ověření členství v domácnosti, odhlášení
 js/supabase.js        klient Supabase (z js/vendor/supabase.js)
+js/push.js            push notifikace: zapnutí a vypnutí na tomto telefonu
 js/categories.js      kategorie nákupu, vestavěné obchody, odhad kategorie, parsování "mléko 2"
 js/catalog.js         katalog produktů podle kategorií a varianty zápisu ("mlíko" = Mléko)
 js/dates.js           termíny jako text RRRR-MM-DD, posun o interval, popisky „dnes“, „zítra“
@@ -36,6 +37,8 @@ sw.js                 offline cache
 supabase/schema.sql   tabulky, RLS politiky, oprávnění rolí, Realtime
 supabase/setup-household.sql   jednorázové založení domácnosti a členů
 supabase/check-anon.sh         kontrola, že nepřihlášený nic nepřečte ani nezapíše
+supabase/functions/send-reminders/index.ts   Edge Function: ranní upozornění na platby
+supabase/.secrets/    soukromé klíče pro Supabase Secrets, v .gitignore, NIKDY necommitovat
 ```
 
 ### Jak teče synchronizace
@@ -91,6 +94,13 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
 - `.github/workflows/denni-kontrola.yml` pouští `check-anon.sh` každý den. Drží tím
   bezplatný projekt Supabase vzhůru (jinak se po týdnu bez dotazů uspí) a při chybě
   pošle GitHub e-mail. Žádná tajemství v něm nejsou a být nesmí.
+- **Push notifikace:** veřejný VAPID klíč je v `js/config.js`, soukromý jen v Supabase
+  Secrets (lokálně v `supabase/.secrets/`, které je v `.gitignore`). Funkce `send-reminders`
+  je volatelná bez přihlášení, proto nesmí vracet nic kromě počtu odeslaných zpráv a o každé
+  platbě posílá nejvýš jedno upozornění denně (tabulka `payment_reminders`). Nasazuje se
+  ručně v Supabase dashboardu (vypnuté „Verify JWT“), po změně `index.ts` ji tam znovu vložit.
+  Text notifikace obsahuje názvy a částky plateb a jde přes servery Applu / Googlu.
+- Odhlášení zruší na telefonu odběr notifikací.
 - Změny schématu jen přidávat do `supabase/schema.sql` tak, aby šel pustit opakovaně
   a nemazal data.
 
@@ -146,11 +156,14 @@ Hotovo (0.4.0):
   odškrtnutí „zaplaceno“ se Zpět (pravidelné se posune splatnost, u plateb na dobu ubude
   zbývající). Barvy plátců stejné jako u úkolů.
 
+Hotovo (0.5.0):
+- Push notifikace na platby: zapínají se ve Více na každém telefonu zvlášť (`js/push.js`,
+  tabulka `push_subscriptions`). Ráno GitHub Actions zavolá funkci `send-reminders`, ta
+  pošle plátci (u platby napůl oběma) upozornění na platby splatné dnes nebo po termínu.
+  Na iPhonu funguje jen u appky přidané na plochu.
+
 Další kroky:
-1. Push notifikace na platby k zaplacení (a později úkoly). Potřebuje serverovou část:
-   Web Push přes Supabase Edge Function s plánovačem, VAPID klíče v Supabase Secrets
-   (soukromý klíč nikdy do repozitáře), tabulka odběrů s RLS, obsluha `push` v `sw.js`.
-   Na iPhonu funguje jen u appky přidané na plochu a po povolení uživatelem.
+1. Notifikace i na úkoly (jen to, co vyžaduje akci).
 2. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).
 3. Peníze, další část: společné jednorázové výdaje (kdo platil, dělení 50/50 nebo jinak),
    zůstatek kdo komu kolik dluží + Vyrovnat. Později import CSV z banky.
