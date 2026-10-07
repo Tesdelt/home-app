@@ -165,7 +165,9 @@ Hotovo (0.5.0):
 
 Hotovo (0.6.0):
 - Úkol se otevírá jako samostatná stránka (`#/ukoly/<id>`, `js/views/task.js`), změny se
-  ukládají samy. V seznamu splní úkol jen ťuknutí na kolečko, ťuknutí na řádek ho otevře.
+  ukládají samy. Stránka má schválně málo nad komentáři: název, řadu malých tlačítek
+  (pro koho, důležitost ťukáním dokola, termín, opakování, kroky; volby ve spodním panelu)
+  a podrobnosti sbalené na tři řádky. Hlavní obsah jsou komentáře. V seznamu splní úkol jen ťuknutí na kolečko, ťuknutí na řádek ho otevře.
 - Komentáře k úkolům (tabulka `task_comments`, sklad `comments`): řazené podle přidání,
   s autorem, vlastní jdou upravit i smazat.
 - Kroky úkolu (`steps` v úkolu): jdou po sobě, každý má vlastní termín, termín úkolu se řídí

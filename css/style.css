@@ -169,7 +169,7 @@ a.card:active { background: var(--surface-2); }
 .btn:active { transform: scale(0.98); }
 .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.btn-danger { color: var(--danger); }
+.btn-danger, .btn-ghost.btn-danger { color: var(--danger); }
 .btn-small { min-height: 34px; padding: 0 12px; font-size: 15px; }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--accent); padding: 0 8px; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -612,15 +612,62 @@ textarea.detail-title {
 .detail.is-done .detail-head .check svg { opacity: 1; }
 .detail.is-done .detail-title { color: var(--text-3); text-decoration: line-through; }
 .detail.is-mine .detail-head .check { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
-.detail-state { margin: 0 4px 12px; }
-.detail-delete { margin-top: 28px; }
+.detail-state { margin: 0 4px 10px; font-size: 14px; }
+.detail-delete { margin-top: 20px; }
 
-/* Kroky: schované, dokud je někdo nerozbalí */
-.steps-box { margin: 4px 0 8px; }
-.steps-box summary { min-height: 44px; display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 15px; cursor: pointer; list-style: none; }
-.steps-box summary::-webkit-details-marker { display: none; }
-.steps-box summary::before { content: "+"; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-2); color: var(--text-2); font-weight: 600; }
-.steps-box[open] summary::before { content: "−"; }
+/* Malá tlačítka s nastavením pod názvem */
+.opts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 15px;
+  white-space: nowrap;
+}
+button.opt:active { background: var(--surface-2); }
+.opt svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.opt .legend-dot { margin: 0; }
+.opt.who-1, .opt.who-2, .opt.who-both { background: var(--who-soft); border-color: transparent; color: var(--who); font-weight: 600; }
+.opt.who-any .legend-dot { background: var(--text-3); }
+.opt.is-set { color: var(--accent); border-color: var(--accent); }
+.opt.is-late { color: var(--danger); border-color: var(--danger); font-weight: 600; }
+.opt.is-static { border-style: dashed; }
+.opt[data-opt="priority"] { padding: 0 7px; }
+
+/* Podrobnosti: sbalené na tři řádky, ťuknutím se upravují */
+.note-box { margin: 0 0 6px; }
+.note-view {
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.note-view.is-open { display: block; -webkit-line-clamp: unset; line-clamp: unset; }
+.note-add, .note-more { min-height: 36px; padding: 0 4px; border: 0; background: transparent; color: var(--accent); font-size: 15px; }
+.note-add { color: var(--text-2); }
+.note-input { font-size: 16px; }
+
+.pick-list { display: grid; gap: 8px; }
+.pick { justify-content: flex-start; width: 100%; }
+.pick[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.pick.who-1, .pick.who-2, .pick.who-both { color: var(--who); }
+
+/* Kroky: vidět jen po ťuknutí na tlačítko Kroky */
+.steps-box { margin: 0 0 12px; padding: 4px 12px 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
 .steps-list { list-style: none; margin: 0 0 8px; padding: 0; }
 .step { display: flex; align-items: flex-start; gap: 6px; padding: 6px 0; }
 .step .check-tap { margin: 1px -4px 0 -10px; }

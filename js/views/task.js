@@ -1,10 +1,10 @@
-// Stránka jednoho úkolu (#/ukoly/<id>): název, podrobnosti, pro koho,
-// důležitost, termín, opakování, kroky a komentáře.
-// Změny se ukládají samy, hned jak pole opustíte nebo na volbu ťuknete.
-// Kroky jsou schválně schované, většina úkolů má jen jeden.
+// Stránka jednoho úkolu (#/ukoly/<id>). Odshora: název, řada malých tlačítek
+// s nastavením (pro koho, důležitost, termín, opakování, kroky), podrobnosti
+// (dlouhé se sbalí) a hlavně komentáře.
+// Změny se ukládají samy. Kroky jsou schválně schované, většina úkolů je nemá.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, whoClass, wireSegmented } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, whoClass } from '../ui.js';
 import { navigate } from '../router.js';
 import { today, dayStr, addDays, dueLabel, timeLabel, isSameDay } from '../dates.js';
 import { REPEATS, repeatValue, repeatLabel } from './tasks.js';
@@ -28,61 +28,28 @@ export async function renderTask(el, id, { subEl }) {
   let members = await store.listMembers();
   let editing = null; // id komentáře, který se právě upravuje
   let stepsOpen = (task.steps ?? []).length > 0;
-
-  const who = [['', 'Kdokoliv'], ...members.map((m) => [m, m]), [store.BOTH, 'Oba']];
-  const current = repeatValue(task.repeat);
-  const repeats = REPEATS.some((r) => r.value === current) ? REPEATS : [...REPEATS, { value: current, name: repeatLabel(task.repeat) }];
+  let noteOpen = false; // dlouhé podrobnosti rozbalené
+  let noteEditing = false;
 
   root.innerHTML = `
     <a class="back-link" href="#/ukoly">${ICONS.back} Úkoly</a>
-    <form class="detail-form" autocomplete="off">
-      <div class="detail-head">
-        <button type="button" class="check-tap" data-action="done" aria-label="Hotovo"><span class="check">${ICONS.check}</span></button>
-        <textarea class="input detail-title" name="title" rows="1" aria-label="Název" required></textarea>
-      </div>
-      <p class="detail-state card-meta" hidden></p>
-      <label class="field"><span>Podrobnosti</span>
-        <textarea class="input" name="note" rows="3" placeholder="Co přesně, kde, s kým…"></textarea></label>
-      <div class="field"><span>Pro koho</span>
-        <div class="segmented" data-name="assignee">
-          ${who.map(([value, name]) => `<button type="button" class="${value ? whoClass(value, members) : ''}" data-value="${escapeHtml(value)}">${escapeHtml(name)}</button>`).join('')}
-        </div></div>
-      <div class="field"><span>Důležitost</span>
-        <div class="segmented" data-name="priority">
-          ${[1, 2, 3].map((n) => `<button type="button" data-value="${n}"><span class="prio prio-${n}">${n}</span></button>`).join('')}
-        </div></div>
-      <div data-due-block>
-        <label class="field"><span>Termín</span>
-          <input class="input" type="date" name="due"></label>
-        <div class="quick-row">
-          <button type="button" class="chip-btn" data-due="${today()}">Dnes</button>
-          <button type="button" class="chip-btn" data-due="${addDays(today(), 1)}">Zítra</button>
-          <button type="button" class="chip-btn" data-due="${addDays(today(), 7)}">Za týden</button>
-          <button type="button" class="chip-btn" data-due="">Bez termínu</button>
-        </div>
-      </div>
-      <div data-repeat-block>
-        <label class="field"><span>Opakování</span>
-          <select class="input" name="repeat">
-            ${repeats.map((r) => `<option value="${r.value}">${escapeHtml(r.name)}</option>`).join('')}
-          </select></label>
-        <div class="field" data-repeat-only><span>Další termín počítat</span>
-          <div class="segmented" data-name="mode">
-            <button type="button" data-value="fixed">Od termínu</button>
-            <button type="button" data-value="after">Od splnění</button>
-          </div></div>
-      </div>
-    </form>
+    <div class="detail-head">
+      <button type="button" class="check-tap" data-action="done" aria-label="Hotovo"><span class="check">${ICONS.check}</span></button>
+      <textarea class="input detail-title" name="title" rows="1" aria-label="Název"></textarea>
+    </div>
+    <div class="opts"></div>
+    <p class="detail-state card-meta" hidden></p>
 
-    <details class="steps-box">
-      <summary>Rozdělit na kroky <span class="steps-count"></span></summary>
-      <p class="field-hint" style="margin: 0 0 8px">Kroky jdou po sobě a každý může mít svůj termín. V seznamu je vidět vždy ten, který je zrovna na řadě.</p>
+    <div class="steps-box" hidden>
       <ul class="steps-list"></ul>
       <form class="add-form step-form" autocomplete="off">
         <input class="input" name="title" placeholder="Přidat krok…" aria-label="Přidat krok" enterkeyhint="done">
         <button class="add-btn" type="submit" aria-label="Přidat krok">${ICONS.plus}</button>
       </form>
-    </details>
+      <p class="field-hint">Kroky jdou po sobě, každý může mít svůj termín. V seznamu je vidět ten, který je na řadě.</p>
+    </div>
+
+    <div class="note-box"></div>
 
     <p class="section-label">Komentáře</p>
     <ul class="comments"></ul>
@@ -91,58 +58,102 @@ export async function renderTask(el, id, { subEl }) {
       <button class="add-btn" type="submit" aria-label="Odeslat">${ICONS.send}</button>
     </form>
 
-    <button type="button" class="btn btn-danger btn-block detail-delete" data-action="delete">Smazat úkol</button>`;
+    <button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat úkol</button>`;
 
-  const form = root.querySelector('.detail-form');
-  const picked = wireSegmented(form);
+  const titleEl = root.querySelector('.detail-title');
+  const optsEl = root.querySelector('.opts');
   const stateEl = root.querySelector('.detail-state');
   const stepsBox = root.querySelector('.steps-box');
   const stepsList = root.querySelector('.steps-list');
+  const noteBox = root.querySelector('.note-box');
   const commentsEl = root.querySelector('.comments');
-  stepsBox.open = stepsOpen;
 
-  const setPressed = (name, value) => form.querySelectorAll(`[data-name="${name}"] button`)
-    .forEach((b) => b.setAttribute('aria-pressed', b.dataset.value === String(value ?? '')));
-  // Pole, do kterého se zrovna píše, se nepřepisuje
-  const setValue = (field, value) => { if (document.activeElement !== field) field.value = value ?? ''; };
   const grow = (area) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
+  const save = (patch) => store.updateTask(id, patch);
+  const whoName = (value) => (!value ? 'Kdokoliv' : value === store.BOTH ? 'Oba' : value);
 
   // ---------- Vykreslení ----------
 
-  function drawFields() {
+  function drawHead() {
     const steps = task.steps ?? [];
-    setValue(form.elements.title, task.title);
-    setValue(form.elements.note, task.note);
-    setValue(form.elements.due, task.due);
-    setValue(form.elements.repeat, repeatValue(task.repeat));
-    setPressed('assignee', task.assignee ?? '');
-    setPressed('priority', task.priority ?? 2);
-    setPressed('mode', task.repeat?.mode === 'after' ? 'after' : 'fixed');
-    grow(form.elements.title);
-    form.querySelector('[data-repeat-only]').hidden = !task.repeat;
-    // Úkol s kroky má termín z kroků a neopakuje se, opakovaný zase nemá kroky
-    form.querySelector('[data-due-block]').hidden = steps.length > 0;
-    form.querySelector('[data-repeat-block]').hidden = steps.length > 0;
-    stepsBox.hidden = Boolean(task.repeat);
-
+    if (document.activeElement !== titleEl) titleEl.value = task.title;
+    grow(titleEl);
     root.classList.toggle('is-done', Boolean(task.done));
     root.querySelector('.detail-head').className = `detail-head ${whoClass(task.assignee, members)}`;
+
+    // Malá tlačítka s nastavením. Úkol s kroky má termín z kroků a neopakuje
+    // se, opakovaný zase nemá kroky.
+    const priority = task.priority ?? 2;
+    const late = task.due && task.due < today() && !task.done;
+    const opts = [
+      `<button type="button" class="opt ${whoClass(task.assignee, members)}" data-opt="who"><span class="legend-dot"></span>${escapeHtml(whoName(task.assignee))}</button>`,
+      `<button type="button" class="opt" data-opt="priority" aria-label="Důležitost ${priority} ze 3, ťuknutím změníte"><span class="prio prio-${priority}">${priority}</span></button>`,
+    ];
+    if (!steps.length) {
+      opts.push(`<button type="button" class="opt${late ? ' is-late' : ''}" data-opt="due">${task.due ? escapeHtml(dueLabel(task.due)) : 'Bez termínu'}</button>`);
+      opts.push(`<button type="button" class="opt${task.repeat ? ' is-set' : ''}" data-opt="repeat">${ICONS.repeat}${task.repeat ? escapeHtml(repeatLabel(task.repeat)) : ''}</button>`);
+    } else if (task.due) {
+      opts.push(`<span class="opt is-static${late ? ' is-late' : ''}">${escapeHtml(dueLabel(task.due))}</span>`);
+    }
+    if (!task.repeat) {
+      const done = steps.filter((s) => s.done).length;
+      opts.push(`<button type="button" class="opt${stepsOpen ? ' is-set' : ''}" data-opt="steps">${steps.length ? `Kroky ${done}/${steps.length}` : '+ Kroky'}</button>`);
+    }
+    optsEl.innerHTML = opts.join('');
+
     const parts = task.doneParts ?? [];
     const state = [];
     if (task.done) state.push(`Hotovo: ${task.doneBy ?? ''} ${task.doneAt ? when(task.doneAt) : ''}`.trim());
     else if (task.assignee === store.BOTH && parts.length) state.push(`Odškrtnuto: ${parts.join(', ')}. Zbývá: ${members.filter((m) => !parts.includes(m)).join(', ')}.`);
-    else if (task.repeat && task.doneAt) state.push(`Naposledy ${task.doneBy ?? ''} ${when(task.doneAt)}, další ${task.due ? dueLabel(task.due) : ''}`.trim());
+    else if (task.repeat && task.doneAt) state.push(`Naposledy ${task.doneBy ?? ''} ${when(task.doneAt)}`.trim());
     stateEl.hidden = !state.length;
     stateEl.textContent = state.join(' ');
     root.classList.toggle('is-mine', !task.done && parts.includes(me));
 
-    subEl.hidden = !task.due || task.done;
-    subEl.textContent = task.due ? `Termín ${dueLabel(task.due)}` : '';
+    subEl.hidden = true;
+  }
+
+  // Podrobnosti: text, který se ťuknutím změní v pole. Dlouhý se sbalí.
+  function drawNote() {
+    if (noteEditing) return;
+    if (!task.note) {
+      noteBox.innerHTML = '<button type="button" class="note-add" data-action="note-edit">+ Přidat podrobnosti</button>';
+      return;
+    }
+    noteBox.innerHTML = `<div class="note-view" data-action="note-edit" role="button" tabindex="0">${escapeHtml(task.note)}</div>
+      <button type="button" class="note-more" data-action="note-toggle" hidden></button>`;
+    const view = noteBox.querySelector('.note-view');
+    const more = noteBox.querySelector('.note-more');
+    // Tlačítko jen když se text do sbalené podoby nevejde (měří se sbalený)
+    const long = view.scrollHeight > view.clientHeight + 2;
+    noteOpen = noteOpen && long;
+    view.classList.toggle('is-open', noteOpen);
+    more.hidden = !long;
+    more.textContent = noteOpen ? 'Sbalit' : 'Zobrazit celé';
+  }
+
+  function editNote() {
+    noteEditing = true;
+    noteBox.innerHTML = '<textarea class="input note-input" rows="3" placeholder="Co přesně, kde, s kým…" aria-label="Podrobnosti"></textarea>';
+    const area = noteBox.querySelector('textarea');
+    area.value = task.note ?? '';
+    grow(area);
+    area.focus();
+    area.addEventListener('input', () => grow(area));
+    area.addEventListener('blur', async () => {
+      noteEditing = false;
+      const text = area.value.trim() || null;
+      if (text !== (task.note ?? null)) {
+        task = { ...task, note: text };
+        await save({ note: text });
+      }
+      drawNote();
+    });
   }
 
   function drawSteps() {
     const steps = task.steps ?? [];
-    root.querySelector('.steps-count').textContent = steps.length ? `(${steps.filter((s) => s.done).length}/${steps.length})` : '';
+    stepsBox.hidden = !stepsOpen || Boolean(task.repeat);
     // Rozepsaný krok se nepřekresluje
     if (stepsList.contains(document.activeElement)) return;
     const currentStep = steps.find((s) => !s.done);
@@ -196,57 +207,117 @@ export async function renderTask(el, id, { subEl }) {
     }
     task = fresh;
     [me, members] = await Promise.all([store.getMe(), store.listMembers()]);
-    drawFields();
+    drawHead();
     drawSteps();
+    drawNote();
     await drawComments();
   }
 
-  // ---------- Ukládání polí ----------
+  // ---------- Název ----------
 
-  const save = (patch) => store.updateTask(id, patch);
-
-  form.addEventListener('submit', (e) => e.preventDefault());
-  form.elements.title.addEventListener('input', () => grow(form.elements.title));
-  form.elements.title.addEventListener('keydown', (e) => {
+  titleEl.addEventListener('input', () => grow(titleEl));
+  titleEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      e.target.blur();
+      titleEl.blur();
     }
   });
+  titleEl.addEventListener('change', () => {
+    const text = titleEl.value.replace(/\s+/g, ' ').trim();
+    if (text) save({ title: text });
+    else titleEl.value = task.title;
+  });
 
-  form.addEventListener('change', (e) => {
-    const { name, value } = e.target;
-    if (name === 'title') {
-      const text = value.replace(/\s+/g, ' ').trim();
-      if (text) save({ title: text });
-      else e.target.value = task.title;
-    }
-    if (name === 'note') save({ note: value.trim() || null });
-    if (name === 'due') save({ due: value || (task.repeat ? today() : null) });
-    if (name === 'repeat') {
-      const [every, unit] = value.split(':');
-      const repeat = unit ? { every: Number(every), unit, mode: picked('mode') || 'fixed' } : null;
+  // ---------- Malá tlačítka s nastavením ----------
+
+  // Seznam voleb ve spodním panelu, ťuknutí vybere a zavře
+  function pick(titleText, options, current, onPick) {
+    openSheet(titleText, (body, close) => {
+      body.innerHTML = `<div class="pick-list">${options.map(([value, name, cls = '']) => `<button type="button" class="btn pick ${cls}" data-value="${escapeHtml(value)}" aria-pressed="${value === current}">${name}</button>`).join('')}</div>`;
+      body.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-value]');
+        if (!btn) return;
+        close();
+        onPick(btn.dataset.value);
+      });
+    });
+  }
+
+  function openDue() {
+    openSheet('Termín', (body, close) => {
+      body.innerHTML = `
+        <div class="pick-list">
+          <button type="button" class="btn pick" data-due="${today()}">Dnes</button>
+          <button type="button" class="btn pick" data-due="${addDays(today(), 1)}">Zítra</button>
+          <button type="button" class="btn pick" data-due="${addDays(today(), 7)}">Za týden</button>
+          <button type="button" class="btn pick" data-due="">Bez termínu</button>
+        </div>
+        <label class="field" style="margin-top: 12px"><span>Jiný den</span>
+          <input class="input" type="date" name="due" value="${escapeHtml(task.due ?? '')}"></label>`;
       // Opakovaný úkol potřebuje termín, od kterého se počítá
-      save({ repeat, due: task.due ?? (repeat ? today() : null) });
-    }
-  });
+      const set = (value) => {
+        close();
+        save({ due: value || (task.repeat ? today() : null) });
+      };
+      body.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-due]');
+        if (btn) set(btn.dataset.due);
+      });
+      body.querySelector('input').addEventListener('change', (e) => set(e.target.value));
+    });
+  }
 
-  form.addEventListener('click', (e) => {
-    const quick = e.target.closest('[data-due]');
-    if (quick) {
-      save({ due: quick.dataset.due || (task.repeat ? today() : null) });
-      return;
+  function openRepeat() {
+    const current = repeatValue(task.repeat);
+    const repeats = REPEATS.some((r) => r.value === current) ? REPEATS : [...REPEATS, { value: current, name: repeatLabel(task.repeat) }];
+    openSheet('Opakování', (body, close) => {
+      body.innerHTML = `
+        <div class="pick-list">${repeats.map((r) => `<button type="button" class="btn pick" data-value="${r.value}" aria-pressed="${r.value === current}">${escapeHtml(r.name)}</button>`).join('')}</div>
+        <div class="field" style="margin-top: 14px"><span>Další termín počítat</span>
+          <div class="segmented" data-name="mode">
+            <button type="button" data-value="fixed" aria-pressed="${task.repeat?.mode !== 'after'}">Od termínu</button>
+            <button type="button" data-value="after" aria-pressed="${task.repeat?.mode === 'after'}">Od splnění</button>
+          </div>
+          <p class="field-hint">Od termínu: pořád stejný den (popelnice). Od splnění: znovu až za danou dobu po odškrtnutí (výměna filtru).</p></div>`;
+      let mode = task.repeat?.mode === 'after' ? 'after' : 'fixed';
+      body.addEventListener('click', (e) => {
+        const seg = e.target.closest('.segmented button');
+        if (seg) {
+          mode = seg.dataset.value;
+          seg.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b === seg));
+          if (task.repeat) save({ repeat: { ...task.repeat, mode } });
+          return;
+        }
+        const btn = e.target.closest('[data-value]');
+        if (!btn) return;
+        const [every, unit] = btn.dataset.value.split(':');
+        const repeat = unit ? { every: Number(every), unit, mode } : null;
+        close();
+        save({ repeat, due: task.due ?? (repeat ? today() : null) });
+      });
+    });
+  }
+
+  optsEl.addEventListener('click', (e) => {
+    const opt = e.target.closest('[data-opt]')?.dataset.opt;
+    if (opt === 'who') {
+      const options = [['', 'Kdokoliv'], ...members.map((m) => [m, escapeHtml(m), whoClass(m, members)]), [store.BOTH, 'Oba (odškrtne každý za sebe)', 'who-both']];
+      pick('Pro koho', options, task.assignee ?? '', (value) => {
+        const assignee = value || null;
+        // Rozdělané odškrtnutí "za oba" nedává smysl, když už úkol pro oba není
+        save(assignee === store.BOTH ? { assignee } : { assignee, doneParts: [] });
+      });
     }
-    const seg = e.target.closest('.segmented button');
-    if (!seg) return;
-    const name = seg.parentElement.dataset.name;
-    if (name === 'assignee') {
-      const assignee = seg.dataset.value || null;
-      // Rozdělané odškrtnutí "za oba" nedává smysl, když už úkol pro oba není
-      save(assignee === store.BOTH ? { assignee } : { assignee, doneParts: [] });
+    // Důležitost se ťukáním přepíná dokola 1 - 2 - 3
+    if (opt === 'priority') save({ priority: ((task.priority ?? 2) % 3) + 1 });
+    if (opt === 'due') openDue();
+    if (opt === 'repeat') openRepeat();
+    if (opt === 'steps') {
+      stepsOpen = !stepsOpen;
+      drawHead();
+      drawSteps();
+      if (stepsOpen && !(task.steps ?? []).length) root.querySelector('.step-form input').focus();
     }
-    if (name === 'priority') save({ priority: Number(seg.dataset.value) || 2 });
-    if (name === 'mode' && task.repeat) save({ repeat: { ...task.repeat, mode: seg.dataset.value } });
   });
 
   // ---------- Akce ----------
@@ -264,6 +335,11 @@ export async function renderTask(el, id, { subEl }) {
       const removed = await store.removeTasks([id]);
       if (removed.length) undoToast(`${removed[0].title}: smazáno`, () => store.restoreTasks(removed));
       navigate('ukoly');
+    }
+    if (action === 'note-edit') editNote();
+    if (action === 'note-toggle') {
+      noteOpen = !noteOpen;
+      drawNote();
     }
 
     const stepEl = e.target.closest('[data-step]');
@@ -294,8 +370,6 @@ export async function renderTask(el, id, { subEl }) {
       await drawComments();
     }
   });
-
-  stepsBox.addEventListener('toggle', () => { stepsOpen = stepsBox.open; });
 
   // Název a termín kroku se ukládají po opuštění pole
   stepsList.addEventListener('change', (e) => {
