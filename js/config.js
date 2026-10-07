@@ -5,4 +5,4 @@ export const SUPABASE_URL = 'https://ovzcdryhlgfaechrvsrx.supabase.co';
 export const SUPABASE_KEY = 'sb_publishable_zbQdPcKbLyg4P-plyJwVsQ_Rv06RBQc';
 
 // Zobrazovaná verze. Při každém nasazení zvednout spolu s VERSION v sw.js.
-export const APP_VERSION = '0.2.0';
+export const APP_VERSION = '0.3.0';

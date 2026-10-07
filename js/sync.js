@@ -77,6 +77,76 @@ const SPECS = {
     pullFilter: (query) => query,
     removeMissing: false,
   },
+  tasks: {
+    table: 'tasks',
+    conflict: 'id',
+    keyOf: (row) => row.id,
+    stamp: (local) => local.updatedAt ?? 0,
+    toRemote: (t, householdId) => ({
+      id: t.id,
+      household_id: householdId,
+      title: t.title,
+      assignee: t.assignee ?? null,
+      due: t.due ?? null,
+      repeat_every: t.repeat?.every ?? null,
+      repeat_unit: t.repeat?.unit ?? null,
+      repeat_mode: t.repeat?.mode ?? null,
+      done: Boolean(t.done),
+      done_at: iso(t.doneAt),
+      done_by: t.doneBy ?? null,
+      prev_due: t.prevDue ?? null,
+      created_by: t.createdBy ?? null,
+      created_at: iso(t.createdAt ?? t.updatedAt ?? Date.now()),
+      updated_at: iso(t.updatedAt ?? Date.now()),
+      deleted: Boolean(t.deleted),
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      title: r.title,
+      assignee: r.assignee,
+      due: r.due,
+      repeat: r.repeat_every ? { every: r.repeat_every, unit: r.repeat_unit, mode: r.repeat_mode } : null,
+      done: r.done,
+      doneAt: ms(r.done_at),
+      doneBy: r.done_by,
+      prevDue: r.prev_due,
+      createdBy: r.created_by,
+      createdAt: ms(r.created_at),
+      updatedAt: ms(r.updated_at),
+    }),
+    pullFilter: (query) => query.eq('deleted', false),
+    removeMissing: true,
+  },
+  payments: {
+    table: 'payments',
+    conflict: 'id',
+    keyOf: (row) => row.id,
+    stamp: (local) => local.updatedAt ?? 0,
+    toRemote: (p, householdId) => ({
+      id: p.id,
+      household_id: householdId,
+      name: p.name,
+      amount: p.amount ?? 0,
+      period: p.period ?? 'month',
+      payer: p.payer ?? null,
+      due_day: p.dueDay ?? null,
+      created_at: iso(p.createdAt ?? p.updatedAt ?? Date.now()),
+      updated_at: iso(p.updatedAt ?? Date.now()),
+      deleted: Boolean(p.deleted),
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      name: r.name,
+      amount: Number(r.amount),
+      period: r.period,
+      payer: r.payer,
+      dueDay: r.due_day,
+      createdAt: ms(r.created_at),
+      updatedAt: ms(r.updated_at),
+    }),
+    pullFilter: (query) => query.eq('deleted', false),
+    removeMissing: true,
+  },
 };
 
 const PAGE = 1000;
@@ -214,35 +284,46 @@ export function syncNow() {
   return running;
 }
 
+// Každý sklad se odesílá i stahuje zvlášť: chyba u jednoho (třeba tabulka,
+// která v databázi ještě není) nezastaví ostatní. První chyba se vyhodí
+// až na konci.
 async function push(id) {
   const queue = await db.getAll('outbox');
+  let firstError = null;
   for (const [store, spec] of Object.entries(SPECS)) {
-    const entries = queue.filter((q) => q.store === store);
-    if (!entries.length) continue;
-
-    const sent = [];
-    for (const entry of entries) {
-      const local = await db.get(store, entry.key);
-      if (local) sent.push({ entry, local });
-      else await db.remove('outbox', entry.k);
+    try {
+      await pushStore(id, store, spec, queue.filter((q) => q.store === store));
+    } catch (err) {
+      firstError ??= err;
     }
-    if (!sent.length) continue;
-
-    const { error } = await supabase
-      .from(spec.table)
-      .upsert(sent.map(({ local }) => spec.toRemote(local, id)), { onConflict: spec.conflict });
-    if (error) throw error;
     if (householdId !== id) return;
-
-    // Z fronty zmizí jen to, co se mezitím lokálně znovu nezměnilo
-    for (const { entry, local } of sent) {
-      const current = await db.get(store, entry.key);
-      if (current && spec.stamp(current) !== spec.stamp(local)) continue;
-      await db.remove('outbox', entry.k);
-      if (current?.deleted) await db.remove(store, entry.key);
-    }
   }
   await refreshPending();
+  if (firstError) throw firstError;
+}
+
+async function pushStore(id, store, spec, entries) {
+  const sent = [];
+  for (const entry of entries) {
+    const local = await db.get(store, entry.key);
+    if (local) sent.push({ entry, local });
+    else await db.remove('outbox', entry.k);
+  }
+  if (!sent.length) return;
+
+  const { error } = await supabase
+    .from(spec.table)
+    .upsert(sent.map(({ local }) => spec.toRemote(local, id)), { onConflict: spec.conflict });
+  if (error) throw error;
+  if (householdId !== id) return;
+
+  // Z fronty zmizí jen to, co se mezitím lokálně znovu nezměnilo
+  for (const { entry, local } of sent) {
+    const current = await db.get(store, entry.key);
+    if (current && spec.stamp(current) !== spec.stamp(local)) continue;
+    await db.remove('outbox', entry.k);
+    if (current?.deleted) await db.remove(store, entry.key);
+  }
 }
 
 async function fetchAll(spec, id) {
@@ -262,9 +343,16 @@ async function pull(id, { keepMissing = false } = {}) {
   pulling = true;
   touchedDuringPull.clear();
   let changed = false;
+  let firstError = null;
   try {
     for (const [store, spec] of Object.entries(SPECS)) {
-      const remote = await fetchAll(spec, id);
+      let remote;
+      try {
+        remote = await fetchAll(spec, id);
+      } catch (err) {
+        firstError ??= err;
+        continue;
+      }
       if (householdId !== id) return;
 
       const dirty = new Set((await db.getAll('outbox')).filter((q) => q.store === store).map((q) => q.key));
@@ -291,6 +379,7 @@ async function pull(id, { keepMissing = false } = {}) {
       if (toRemove.length) await db.remove(store, toRemove);
       if (toPut.length || toRemove.length) changed = true;
     }
+    if (firstError) throw firstError;
   } finally {
     pulling = false;
     if (changed) fire(dataListeners);
@@ -373,7 +462,7 @@ export async function adoptLocal(id, sameName) {
 // Smaže lokální kopii dat (odhlášení, jiný účet)
 export async function wipeLocal() {
   stop();
-  await Promise.all(['items', 'history', 'outbox'].map((store) => db.clear(store)));
+  await Promise.all([...Object.keys(SPECS), 'outbox'].map((store) => db.clear(store)));
   status.pending = 0;
   status.lastSyncAt = null;
   status.error = null;

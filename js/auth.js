@@ -11,6 +11,7 @@
 
 import * as db from './db.js';
 import * as sync from './sync.js';
+import * as store from './store.js';
 import { supabase, hasStoredSession } from './supabase.js';
 import { normalize } from './categories.js';
 
@@ -40,7 +41,7 @@ async function forget() {
   const cache = await getCache();
   if (cache && !cache.importPending) await sync.wipeLocal();
   else sync.stop();
-  await db.remove('meta', ['session', 'me']);
+  await db.remove('meta', ['session', 'me', 'members']);
 }
 
 // Pustí uživatele dál podle zapamatovaného ověření
@@ -93,9 +94,7 @@ export async function verify() {
 
   const { data: rows, error } = await supabase
     .from('household_members')
-    .select('household_id, display_name')
-    .eq('user_id', user.id)
-    .limit(1);
+    .select('user_id, household_id, display_name');
 
   if (error && !error.code) {
     // Chyba sítě: kdo už je uvnitř, pokračuje z lokální kopie
@@ -104,13 +103,14 @@ export async function verify() {
   }
 
   let cache = await getCache();
-  if (error || !rows.length) {
+  // RLS vrátí jen členy mé domácnosti. Kdo v žádné není, nedostane nic.
+  const member = error ? null : rows.find((row) => row.user_id === user.id);
+  if (!member) {
     await forget();
     set({ status: 'denied', email: user.email, displayName: null, householdId: null });
     return;
   }
 
-  const member = rows[0];
   if (cache && (cache.userId !== user.id || cache.householdId !== member.household_id)) {
     // Na telefonu zůstala data jiného účtu nebo domácnosti
     await forget();
@@ -129,7 +129,12 @@ export async function verify() {
     importPending,
   };
   await saveCache(cache);
-  await db.put('meta', { key: 'me', value: member.display_name });
+  const members = rows
+    .filter((row) => row.household_id === member.household_id)
+    .map((row) => row.display_name)
+    .sort((a, b) => a.localeCompare(b, 'cs'));
+  if ((await store.getMe()) !== member.display_name) await store.setMe(member.display_name);
+  if (JSON.stringify(await store.getMeta('members')) !== JSON.stringify(members)) await store.setMeta('members', members);
   if (waiting) await enter(cache);
   else if (state.displayName !== cache.displayName) set({ displayName: cache.displayName, email: cache.email });
 }

@@ -3,12 +3,9 @@
 
 import * as store from '../store.js';
 import { CATEGORIES, parseEntry } from '../categories.js';
-import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount } from '../ui.js';
+import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount, rowGestures } from '../ui.js';
 
 export const title = 'Nákup';
-
-const LONG_PRESS_MS = 500;
-const MOVE_TOLERANCE = 10;
 
 export async function render(el, { subEl }) {
   el.innerHTML = `
@@ -192,91 +189,10 @@ export async function render(el, { subEl }) {
 
   // ---------- Gesta: ťuknutí, podržení, potažení ----------
 
-  let gesture = null;
-  let ignoreClicksUntil = 0;
-
-  function endGesture() {
-    if (!gesture) return;
-    clearTimeout(gesture.timer);
-    gesture.main.classList.remove('is-dragging');
-    gesture = null;
-  }
-
-  listRoot.addEventListener('pointerdown', (e) => {
-    const main = e.target.closest('.item-main');
-    if (!main || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    const li = main.closest('.item');
-    gesture = {
-      main,
-      li,
-      id: li.dataset.id,
-      x: e.clientX,
-      y: e.clientY,
-      dx: 0,
-      mode: null,
-      timer: setTimeout(() => {
-        if (gesture && !gesture.mode) {
-          gesture.mode = 'press';
-          ignoreClicksUntil = Date.now() + 800;
-          navigator.vibrate?.(10);
-          openEdit(gesture.id);
-        }
-      }, LONG_PRESS_MS),
-    };
-  });
-
-  listRoot.addEventListener('pointermove', (e) => {
-    if (!gesture || gesture.mode === 'press') return;
-    const mx = e.clientX - gesture.x;
-    const my = e.clientY - gesture.y;
-    if (!gesture.mode) {
-      if (Math.abs(mx) > MOVE_TOLERANCE && Math.abs(mx) > Math.abs(my)) {
-        gesture.mode = 'swipe';
-        clearTimeout(gesture.timer);
-        gesture.main.classList.add('is-dragging');
-        try { gesture.main.setPointerCapture(e.pointerId); } catch { /* nevadí */ }
-      } else if (Math.abs(my) > MOVE_TOLERANCE) {
-        endGesture();
-        return;
-      } else {
-        return;
-      }
-    }
-    gesture.dx = Math.min(0, mx);
-    gesture.main.style.transform = `translateX(${gesture.dx}px)`;
-  });
-
-  const finish = (cancelled) => () => {
-    if (!gesture) return;
-    const g = gesture;
-    if (g.mode === 'swipe') {
-      ignoreClicksUntil = Date.now() + 400;
-      const threshold = Math.min(110, g.main.offsetWidth * 0.35);
-      g.main.classList.remove('is-dragging');
-      if (!cancelled && g.dx < -threshold) {
-        g.main.style.transform = 'translateX(-100%)';
-        setTimeout(() => deleteItem(g.id), 180);
-      } else {
-        g.main.style.transform = '';
-      }
-    }
-    endGesture();
-  };
-  listRoot.addEventListener('pointerup', finish(false));
-  listRoot.addEventListener('pointercancel', finish(true));
-
-  listRoot.addEventListener('contextmenu', (e) => {
-    if (e.target.closest('.item-main')) e.preventDefault();
-  });
+  const endGesture = rowGestures(listRoot, { onTap: toggle, onPress: openEdit, onSwipe: deleteItem });
 
   listRoot.addEventListener('click', (e) => {
-    if (e.target.closest('[data-action="clear"]')) {
-      clearDone();
-      return;
-    }
-    const main = e.target.closest('.item-main');
-    if (!main || Date.now() < ignoreClicksUntil) return;
-    toggle(main.closest('.item'));
+    if (e.target.closest('[data-action="clear"]')) clearDone();
   });
 
   // ---------- Start ----------

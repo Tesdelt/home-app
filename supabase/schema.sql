@@ -59,6 +59,46 @@ create table if not exists public.shopping_history (
   primary key (household_id, key)
 );
 
+-- Úkoly. Opakovaný úkol se dokončením neuzavře, jen se mu posune termín
+-- (due) a zapíše se, kdo a kdy ho naposledy splnil. prev_due je termín před
+-- posledním splněním, aby šlo odškrtnutí vrátit.
+create table if not exists public.tasks (
+  id           uuid primary key,
+  household_id uuid not null references public.households (id) on delete cascade,
+  title        text not null,
+  assignee     text,
+  due          date,
+  repeat_every integer,
+  repeat_unit  text check (repeat_unit in ('day', 'week', 'month', 'year')),
+  repeat_mode  text check (repeat_mode in ('fixed', 'after')),
+  done         boolean not null default false,
+  done_at      timestamptz,
+  done_by      text,
+  prev_due     date,
+  created_by   text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+
+create index if not exists tasks_household_idx on public.tasks (household_id);
+
+-- Pravidelné platby. payer je jméno člena, nebo 'split' (napůl).
+create table if not exists public.payments (
+  id           uuid primary key,
+  household_id uuid not null references public.households (id) on delete cascade,
+  name         text not null,
+  amount       numeric(12, 2) not null default 0,
+  period       text not null default 'month' check (period in ('month', 'quarter', 'year')),
+  payer        text,
+  due_day      integer check (due_day between 1 and 31),
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+
+create index if not exists payments_household_idx on public.payments (household_id);
+
 -- ---------- Pomocné funkce ----------
 
 -- Schéma private není vystavené přes API, funkce v něm nejdou volat zvenku.
@@ -107,6 +147,16 @@ create trigger shopping_history_keep_newer
   before update on public.shopping_history
   for each row execute function private.keep_newer();
 
+drop trigger if exists tasks_keep_newer on public.tasks;
+create trigger tasks_keep_newer
+  before update on public.tasks
+  for each row execute function private.keep_newer();
+
+drop trigger if exists payments_keep_newer on public.payments;
+create trigger payments_keep_newer
+  before update on public.payments
+  for each row execute function private.keep_newer();
+
 -- ---------- Oprávnění rolí ----------
 -- Nepřihlášený nesmí nic. Přihlášený jen to, co mu navíc dovolí RLS níže.
 
@@ -114,11 +164,15 @@ revoke all on public.households        from public, anon, authenticated;
 revoke all on public.household_members from public, anon, authenticated;
 revoke all on public.shopping_items    from public, anon, authenticated;
 revoke all on public.shopping_history  from public, anon, authenticated;
+revoke all on public.tasks             from public, anon, authenticated;
+revoke all on public.payments          from public, anon, authenticated;
 
 grant select on public.households        to authenticated;
 grant select on public.household_members to authenticated;
 grant select, insert, update, delete on public.shopping_items   to authenticated;
 grant select, insert, update, delete on public.shopping_history to authenticated;
+grant select, insert, update, delete on public.tasks            to authenticated;
+grant select, insert, update, delete on public.payments         to authenticated;
 
 -- ---------- RLS ----------
 
@@ -126,6 +180,8 @@ alter table public.households        enable row level security;
 alter table public.household_members enable row level security;
 alter table public.shopping_items    enable row level security;
 alter table public.shopping_history  enable row level security;
+alter table public.tasks             enable row level security;
+alter table public.payments          enable row level security;
 
 drop policy if exists "clen vidi svou domacnost" on public.households;
 create policy "clen vidi svou domacnost" on public.households
@@ -149,6 +205,18 @@ create policy "clen cte a zapisuje historii" on public.shopping_history
   using (household_id in (select private.my_household_ids()))
   with check (household_id in (select private.my_household_ids()));
 
+drop policy if exists "clen cte a zapisuje ukoly" on public.tasks;
+create policy "clen cte a zapisuje ukoly" on public.tasks
+  for all to authenticated
+  using (household_id in (select private.my_household_ids()))
+  with check (household_id in (select private.my_household_ids()));
+
+drop policy if exists "clen cte a zapisuje platby" on public.payments;
+create policy "clen cte a zapisuje platby" on public.payments
+  for all to authenticated
+  using (household_id in (select private.my_household_ids()))
+  with check (household_id in (select private.my_household_ids()));
+
 -- ---------- Realtime ----------
 -- Živé změny chodí jen z datových tabulek a jen členům domácnosti (platí RLS).
 
@@ -156,7 +224,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['shopping_items', 'shopping_history'] loop
+  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

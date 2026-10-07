@@ -9,6 +9,7 @@
 import * as db from './db.js';
 import * as sync from './sync.js';
 import { guessCategory, normalize } from './categories.js';
+import { today, addInterval } from './dates.js';
 
 const listeners = new Set();
 const channel = 'BroadcastChannel' in self ? new BroadcastChannel('home-app') : null;
@@ -49,6 +50,13 @@ export async function setMeta(key, value) {
 export const getMe = () => getMeta('me', null);
 export const setMe = (name) => setMeta('me', name);
 
+// Jména členů domácnosti (pro "kdo to má udělat", "kdo platí")
+export async function listMembers() {
+  const [members, me] = await Promise.all([getMeta('members', null), getMe()]);
+  if (members?.length) return members;
+  return me ? [me] : [];
+}
+
 // ---------- Stav synchronizace ----------
 // { pending, lastSyncAt, error, online, active }
 
@@ -61,14 +69,46 @@ export const syncNow = () => sync.syncNow();
 // Smazaná položka zůstává v IndexedDB s deleted: true, dokud se smazání
 // neodešle na server. Ven z této vrstvy se smazané položky nedostanou.
 
-async function liveItems() {
-  return (await db.getAll('items')).filter((i) => !i.deleted);
+async function live(store) {
+  return (await db.getAll(store)).filter((row) => !row.deleted);
 }
 
-async function saveItems(items) {
-  await db.putAll('items', items);
-  await sync.markDirty('items', items.map((i) => i.id));
+// Uloží řádky lokálně a zařadí je do fronty k odeslání
+async function save(store, rows) {
+  if (!rows.length) return;
+  await db.putAll(store, rows);
+  await sync.markDirty(store, rows.map((row) => row.id));
 }
+
+async function markDeleted(store, rows) {
+  const now = Date.now();
+  await save(store, rows.map((row) => ({ ...row, deleted: true, updatedAt: now })));
+}
+
+// Vrátí smazané řádky (Zpět)
+async function restore(store, rows) {
+  const now = Date.now();
+  await save(store, rows.map((row) => ({ ...row, deleted: false, updatedAt: now })));
+  emit();
+}
+
+async function removeByIds(store, ids) {
+  const removed = (await live(store)).filter((row) => ids.includes(row.id));
+  await markDeleted(store, removed);
+  emit();
+  return removed;
+}
+
+async function patchRow(store, id, patch) {
+  const row = await db.get(store, id);
+  if (!row || row.deleted) return null;
+  const next = { ...row, ...patch, updatedAt: Date.now() };
+  await save(store, [next]);
+  return next;
+}
+
+const liveItems = () => live('items');
+const saveItems = (items) => save('items', items);
 
 export async function listItems() {
   const items = await liveItems();
@@ -126,32 +166,18 @@ export async function updateItem(id, patch) {
 
 export const setDone = (id, done) => updateItem(id, { done });
 
-async function markDeleted(items) {
-  const now = Date.now();
-  if (items.length) await saveItems(items.map((i) => ({ ...i, deleted: true, updatedAt: now })));
-}
-
-export async function removeItems(ids) {
-  const removed = (await liveItems()).filter((i) => ids.includes(i.id));
-  await markDeleted(removed);
-  emit();
-  return removed;
-}
+export const removeItems = (ids) => removeByIds('items', ids);
 
 // Smaže koupené položky a vrátí je (kvůli tlačítku Zpět)
 export async function clearDone() {
   const done = (await liveItems()).filter((i) => i.done);
-  await markDeleted(done);
+  await markDeleted('items', done);
   emit();
   return done;
 }
 
 // Vrátí smazané položky (Zpět)
-export async function restoreItems(items) {
-  const now = Date.now();
-  await saveItems(items.map((i) => ({ ...i, deleted: false, updatedAt: now })));
-  emit();
-}
+export const restoreItems = (items) => restore('items', items);
 
 // ---------- Historie (našeptávač a často kupované) ----------
 // Záznam: { key, name, category, count, lastAt }
@@ -194,6 +220,153 @@ export async function frequent(limit = 10) {
     .slice(0, limit);
 }
 
+// ---------- Úkoly ----------
+// Úkol: { id, title, assignee, due, repeat, done, doneAt, doneBy, prevDue,
+//         createdBy, createdAt, updatedAt }
+//   assignee  jméno člena, nebo null = kdokoliv
+//   due       "RRRR-MM-DD", nebo null = někdy
+//   repeat    null, nebo { every, unit: 'day'|'week'|'month'|'year', mode }
+//             mode 'fixed' = další termín se počítá od termínu,
+//                  'after' = ode dne, kdy se úkol opravdu splnil
+// Opakovaný úkol se splněním neuzavře: posune se mu termín a v doneAt/doneBy
+// zůstane, kdo a kdy ho splnil naposledy. prevDue je termín před tím, aby šlo
+// odškrtnutí vrátit.
+
+export async function listTasks() {
+  const tasks = await live('tasks');
+  return tasks.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+export async function addTask({ title, due = null, assignee = null, repeat = null }) {
+  const clean = String(title).trim();
+  if (!clean) throw new Error('Prázdný název');
+  const now = Date.now();
+  const task = {
+    id: db.newId(),
+    title: clean,
+    assignee,
+    due,
+    repeat,
+    done: false,
+    doneAt: null,
+    doneBy: null,
+    prevDue: null,
+    createdBy: await getMe(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  await save('tasks', [task]);
+  emit();
+  return task;
+}
+
+export async function updateTask(id, patch) {
+  // Když se zruší opakování, zmizí i stopa po posledním splnění,
+  // jinak by nehotový úkol vypadal jako dnes splněný
+  const before = await db.get('tasks', id);
+  if (before?.repeat && 'repeat' in patch && !patch.repeat && !before.done) {
+    patch = { ...patch, doneAt: null, doneBy: null, prevDue: null };
+  }
+  const next = await patchRow('tasks', id, patch);
+  emit();
+  return next;
+}
+
+// Splní úkol, nebo splnění vrátí (done = false)
+export async function setTaskDone(id, done) {
+  const task = await db.get('tasks', id);
+  if (!task || task.deleted) return null;
+  const me = await getMe();
+  let patch;
+  if (!task.repeat) {
+    patch = { done, doneAt: done ? Date.now() : null, doneBy: done ? me : null };
+  } else if (done) {
+    const { every, unit, mode } = task.repeat;
+    const day = today();
+    let next = addInterval(mode === 'after' ? day : (task.due ?? day), every, unit);
+    // Zameškané pevné termíny se přeskočí, další musí být v budoucnu
+    while (next <= day) next = addInterval(next, every, unit);
+    patch = { due: next, prevDue: task.due ?? day, doneAt: Date.now(), doneBy: me };
+  } else {
+    patch = { due: task.prevDue ?? task.due, prevDue: null, doneAt: null, doneBy: null };
+  }
+  return updateTask(id, patch);
+}
+
+export const removeTasks = (ids) => removeByIds('tasks', ids);
+export const restoreTasks = (tasks) => restore('tasks', tasks);
+
+// Smaže hotové jednorázové úkoly a vrátí je (kvůli tlačítku Zpět)
+export async function clearDoneTasks() {
+  const done = (await live('tasks')).filter((t) => t.done);
+  await markDeleted('tasks', done);
+  emit();
+  return done;
+}
+
+// ---------- Pravidelné platby ----------
+// Platba: { id, name, amount, period, payer, dueDay, createdAt, updatedAt }
+//   period  'month' | 'quarter' | 'year'
+//   payer   jméno člena, nebo 'split' = napůl
+//   dueDay  den v měsíci 1-31, nebo null
+
+export const SPLIT = 'split';
+export const PERIOD_MONTHS = { month: 1, quarter: 3, year: 12 };
+
+export async function listPayments() {
+  const payments = await live('payments');
+  return payments.sort((a, b) => monthly(b) - monthly(a) || a.createdAt - b.createdAt);
+}
+
+// Částka přepočtená na jeden měsíc
+export const monthly = (payment) => (payment.amount || 0) / (PERIOD_MONTHS[payment.period] ?? 1);
+
+// Souhrn za měsíc: { total, perPerson: { Tom: 123, Domi: 456 } }.
+// Platba napůl se rozdělí rovným dílem mezi všechny členy.
+export async function paymentsSummary() {
+  const [payments, members] = await Promise.all([live('payments'), listMembers()]);
+  const perPerson = Object.fromEntries(members.map((m) => [m, 0]));
+  let total = 0;
+  for (const p of payments) {
+    const amount = monthly(p);
+    total += amount;
+    if (p.payer === SPLIT || !p.payer) {
+      members.forEach((m) => { perPerson[m] += amount / members.length; });
+    } else {
+      perPerson[p.payer] = (perPerson[p.payer] ?? 0) + amount;
+    }
+  }
+  return { total, perPerson };
+}
+
+export async function addPayment({ name, amount = 0, period = 'month', payer = undefined, dueDay = null }) {
+  const clean = String(name).trim();
+  if (!clean) throw new Error('Prázdný název');
+  const now = Date.now();
+  const payment = {
+    id: db.newId(),
+    name: clean,
+    amount,
+    period,
+    payer: payer === undefined ? await getMe() : payer,
+    dueDay,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await save('payments', [payment]);
+  emit();
+  return payment;
+}
+
+export async function updatePayment(id, patch) {
+  const next = await patchRow('payments', id, patch);
+  emit();
+  return next;
+}
+
+export const removePayments = (ids) => removeByIds('payments', ids);
+export const restorePayments = (payments) => restore('payments', payments);
+
 // ---------- Záloha ----------
 
 export async function exportAll() {
@@ -201,30 +374,34 @@ export async function exportAll() {
   for (const store of db.STORES) data[store] = await db.getAll(store);
   // Přihlášení ani čekající smazání do zálohy nepatří
   data.meta = [];
-  data.items = data.items.filter((i) => !i.deleted);
+  for (const store of ID_STORES) data[store] = data[store].filter((row) => !row.deleted);
   return { app: 'home-app', dbVersion: db.DB_VERSION, exportedAt: new Date().toISOString(), data };
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Sklady s řádky podle id, které se synchronizují stejným způsobem
+const ID_STORES = ['items', 'tasks', 'payments'];
 
 export async function importAll(backup) {
   if (backup?.app !== 'home-app' || !backup.data) throw new Error('Tohle není záloha této aplikace.');
   // Záloha se do společného seznamu přidá, nic se jí nepřepíše ani nesmaže:
   // u položky se stejným id vyhrává novější verze.
-  const items = Array.isArray(backup.data.items) ? backup.data.items : [];
   const history = Array.isArray(backup.data.history) ? backup.data.history : [];
-  const keep = [];
-  for (const item of items) {
-    if (!item?.id || !item.name) continue;
-    // Server bere jen UUID, starší id z náhradního generátoru dostane nové
-    if (!UUID.test(item.id)) {
-      keep.push({ ...item, id: db.newId(), deleted: false });
-      continue;
+  for (const store of ID_STORES) {
+    const rows = Array.isArray(backup.data[store]) ? backup.data[store] : [];
+    const keep = [];
+    for (const row of rows) {
+      if (!row?.id || !(row.name || row.title)) continue;
+      // Server bere jen UUID, starší id z náhradního generátoru dostane nové
+      if (!UUID.test(row.id)) {
+        keep.push({ ...row, id: db.newId(), deleted: false });
+        continue;
+      }
+      const local = await db.get(store, row.id);
+      if (!local || (local.updatedAt ?? 0) < (row.updatedAt ?? 0)) keep.push({ ...row, deleted: false });
     }
-    const local = await db.get('items', item.id);
-    if (!local || (local.updatedAt ?? 0) < (item.updatedAt ?? 0)) keep.push({ ...item, deleted: false });
+    await save(store, keep);
   }
-  await saveItems(keep);
   for (const h of history) {
     if (!h?.key || (await db.get('history', h.key))) continue;
     await db.put('history', h);

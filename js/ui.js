@@ -16,6 +16,7 @@ export const ICONS = {
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
   download: '<svg viewBox="0 0 24 24"><path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 20h14"/></svg>',
+  repeat: '<svg viewBox="0 0 24 24"><path d="M17 3l3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4"/></svg>',
   sync: '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4"/></svg>',
 };
 
@@ -78,6 +79,107 @@ export function openSheet(title, build) {
   document.body.append(backdrop);
   build(backdrop.querySelector('.sheet-body'), close);
   return close;
+}
+
+// ---------- Gesta na řádcích seznamu ----------
+// Řádek je <li class="item" data-id> s tlačítkem .item-main uvnitř.
+// Ťuknutí = onTap(li), podržení = onPress(id), potažení doleva = onSwipe(id).
+// Vrací funkci na úklid, kterou má pohled zavolat při odchodu.
+
+const LONG_PRESS_MS = 500;
+const MOVE_TOLERANCE = 10;
+
+export function rowGestures(listEl, { onTap, onPress, onSwipe }) {
+  let gesture = null;
+  let ignoreClicksUntil = 0;
+
+  function endGesture() {
+    if (!gesture) return;
+    clearTimeout(gesture.timer);
+    gesture.main.classList.remove('is-dragging');
+    gesture = null;
+  }
+
+  listEl.addEventListener('pointerdown', (e) => {
+    const main = e.target.closest('.item-main');
+    if (!main || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const li = main.closest('.item');
+    gesture = {
+      main,
+      li,
+      id: li.dataset.id,
+      x: e.clientX,
+      y: e.clientY,
+      dx: 0,
+      mode: null,
+      timer: setTimeout(() => {
+        if (gesture && !gesture.mode) {
+          gesture.mode = 'press';
+          ignoreClicksUntil = Date.now() + 800;
+          navigator.vibrate?.(10);
+          onPress(gesture.id);
+        }
+      }, LONG_PRESS_MS),
+    };
+  });
+
+  listEl.addEventListener('pointermove', (e) => {
+    if (!gesture || gesture.mode === 'press') return;
+    const mx = e.clientX - gesture.x;
+    const my = e.clientY - gesture.y;
+    if (!gesture.mode) {
+      if (Math.abs(mx) > MOVE_TOLERANCE && Math.abs(mx) > Math.abs(my)) {
+        gesture.mode = 'swipe';
+        clearTimeout(gesture.timer);
+        gesture.main.classList.add('is-dragging');
+        try { gesture.main.setPointerCapture(e.pointerId); } catch { /* nevadí */ }
+      } else if (Math.abs(my) > MOVE_TOLERANCE) {
+        endGesture();
+        return;
+      } else {
+        return;
+      }
+    }
+    gesture.dx = Math.min(0, mx);
+    gesture.main.style.transform = `translateX(${gesture.dx}px)`;
+  });
+
+  const finish = (cancelled) => () => {
+    if (!gesture) return;
+    const g = gesture;
+    if (g.mode === 'swipe') {
+      ignoreClicksUntil = Date.now() + 400;
+      const threshold = Math.min(110, g.main.offsetWidth * 0.35);
+      g.main.classList.remove('is-dragging');
+      if (!cancelled && g.dx < -threshold) {
+        g.main.style.transform = 'translateX(-100%)';
+        setTimeout(() => onSwipe(g.id), 180);
+      } else {
+        g.main.style.transform = '';
+      }
+    }
+    endGesture();
+  };
+  listEl.addEventListener('pointerup', finish(false));
+  listEl.addEventListener('pointercancel', finish(true));
+
+  listEl.addEventListener('contextmenu', (e) => {
+    if (e.target.closest('.item-main')) e.preventDefault();
+  });
+
+  listEl.addEventListener('click', (e) => {
+    const main = e.target.closest('.item-main');
+    if (!main || Date.now() < ignoreClicksUntil) return;
+    onTap(main.closest('.item'));
+  });
+
+  return endGesture;
+}
+
+// ---------- Peníze ----------
+
+export function money(amount) {
+  return `${Math.round(amount).toLocaleString('cs-CZ')} Kč`;
 }
 
 // ---------- Datum ----------

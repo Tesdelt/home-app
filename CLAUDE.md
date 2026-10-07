@@ -26,8 +26,9 @@ js/sync.js            synchronizace se Supabase: fronta změn (outbox), push, pu
 js/auth.js            přihlášení, ověření členství v domácnosti, odhlášení
 js/supabase.js        klient Supabase (z js/vendor/supabase.js)
 js/categories.js      kategorie nákupu, odhad kategorie z názvu, parsování "mléko 2"
+js/dates.js           termíny jako text RRRR-MM-DD, posun o interval, popisky „dnes“, „zítra“
 js/config.js          adresa a veřejný klíč Supabase, zobrazovaná verze
-js/ui.js              escapeHtml, ikony, toast se Zpět, spodní panel, formátování
+js/ui.js              escapeHtml, ikony, toast se Zpět, spodní panel, gesta na řádcích, formátování
 js/views/*.js         jednotlivé obrazovky
 js/views/login.js     přihlášení, „Nemáte přístup“, nabídka nahrát stará lokální data
 sw.js                 offline cache
@@ -113,13 +114,22 @@ Hotovo (0.2.0):
   pro offline, Realtime, konflikty podle novějšího `updated_at`.
 - Při prvním přihlášení nabídka nahrát položky, které na telefonu byly před sdílením.
 
+Hotovo (0.3.0):
+- Úkoly: rychlé přidání, záložky Dnes / Týden (příštích 7 dní) / Někdy, přiřazení
+  kdokoliv / Tom / Domi, opakování (od termínu vs. od splnění). Opakovaný úkol se splněním
+  neuzavře, posune se mu termín a zůstane u něj, kdo a kdy ho splnil naposledy. Nový úkol
+  dostane termín podle záložky (Dnes = dnes, Týden = za 7 dní, Někdy = bez termínu).
+- Peníze: pravidelné platby (měsíčně / čtvrtletně / ročně), kdo platí (člen nebo napůl),
+  nahoře souhrn za každého a dohromady (ťuknutím měsíčně / ročně), filtr podle plátce.
+  Přidání tlačítkem + v horní liště.
+- Domů: karty Úkoly (co je na dnes) a Peníze (měsíční součet, platby splatné do 7 dní).
+- Gesta na řádcích (ťuknutí, podržení, potažení) jsou sdílená v `ui.js` (`rowGestures`).
+
 Další kroky:
 1. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).
-2. Úkoly: jednorázové i opakované (pevný termín vs. od dokončení), přiřazení
-   Tom / Domi / kdokoliv, pohledy Dnes / Tento týden / Někdy, sdílený stav
-   „hotovo kým a kdy“ (např. prášek pro psa).
-3. Peníze: společné výdaje (kdo platil, dělení 50/50 nebo jinak), zůstatek kdo komu kolik
-   dluží + Vyrovnat, pravidelné platby. Později import CSV z banky.
+2. Peníze, další část: společné jednorázové výdaje (kdo platil, dělení 50/50 nebo jinak),
+   zůstatek kdo komu kolik dluží + Vyrovnat. Později import CSV z banky.
+3. Úkoly: připomenutí (notifikace) jen u toho, co vyžaduje akci.
 4. Více: pes (léky, očkování), záruky a dokumenty, info o domácnosti.
 
 ## Testování
