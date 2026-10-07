@@ -36,16 +36,15 @@ export async function renderTask(el, id, { subEl }) {
   let me = await store.getMe();
   let members = await store.listMembers();
   let editing = null; // id komentáře, který se právě upravuje
-  // Kroky jsou zabalené, dokud je člověk nerozbalí. Co nechal rozbalené
-  // (seznam kroků, konkrétní krok), si telefon u každého úkolu pamatuje.
+  // Seznam kroků je rozbalený vždy, když úkol nějaké má. Když ho člověk sám
+  // zabalí (nebo nechá rozbalený konkrétní krok), telefon si to u úkolu pamatuje.
   const viewState = draft ? {} : (await store.getMeta('taskView', {}))[id] ?? {};
-  let stepsOpen = Boolean(viewState.steps);
+  let stepsOpen = viewState.steps ?? (task.steps ?? []).length > 0;
   let openStep = (task.steps ?? []).some((s) => s.id === viewState.step) ? viewState.step : null; // id kroku rozbaleného k úpravě
   const remember = async () => {
     if (draft) return;
     const all = await store.getMeta('taskView', {});
-    if (stepsOpen || openStep) all[id] = { steps: stepsOpen, step: openStep };
-    else delete all[id];
+    all[id] = { steps: stepsOpen, step: openStep };
     await store.setLocal('taskView', all);
   };
   let renameStep = null; // id kroku, kterému se právě přepisuje název

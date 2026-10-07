@@ -195,8 +195,8 @@ Hotovo (0.6.0):
   „+ Krok“ rovnou rozbalí (název i ostatní jde vyplnit hned, prázdný se při zavření zahodí).
   Pořadí: změna termínu krok zařadí podle data, jinak se krok podrží a přetáhne.
   Rozbalený krok se sbalí dalším ťuknutím na něj, název se přepisuje přes tužku bokem.
-  Seznam kroků je ve výchozím stavu zabalený; co člověk nechal rozbalené (seznam i
-  konkrétní krok), si telefon u úkolu pamatuje (meta `taskView`, přes `store.setLocal`).
+  Seznam kroků je ve výchozím stavu rozbalený; když ho člověk zabalí nebo nechá rozbalený
+  konkrétní krok, telefon si to u úkolu pamatuje (meta `taskView`, přes `store.setLocal`).
 - V nabídce termínu se výběr dne z kalendáře i čas ukládají hned a nabídka zůstává otevřená
   (iPhone hlásí změnu už při otevření kalendáře, zavření na první změnu by výběr znemožnilo).
 
