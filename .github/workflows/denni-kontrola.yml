@@ -1,4 +1,4 @@
-# Jednou denně se zeptá databáze v Supabase, jestli nepřihlášenému opravdu
+# Každé ráno v 8:01 českého času se zeptá databáze v Supabase, jestli nepřihlášenému opravdu
 # nic nevydá (supabase/check-anon.sh). Má to dva účely:
 #   1. Bezplatný projekt Supabase se po týdnu bez dotazů do databáze uspí.
 #      Denní dotazy ho drží vzhůru, i když appku nikdo neotevře.
@@ -13,8 +13,13 @@
 name: Denní kontrola databáze
 
 on:
+  # GitHub počítá čas v UTC a nezná letní čas. 8:01 v Česku je v létě 6:01 UTC
+  # a v zimě 7:01 UTC, proto dva časy. Krok "Až od osmi" ten dřívější
+  # v zimě přeskočí, v létě ten pozdější nic znovu nepošle (funkce upozorní
+  # na každou platbu jen jednou denně).
   schedule:
-    - cron: '17 5 * * *'
+    - cron: '1 6 * * *'
+    - cron: '1 7 * * *'
   workflow_dispatch:
 
 permissions:
@@ -25,13 +30,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Až od osmi českého času
+        if: github.event_name == 'schedule'
+        run: |
+          HODINA=$(TZ=Europe/Prague date +%H)
+          echo "V Česku je $(TZ=Europe/Prague date +%H:%M)"
+          if [ "$HODINA" -lt 8 ]; then echo "PRESKOCIT=1" >> "$GITHUB_ENV"; fi
       - uses: actions/checkout@v4
+        if: env.PRESKOCIT != '1'
       - name: Nepřihlášený nesmí nic přečíst ani zapsat
+        if: env.PRESKOCIT != '1'
         run: sh supabase/check-anon.sh
       # Funkce pošle push notifikace na platby splatné dnes nebo po termínu.
       # Nic tajného nevrací a o každé platbě upozorní nejvýš jednou denně.
       - name: Ranní upozornění na platby
-        if: always()
+        if: always() && env.PRESKOCIT != '1'
         run: |
           URL=$(sed -n "s/.*SUPABASE_URL = '\(.*\)'.*/\1/p" js/config.js)
           KEY=$(sed -n "s/.*SUPABASE_KEY = '\(.*\)'.*/\1/p" js/config.js)

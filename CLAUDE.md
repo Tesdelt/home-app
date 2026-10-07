@@ -159,7 +159,7 @@ Hotovo (0.4.0):
 
 Hotovo (0.5.0):
 - Push notifikace na platby: zapínají se ve Více na každém telefonu zvlášť (`js/push.js`,
-  tabulka `push_subscriptions`). Ráno GitHub Actions zavolá funkci `send-reminders`, ta
+  tabulka `push_subscriptions`). Ráno v 8:01 GitHub Actions zavolá funkci `send-reminders`, ta
   pošle plátci (u platby napůl oběma) upozornění na platby splatné dnes nebo po termínu.
   Na iPhonu funguje jen u appky přidané na plochu.
 
