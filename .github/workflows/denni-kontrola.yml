@@ -1,0 +1,29 @@
+# Jednou denně se zeptá databáze v Supabase, jestli nepřihlášenému opravdu
+# nic nevydá (supabase/check-anon.sh). Má to dva účely:
+#   1. Bezplatný projekt Supabase se po týdnu bez dotazů do databáze uspí.
+#      Denní dotazy ho drží vzhůru, i když appku nikdo neotevře.
+#   2. Kdyby kontrola soukromí neprošla nebo databáze neodpovídala,
+#      běh skončí chybou a GitHub pošle majiteli repozitáře e-mail.
+# Používá jen veřejný klíč z js/config.js, žádná tajemství.
+#
+# Pozor: GitHub naplánované běhy sám vypne, když se v repozitáři 60 dní
+# nic nezmění. Pošle o tom e-mail a jde je zapnout tlačítkem v záložce Actions.
+
+name: Denní kontrola databáze
+
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kontrola:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nepřihlášený nesmí nic přečíst ani zapsat
+        run: sh supabase/check-anon.sh
