@@ -8,6 +8,7 @@
 
 import * as store from '../store.js';
 import { parseEntry } from '../categories.js';
+import { findProduct, searchProducts } from '../catalog.js';
 import { escapeHtml, ICONS, toast, undoToast, rowGestures } from '../ui.js';
 import { navigate } from '../router.js';
 
@@ -18,9 +19,6 @@ const NEW = 'novy';
 const PANTRY = 'zasoby';
 
 const ingredientLine = (ing) => `${ing.name}${ing.qty ? ` ${ing.qty}` : ''}`;
-
-// Text z pole (věc na řádek, nebo oddělené čárkou) -> seznam
-const lines = (text) => String(text).split(/[\n,;]+/).map((line) => line.trim()).filter(Boolean);
 
 function plural(n, one, few, many) {
   if (n === 1) return `1 ${one}`;
@@ -242,59 +240,108 @@ async function renderEdit(el, id) {
 async function renderPantry(el) {
   const { root, back } = page(el, 'recepty');
   root.innerHTML = `
-    <div class="detail-head">${back}<span class="detail-name">Co uvařit</span></div>
-    <label class="field"><span>Co máme doma</span>
-      <textarea class="input" name="pantry" rows="3" autocapitalize="none"></textarea></label>
+    <div class="detail-head">${back}
+      <span class="detail-name">Co uvařit</span>
+      <span class="pantry-count" aria-label="Dostupných receptů"></span>
+    </div>
+    <form class="add-form" autocomplete="off">
+      <input class="input" name="entry" type="text" placeholder="Co máme doma…" aria-label="Co máme doma"
+        enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="false">
+      <button class="add-btn" type="submit" aria-label="Přidat">${ICONS.plus}</button>
+    </form>
+    <div class="chips suggest" hidden></div>
+    <div class="pantry-items"></div>
     <div class="list-root"></div>`;
 
-  const area = root.querySelector('textarea');
+  const form = root.querySelector('form');
+  const input = form.elements.entry;
+  const suggestEl = root.querySelector('.suggest');
+  const itemsEl = root.querySelector('.pantry-items');
+  const countEl = root.querySelector('.pantry-count');
   const listRoot = root.querySelector('.list-root');
-  const grow = () => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
-  area.value = (await store.getPantry()).join(', ');
-  grow();
+
+  let have = await store.getPantry();
+  let almostOpen = false;
+
+  const row = ({ recipe, missing }) => `<li class="item"><a class="item-main" href="#/recepty/${escapeHtml(recipe.id)}/${PANTRY}">
+      <span class="item-text"><span class="item-name">${escapeHtml(recipe.name)}</span>${missing.length ? `<span class="item-sub">chybí: ${escapeHtml(missing.map((m) => m.name).join(', '))}</span>` : ''}</span>
+    </a></li>`;
 
   async function draw() {
-    const have = lines(area.value);
-    const total = (await store.listRecipes()).length;
-    if (!total) {
-      listRoot.innerHTML = `<div class="empty"><div class="empty-icon">${ICONS.recipe}</div><p class="empty-title">Zatím žádné recepty</p></div>`;
-      return;
-    }
-    if (!have.length) {
-      listRoot.innerHTML = '';
-      return;
-    }
+    itemsEl.innerHTML = have
+      .map((name, i) => `<button type="button" class="chip pantry-chip" data-remove="${i}" aria-label="Odebrat ${escapeHtml(name)}">${escapeHtml(name)}<span aria-hidden="true">×</span></button>`)
+      .join('');
+
     const matches = (await store.matchRecipes(have)).filter((m) => (m.recipe.ingredients ?? []).length);
-    const row = ({ recipe, missing }) => {
-      const count = recipe.ingredients.length;
-      return `<li class="item"><a class="item-main" href="#/recepty/${escapeHtml(recipe.id)}/${PANTRY}">
-        <span class="item-text"><span class="item-name">${escapeHtml(recipe.name)}</span>${missing.length ? `<span class="item-sub">chybí: ${escapeHtml(missing.map((m) => m.name).join(', '))}</span>` : ''}</span>
-        <span class="item-amount${missing.length ? ' is-muted' : ''}">${count - missing.length}/${count}</span>
-      </a></li>`;
-    };
     const ready = matches.filter((m) => !m.missing.length);
-    // Recepty, ze kterých doma není vůbec nic, nemá smysl nabízet
-    const almost = matches.filter((m) => m.missing.length && m.missing.length < m.recipe.ingredients.length);
+    // "Skoro" = chybí jedna nebo dvě věci a aspoň něco z receptu doma je
+    const almost = matches.filter((m) => m.missing.length >= 1 && m.missing.length <= 2
+      && m.missing.length < m.recipe.ingredients.length);
+    countEl.textContent = ready.length;
+    countEl.classList.toggle('is-zero', !ready.length);
+
     listRoot.innerHTML = `
-      ${ready.length ? `<p class="section-label">Máme všechno (${ready.length})</p><ul class="item-list group">${ready.map(row).join('')}</ul>` : ''}
-      ${almost.length ? `<p class="section-label">Něco chybí (${almost.length})</p><ul class="item-list group">${almost.map(row).join('')}</ul>` : ''}
-      ${!ready.length && !almost.length ? '<div class="empty"><p class="empty-title">Z toho nic neuvaříme</p></div>' : ''}`;
+      ${ready.length ? `<ul class="item-list group">${ready.map(row).join('')}</ul>` : ''}
+      ${almost.length ? `<button type="button" class="btn btn-block almost-btn" data-action="almost" aria-expanded="${almostOpen}">Skoro (${almost.length})</button>
+        ${almostOpen ? `<ul class="item-list group">${almost.map(row).join('')}</ul>` : ''}` : ''}`;
   }
 
-  let timer = null;
-  area.addEventListener('input', () => {
-    grow();
-    clearTimeout(timer);
-    timer = setTimeout(async () => {
-      await store.setPantry(lines(area.value));
-      draw();
-    }, 250);
+  async function setHave(next) {
+    have = next;
+    await store.setPantry(have);
+    await draw();
+  }
+
+  // Věc se zapíše pod názvem z katalogu ("mlíko" -> Mléko) a jen jednou
+  async function add(text) {
+    const typed = parseEntry(text).name;
+    if (!typed) return;
+    const name = findProduct(typed)?.name ?? typed;
+    if (!store.hasIngredient(have, name)) await setHave([...have, name]);
+  }
+
+  function suggest() {
+    const typed = input.value.trim();
+    const found = typed ? searchProducts(typed, 6).filter((p) => !store.hasIngredient(have, p.name)) : [];
+    suggestEl.hidden = !found.length;
+    suggestEl.innerHTML = found
+      .map((p) => `<button type="button" class="chip" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`)
+      .join('');
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = input.value;
+    input.value = '';
+    input.focus();
+    suggest();
+    await add(text);
+  });
+  input.addEventListener('input', suggest);
+
+  // Čip nesmí vzít fokus poli, jinak by se na iPhonu zavřela klávesnice
+  suggestEl.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.chip')) e.preventDefault();
+  });
+  suggestEl.addEventListener('click', async (e) => {
+    const chip = e.target.closest('[data-name]');
+    if (!chip) return;
+    input.value = '';
+    suggest();
+    await add(chip.dataset.name);
+  });
+
+  itemsEl.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-remove]');
+    if (chip) setHave(have.filter((_, i) => i !== Number(chip.dataset.remove)));
+  });
+
+  listRoot.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-action="almost"]')) return;
+    almostOpen = !almostOpen;
+    draw();
   });
 
   await draw();
-  const unsubscribe = store.subscribe(draw);
-  return () => {
-    clearTimeout(timer);
-    unsubscribe();
-  };
+  return store.subscribe(draw);
 }

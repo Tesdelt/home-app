@@ -833,3 +833,31 @@ a.btn:not(.btn-ghost):not(.btn-primary) { color: inherit; }
 .opt-steps { width: 92px; }
 .opt:disabled { opacity: 0.4; }
 .opt[data-opt="priority"] { padding: 0; }
+
+/* Co uvařit: počet dostupných receptů, zásoby jako odebíratelné štítky */
+.pantry-count {
+  flex: none;
+  align-self: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  margin-right: 2px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pantry-count.is-zero { background: var(--surface-2); color: var(--text-3); }
+.chips.suggest { margin: 0; padding: 8px 0 0; }
+.pantry-items { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+.pantry-items:empty { margin: 0 0 14px; }
+.chip.pantry-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; background: var(--surface-2); border-color: transparent; }
+.chip.pantry-chip::before { content: none; }
+.chip.pantry-chip span { color: var(--text-3); font-size: 18px; line-height: 1; }
+.almost-btn { margin: 12px 0; color: var(--text-2); }
+.almost-btn::after { content: "▾"; color: var(--text-3); }
+.almost-btn[aria-expanded="true"]::after { content: "▴"; }

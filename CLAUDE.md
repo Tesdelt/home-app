@@ -201,8 +201,9 @@ Hotovo (0.9.0):
   (každá na řádek, „mouka 500 g“ se rozdělí na název a množství) a postup.
 - Recept -> nákup: u receptu se odškrtnou ingredience, které už doma jsou, zbytek jde
   jedním tlačítkem do nákupního seznamu (bez zdvojení, ve správné kategorii).
-- Co uvařit (`#/recepty/zasoby`): vypíše se, co je doma, a appka seřadí recepty podle toho,
-  kolik jim chybí. Shoda je podle katalogu a začátku slova (`sameThing` ve `store.js`).
+- Co uvařit (`#/recepty/zasoby`): zásoby se přidávají po jedné (pole + našeptávač z katalogu,
+  odebírají se ťuknutím na štítek), nahoře je živý počet receptů, na které je všechno, pod
+  nimi jejich seznam a pod jedním tlačítkem „Skoro“ recepty, kterým chybí 1 až 2 věci. Shoda je podle katalogu a začátku slova (`sameThing` ve `store.js`).
   Seznam zásob si pamatuje každý telefon zvlášť (meta `pantry`).
 
 Hotovo (0.8.0):
