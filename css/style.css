@@ -861,3 +861,32 @@ a.btn:not(.btn-ghost):not(.btn-primary) { color: inherit; }
 .almost-btn { margin: 12px 0; color: var(--text-2); }
 .almost-btn::after { content: "▾"; color: var(--text-3); }
 .almost-btn[aria-expanded="true"]::after { content: "▴"; }
+
+/* ---------- Kroky jako podúkoly: sbalený řádek jen s tím nezbytným ---------- */
+.step { align-items: center; padding: 0; border-top: 1px solid var(--border); }
+.step:first-child { border-top: 0; }
+.step.is-open { align-items: flex-start; padding: 8px 0; }
+.step-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 2px 4px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.step-row .item-name { font-size: 16px; }
+.step-row .legend-dot { flex: none; margin: 0; }
+.step.is-done .step-row .item-name { color: var(--text-3); text-decoration: line-through; }
+.step .item-sub .is-late { color: var(--danger); font-weight: 600; }
+.step-title { min-height: 40px; }
+.opts-small { margin: 6px 0; gap: 5px; }
+.opts-small .opt { min-height: 32px; font-size: 13px; }
+.opts-small .opt-who { width: 80px; }
+.opts-small .opt-prio { width: 36px; }
+.opts-small .opt-due { width: 116px; }
+textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resize: none; overflow: hidden; }
+.step.is-current .step-title { border-color: var(--border); }

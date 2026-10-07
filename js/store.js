@@ -403,9 +403,9 @@ export async function frequent(limit = 10) {
 //             ('both' je hotový, až ho odškrtnou všichni, doneParts = kdo už)
 //   priority  1 = bylo by fajn, 2 = běžné, 3 = hoří
 //   note      podrobnosti, nebo null
-//   steps     kroky jdoucí po sobě: [{ id, title, due, done, doneAt, doneBy }].
-//             Většina úkolů žádné nemá. Když je má, termín úkolu (due) je
-//             termín prvního nesplněného kroku a po posledním je úkol hotový.
+//   steps     podúkoly: [{ id, title, note, assignee, priority, due, time,
+//             done, doneAt, doneBy }]. Většina úkolů žádné nemá. Odškrtávají
+//             se zvlášť a hlavní úkol neovlivňují (ani termín, ani splnění).
 //   due       "RRRR-MM-DD", nebo null = někdy
 //   time      volitelný čas "HH:MM" k termínu, nebo null
 //   repeat    null, nebo { every, unit: 'day'|'week'|'month'|'year', mode }
@@ -491,6 +491,10 @@ export async function setTaskDone(id, done) {
     // Po úplném splnění se u opakovaného začíná znovu od nuly
     if (done && task.repeat) parts = [];
   }
+  // Opakovaný úkol začíná další kolo i s neodškrtnutými kroky
+  const freshSteps = done && task.repeat && (task.steps ?? []).length
+    ? { steps: task.steps.map((s) => ({ ...s, done: false, doneAt: null, doneBy: null })) }
+    : {};
   let patch;
   if (!task.repeat) {
     patch = { done, doneAt: done ? Date.now() : null, doneBy: done ? who : null };
@@ -504,7 +508,7 @@ export async function setTaskDone(id, done) {
   } else {
     patch = { due: task.prevDue ?? task.due, prevDue: null, doneAt: null, doneBy: null };
   }
-  return updateTask(id, { ...patch, doneParts: parts });
+  return updateTask(id, { ...patch, ...freshSteps, doneParts: parts });
 }
 
 export async function getTask(id) {
@@ -514,30 +518,17 @@ export async function getTask(id) {
 
 // ---------- Kroky úkolu ----------
 
-// Uloží nové kroky a srovná podle nich termín a stav celého úkolu
-async function saveSteps(task, steps) {
-  const patch = { steps };
-  const current = steps.find((s) => !s.done);
-  if (steps.length) {
-    if (current) {
-      patch.due = current.due ?? null;
-      if (task.done) Object.assign(patch, { done: false, doneAt: null, doneBy: null });
-    } else if (!task.done) {
-      // Splněný poslední krok = splněný úkol
-      Object.assign(patch, { done: true, doneAt: Date.now(), doneBy: await getMe() });
-    }
-  }
-  return updateTask(task.id, patch);
-}
+// Kroky jsou podúkoly: každý má vlastní "kdo, kdy, důležitost, popis" a
+// odškrtává se zvlášť. Na termín ani splnění hlavního úkolu nemají vliv,
+// ten se odškrtává sám.
+const saveSteps = (task, steps) => updateTask(task.id, { steps });
 
-export async function addStep(taskId, { title, due = null }) {
+export async function addStep(taskId, { title }) {
   const task = await getTask(taskId);
   const clean = String(title).trim();
   if (!task || !clean) return null;
-  const steps = task.steps ?? [];
-  // První krok převezme dosavadní termín úkolu
-  const step = { id: db.newId(), title: clean, due: due ?? (steps.length ? null : task.due ?? null), done: false, doneAt: null, doneBy: null };
-  return saveSteps(task, [...steps, step]);
+  const step = { id: db.newId(), title: clean, note: null, assignee: null, priority: 2, due: null, time: null, done: false, doneAt: null, doneBy: null };
+  return saveSteps(task, [...(task.steps ?? []), step]);
 }
 
 export async function updateStep(taskId, stepId, patch) {

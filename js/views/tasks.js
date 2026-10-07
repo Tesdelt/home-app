@@ -123,10 +123,9 @@ export async function render(el, { params, subEl, extraEl }) {
         meta.push(`naposledy ${escapeHtml(task.doneBy ?? '')}`.trim());
       }
     }
-    // Úkol s kroky ukazuje, u kterého zrovna je
+    // Úkol s kroky ukazuje, kolik jich je hotových
     const steps = task.steps ?? [];
-    const current = steps.find((step) => !step.done);
-    if (steps.length && current && !checked) meta.push(`krok ${steps.indexOf(current) + 1}/${steps.length}: ${escapeHtml(current.title)}`);
+    if (steps.length && !checked) meta.push(`kroky ${steps.filter((step) => step.done).length}/${steps.length}`);
     // Nepřečtený komentář od druhého je zvýrazněný, po otevření úkolu zase zešedne
     if (unread[task.id]) meta.push(`<span class="is-unread">${newComments(unread[task.id])}</span>`);
     else if (comments[task.id]) meta.push(`komentáře: ${comments[task.id]}`);

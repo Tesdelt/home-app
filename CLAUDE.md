@@ -179,9 +179,11 @@ Hotovo (0.6.0):
   s autorem, vlastní jdou upravit i smazat. Nepřečtené komentáře od druhého jsou v seznamu
   zvýrazněné (a tečkou u záložky Úkoly), dokud úkol neotevřu. Kdy jsem úkol viděl, si
   pamatuje každý telefon zvlášť (meta `commentsSeen`), nesynchronizuje se.
-- Kroky úkolu (`steps` v úkolu): jdou po sobě, každý má vlastní termín, termín úkolu se řídí
-  krokem, který je na řadě, po posledním je úkol hotový. Schválně schované pod
-  „Rozdělit na kroky“, většina úkolů je nemá. Úkol s kroky se neopakuje a naopak.
+- Kroky úkolu (`steps` v úkolu) jsou podúkoly: každý má vlastní název, popis, pro koho,
+  důležitost a termín s časem a odškrtává se zvlášť. Hlavní úkol neovlivňují: jeho termín
+  i opakování jdou měnit vždy a splnit ho musí člověk sám. V seznamu kroků je vidět jen
+  to nezbytné, ťuknutím se krok rozbalí k úpravě (stejné nabídky jako hlavní úkol, menší).
+  U opakovaného úkolu se kroky s každým kolem vrátí na neodškrtnuté.
 
 Hotovo (0.9.1), úpravy po testování:
 - Nákup: hustý seznam (jeden souvislý blok, kategorie jako malý šedý nadpis, cíl aspoň
@@ -190,7 +192,7 @@ Hotovo (0.9.1), úpravy po testování:
   kupované (při psaní našeptávač), za nimi kategorie. Druhý řádek tam nesmí nikdy přibýt,
   aby seznam neposkakoval. Katalog kategorie má tlačítko Hotovo.
 - Stránka úkolu: tlačítka s nastavením jsou vždy všechna, v pevném pořadí a šířkách
-  (třídy `opt-who`, `opt-prio`, `opt-due`, `opt-icon`, `opt-steps`); co nejde, je zašedlé.
+  (třídy `opt-who`, `opt-prio`, `opt-due`, `opt-icon`, `opt-steps`).
   Opakování je jen ikona, žádné textové popisky k ikonám nepřidávat.
 - Úkol může mít volitelný čas (`time` „HH:MM“, sloupec `due_time`), nastavuje se v nabídce
   termínu, je vidět v seznamu i na Domů a řadí úkoly v rámci dne.

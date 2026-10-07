@@ -89,8 +89,8 @@ alter table public.tasks add column if not exists note text;
 alter table public.tasks add column if not exists priority integer not null default 2;
 alter table public.tasks add column if not exists done_parts text[] not null default '{}';
 
--- 0.6.0: kroky úkolu, pole objektů { id, title, due, done, doneAt, doneBy }.
--- Termín úkolu (due) se řídí prvním nesplněným krokem.
+-- 0.6.0: kroky úkolu (podúkoly), pole objektů { id, title, note, assignee,
+-- priority, due, time, done, doneAt, doneBy }. Hlavní úkol neovlivňují.
 alter table public.tasks add column if not exists steps jsonb not null default '[]';
 
 -- 0.9.1: volitelný čas úkolu "HH:MM" (např. 20:00), jen k zobrazení a řazení

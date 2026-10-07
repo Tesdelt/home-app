@@ -37,6 +37,7 @@ export async function renderTask(el, id, { subEl }) {
   let members = await store.listMembers();
   let editing = null; // id komentáře, který se právě upravuje
   let stepsOpen = (task.steps ?? []).length > 0;
+  let openStep = null; // id kroku rozbaleného k úpravě
   let noteOpen = false; // dlouhé podrobnosti rozbalené
   let noteEditing = false;
 
@@ -92,11 +93,11 @@ export async function renderTask(el, id, { subEl }) {
     return task;
   };
 
-  // Kroky: u nového úkolu v paměti, u existujícího přes datovou vrstvu.
-  // Termín úkolu se řídí prvním nesplněným krokem.
-  const draftSteps = (steps) => save({ steps, ...(steps.length ? { due: steps.find((s) => !s.done)?.due ?? null } : {}) });
+  // Kroky (podúkoly): u nového úkolu v paměti, u existujícího přes datovou
+  // vrstvu. Na hlavní úkol nemají vliv, ten se odškrtává sám.
+  const draftSteps = (steps) => save({ steps });
   const stepsApi = draft ? {
-    add: (title) => draftSteps([...task.steps, { id: store.newId(), title, due: task.steps.length ? null : task.due ?? null, done: false, doneAt: null, doneBy: null }]),
+    add: (title) => draftSteps([...task.steps, { id: store.newId(), title, note: null, assignee: null, priority: 2, due: null, time: null, done: false, doneAt: null, doneBy: null }]),
     update: (stepId, patch) => draftSteps(task.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s))),
     setDone: (stepId, done) => draftSteps(task.steps.map((s) => (s.id === stepId ? { ...s, done } : s))),
     remove: (stepId) => draftSteps(task.steps.filter((s) => s.id !== stepId)),
@@ -129,18 +130,16 @@ export async function renderTask(el, id, { subEl }) {
     root.querySelector('.detail-head').className = `detail-head ${whoClass(task.assignee, members)}`;
 
     // Malá tlačítka s nastavením: vždy všechna, ve stejném pořadí a se stejnou
-    // šířkou, aby se po výběru nic neposunulo. Co zrovna nejde, je jen zašedlé:
-    // úkol s kroky má termín z kroků a neopakuje se, opakovaný zase nemá kroky.
+    // šířkou, aby se po výběru nic neposunulo.
     const priority = task.priority ?? 2;
     const late = task.due && task.due < today() && !task.done;
-    const hasSteps = steps.length > 0;
     const done = steps.filter((s) => s.done).length;
     const opts = [
       `<button type="button" class="opt opt-who ${whoClass(task.assignee, members)}" data-opt="who"><span class="legend-dot"></span><span class="opt-text">${escapeHtml(whoName(task.assignee))}</span></button>`,
       `<button type="button" class="opt opt-prio" data-opt="priority" aria-label="Důležitost ${priority} ze 3"><span class="prio prio-${priority}">${priority}</span></button>`,
-      `<button type="button" class="opt opt-due${late ? ' is-late' : ''}" data-opt="due"${hasSteps ? ' disabled' : ''}><span class="opt-text">${task.due ? escapeHtml(dueTimeLabel(task.due, task.time)) : 'Bez termínu'}</span></button>`,
-      `<button type="button" class="opt opt-icon${task.repeat ? ' is-set' : ''}" data-opt="repeat" aria-label="Opakování"${hasSteps ? ' disabled' : ''}>${ICONS.repeat}</button>`,
-      `<button type="button" class="opt opt-steps${stepsOpen && !task.repeat ? ' is-set' : ''}" data-opt="steps"${task.repeat ? ' disabled' : ''}><span class="opt-text">${hasSteps ? `Kroky ${done}/${steps.length}` : '+ Kroky'}</span></button>`,
+      `<button type="button" class="opt opt-due${late ? ' is-late' : ''}" data-opt="due"><span class="opt-text">${task.due ? escapeHtml(dueTimeLabel(task.due, task.time)) : 'Bez termínu'}</span></button>`,
+      `<button type="button" class="opt opt-icon${task.repeat ? ' is-set' : ''}" data-opt="repeat" aria-label="Opakování">${ICONS.repeat}</button>`,
+      `<button type="button" class="opt opt-steps${stepsOpen ? ' is-set' : ''}" data-opt="steps"><span class="opt-text">${steps.length ? `Kroky ${done}/${steps.length}` : '+ Kroky'}</span></button>`,
     ];
     // Zvonek: dát druhému vědět, že úkol přibyl. Výchozí vypnuto.
     if (draft) opts.push(`<button type="button" class="opt opt-icon opt-bell${notify ? ' is-set' : ''}" data-opt="notify" aria-pressed="${notify}" aria-label="Upozornit druhého">${ICONS.bell}</button>`);
@@ -196,24 +195,48 @@ export async function renderTask(el, id, { subEl }) {
     });
   }
 
+  // Krok je v seznamu jen jako řádek s tím nezbytným (název, pro koho, termín,
+  // důležitost jiná než běžná). Ťuknutím se rozbalí a jde upravit stejně jako
+  // hlavní úkol, jen v menším.
   function drawSteps() {
     const steps = task.steps ?? [];
-    stepsBox.hidden = !stepsOpen || Boolean(task.repeat);
+    stepsBox.hidden = !stepsOpen;
     // Rozepsaný krok se nepřekresluje
     if (stepsList.contains(document.activeElement)) return;
-    const currentStep = steps.find((s) => !s.done);
-    stepsList.innerHTML = steps.map((step, i) => `<li class="step${step.done ? ' is-done' : ''}${step === currentStep ? ' is-current' : ''}" data-step="${escapeHtml(step.id)}">
-        <button type="button" class="check-tap" data-action="step-done" aria-label="Krok hotov"><span class="check">${ICONS.check}</span></button>
+    stepsList.innerHTML = steps.map((step) => {
+      const priority = step.priority ?? 2;
+      const late = step.due && step.due < today() && !step.done;
+      const head = `<button type="button" class="check-tap" data-action="step-done" aria-label="Krok hotov"><span class="check">${ICONS.check}</span></button>`;
+      if (step.id !== openStep) {
+        const meta = [];
+        if (step.done && step.doneAt) meta.push(`${escapeHtml(step.doneBy ?? '')} ${when(step.doneAt)}`.trim());
+        else if (step.due) meta.push(late ? `<span class="is-late">${escapeHtml(dueTimeLabel(step.due, step.time))}</span>` : escapeHtml(dueTimeLabel(step.due, step.time)));
+        return `<li class="step ${whoClass(step.assignee, members)}${step.done ? ' is-done' : ''}" data-step="${escapeHtml(step.id)}">${head}
+          <button type="button" class="step-row" data-action="step-open">
+            <span class="item-text"><span class="item-name">${escapeHtml(step.title)}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}</span>
+            ${priority !== 2 && !step.done ? `<span class="prio prio-${priority}">${priority}</span>` : ''}
+            ${step.assignee ? `<span class="legend-dot" title="${escapeHtml(whoName(step.assignee))}"></span>` : ''}
+          </button>
+        </li>`;
+      }
+      return `<li class="step is-open ${whoClass(step.assignee, members)}${step.done ? ' is-done' : ''}" data-step="${escapeHtml(step.id)}">${head}
         <div class="step-body">
-          <input class="input step-title" name="title" value="${escapeHtml(step.title)}" aria-label="Krok ${i + 1}">
+          <input class="input step-title" name="title" value="${escapeHtml(step.title)}" aria-label="Název kroku">
+          <div class="opts opts-small">
+            <button type="button" class="opt opt-who ${whoClass(step.assignee, members)}" data-step-opt="who"><span class="legend-dot"></span><span class="opt-text">${escapeHtml(whoName(step.assignee))}</span></button>
+            <button type="button" class="opt opt-prio" data-step-opt="priority" aria-label="Důležitost ${priority} ze 3"><span class="prio prio-${priority}">${priority}</span></button>
+            <button type="button" class="opt opt-due${late ? ' is-late' : ''}" data-step-opt="due"><span class="opt-text">${step.due ? escapeHtml(dueTimeLabel(step.due, step.time)) : 'Bez termínu'}</span></button>
+          </div>
+          <textarea class="input step-note" name="note" rows="1" placeholder="Popis" aria-label="Popis kroku">${escapeHtml(step.note ?? '')}</textarea>
           <div class="step-meta">
-            ${step.done
-    ? `<span class="card-meta small">${escapeHtml(step.doneBy ?? '')} ${step.doneAt ? when(step.doneAt) : ''}</span>`
-    : `<label class="card-meta small">do <input class="input step-due" type="date" name="due" value="${escapeHtml(step.due ?? '')}"></label>`}
-            <button type="button" class="btn btn-ghost btn-small" data-action="step-remove">Odebrat</button>
+            <button type="button" class="btn btn-ghost btn-danger btn-small" data-action="step-remove">Odebrat</button>
+            <button type="button" class="btn btn-ghost btn-small" data-action="step-close">Hotovo</button>
           </div>
         </div>
-      </li>`).join('');
+      </li>`;
+    }).join('');
+    const area = stepsList.querySelector('.step-note');
+    if (area) grow(area);
   }
 
   async function drawComments() {
@@ -290,48 +313,50 @@ export async function renderTask(el, id, { subEl }) {
     .map(([value, name, cls = '']) => `<button type="button" class="menu-item ${cls}" data-value="${escapeHtml(value)}" aria-pressed="${value === current}">${escapeHtml(name)}</button>`)
     .join('');
 
-  function openWho(anchor) {
+  // Nabídky jsou společné pro hlavní úkol i pro kroky: dostanou současnou
+  // hodnotu a funkci, která výběr uloží.
+
+  function openWho(anchor, current, onPick) {
     const options = [['', 'Kdokoliv', 'who-any'], ...members.map((m) => [m, m, whoClass(m, members)]), [store.BOTH, 'Oba', 'who-both']];
     openMenu(anchor, (menu, close) => {
-      menu.innerHTML = items(options, task.assignee ?? '');
+      menu.innerHTML = items(options, current ?? '');
       menu.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-value]');
         if (!btn) return;
         close();
-        const assignee = btn.dataset.value || null;
-        // Rozdělané odškrtnutí "za oba" nedává smysl, když už úkol pro oba není
-        save(assignee === store.BOTH ? { assignee } : { assignee, doneParts: [] });
+        onPick(btn.dataset.value || null);
       });
     });
   }
 
-  function openPriority(anchor) {
+  function openPriority(anchor, current, onPick) {
     openMenu(anchor, (menu, close) => {
       menu.classList.add('menu-narrow');
       menu.innerHTML = [3, 2, 1]
-        .map((n) => `<button type="button" class="menu-item" data-value="${n}" aria-pressed="${n === (task.priority ?? 2)}"><span class="prio prio-${n}">${n}</span></button>`)
+        .map((n) => `<button type="button" class="menu-item" data-value="${n}" aria-pressed="${n === (current ?? 2)}"><span class="prio prio-${n}">${n}</span></button>`)
         .join('');
       menu.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-value]');
         if (!btn) return;
         close();
-        save({ priority: Number(btn.dataset.value) });
+        onPick(Number(btn.dataset.value));
       });
     });
   }
 
-  function openDue(anchor) {
+  // current = { due, time }, needsDue = bez termínu nejde být (opakovaný úkol)
+  function openDue(anchor, current, needsDue, onChange) {
     const quick = [[today(), 'Dnes'], [addDays(today(), 1), 'Zítra'], [addDays(today(), 7), 'Za týden'], ['', 'Bez termínu']];
+    let { due = null, time = null } = current;
     openMenu(anchor, (menu, close) => {
-      menu.innerHTML = `${items(quick, task.due ?? '')}
-        <input class="input menu-date" type="date" name="due" aria-label="Jiný den" value="${escapeHtml(task.due ?? '')}">
-        <input class="input menu-date" type="time" name="time" aria-label="Čas" value="${escapeHtml(task.time ?? '')}">`;
-      // Opakovaný úkol potřebuje termín, od kterého se počítá.
-      // Bez termínu nemá čas smysl, zmizí s ním.
+      menu.innerHTML = `${items(quick, due ?? '')}
+        <input class="input menu-date" type="date" name="due" aria-label="Jiný den" value="${escapeHtml(due ?? '')}">
+        <input class="input menu-date" type="time" name="time" aria-label="Čas" value="${escapeHtml(time ?? '')}">`;
+      // Bez termínu nemá čas smysl, zmizí s ním
       const set = (value) => {
         close();
-        const due = value || (task.repeat ? today() : null);
-        save({ due, time: due ? task.time ?? null : null });
+        due = value || (needsDue ? today() : null);
+        onChange({ due, time: due ? time : null });
       };
       menu.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-value]');
@@ -341,8 +366,9 @@ export async function renderTask(el, id, { subEl }) {
       // Čas se uloží hned a nabídka zůstane, ať jde ještě vybrat den.
       // Čas bez dne znamená dnes.
       menu.querySelector('[name="time"]').addEventListener('change', (e) => {
-        const time = e.target.value || null;
-        save({ time, due: task.due ?? (time ? today() : null) });
+        time = e.target.value || null;
+        due = due ?? (time ? today() : null);
+        onChange({ due, time });
       });
     });
   }
@@ -378,9 +404,12 @@ export async function renderTask(el, id, { subEl }) {
   optsEl.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-opt]');
     const opt = btn?.dataset.opt;
-    if (opt === 'who') openWho(btn);
-    if (opt === 'priority') openPriority(btn);
-    if (opt === 'due') openDue(btn);
+    if (opt === 'who') {
+      // Rozdělané odškrtnutí "za oba" nedává smysl, když už úkol pro oba není
+      openWho(btn, task.assignee, (assignee) => save(assignee === store.BOTH ? { assignee } : { assignee, doneParts: [] }));
+    }
+    if (opt === 'priority') openPriority(btn, task.priority, (priority) => save({ priority }));
+    if (opt === 'due') openDue(btn, task, Boolean(task.repeat), save);
     if (opt === 'repeat') openRepeat(btn);
     if (opt === 'notify') {
       notify = !notify;
@@ -427,6 +456,10 @@ export async function renderTask(el, id, { subEl }) {
       document.activeElement?.blur();
       if (action === 'step-done') await stepsApi.setDone(stepId, !stepEl.classList.contains('is-done'));
       if (action === 'step-remove') await stepsApi.remove(stepId);
+      if (action === 'step-open' || action === 'step-close') {
+        openStep = action === 'step-open' ? stepId : null;
+        drawSteps();
+      }
     }
 
     const commentEl = e.target.closest('[data-comment]');
@@ -449,7 +482,7 @@ export async function renderTask(el, id, { subEl }) {
     }
   });
 
-  // Název a termín kroku se ukládají po opuštění pole
+  // Název a popis kroku se ukládají po opuštění pole
   stepsList.addEventListener('change', (e) => {
     const stepId = e.target.closest('[data-step]')?.dataset.step;
     if (!stepId) return;
@@ -457,7 +490,24 @@ export async function renderTask(el, id, { subEl }) {
       const text = e.target.value.trim();
       if (text) stepsApi.update(stepId, { title: text });
     }
-    if (e.target.name === 'due') stepsApi.update(stepId, { due: e.target.value || null });
+    if (e.target.name === 'note') stepsApi.update(stepId, { note: e.target.value.trim() || null });
+  });
+  stepsList.addEventListener('input', (e) => {
+    if (e.target.name === 'note') grow(e.target);
+  });
+
+  // Malá tlačítka u rozbaleného kroku: stejné nabídky jako u hlavního úkolu
+  stepsList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-step-opt]');
+    if (!btn) return;
+    const stepId = btn.closest('[data-step]').dataset.step;
+    const step = (task.steps ?? []).find((s) => s.id === stepId);
+    if (!step) return;
+    const opt = btn.dataset.stepOpt;
+    btn.blur();
+    if (opt === 'who') openWho(btn, step.assignee, (assignee) => stepsApi.update(stepId, { assignee }));
+    if (opt === 'priority') openPriority(btn, step.priority, (priority) => stepsApi.update(stepId, { priority }));
+    if (opt === 'due') openDue(btn, step, false, (patch) => stepsApi.update(stepId, patch));
   });
   stepsList.addEventListener('focusout', () => setTimeout(drawSteps, 0));
 
@@ -467,7 +517,10 @@ export async function renderTask(el, id, { subEl }) {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
+    // Nový krok zůstane sbalený, další jde psát hned
+    document.activeElement?.blur();
     await stepsApi.add(text);
+    input.focus();
   });
 
   root.querySelector('.comment-form')?.addEventListener('submit', async (e) => {
