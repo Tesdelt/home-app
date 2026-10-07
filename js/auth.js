@@ -52,6 +52,7 @@ async function enter(cache) {
     set({ ...info, status: 'import', localCount });
     return;
   }
+  await store.upgradeData();
   sync.start(cache.householdId);
   set({ ...info, status: 'ready' });
 }

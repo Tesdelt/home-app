@@ -25,7 +25,8 @@ js/store.js           DATOVÁ VRSTVA: jediné API pro data + subscribe() na změ
 js/sync.js            synchronizace se Supabase: fronta změn (outbox), push, pull, Realtime
 js/auth.js            přihlášení, ověření členství v domácnosti, odhlášení
 js/supabase.js        klient Supabase (z js/vendor/supabase.js)
-js/categories.js      kategorie nákupu, odhad kategorie z názvu, parsování "mléko 2"
+js/categories.js      kategorie nákupu, vestavěné obchody, odhad kategorie, parsování "mléko 2"
+js/catalog.js         katalog produktů podle kategorií a varianty zápisu ("mlíko" = Mléko)
 js/dates.js           termíny jako text RRRR-MM-DD, posun o interval, popisky „dnes“, „zítra“
 js/config.js          adresa a veřejný klíč Supabase, zobrazovaná verze
 js/ui.js              escapeHtml, ikony, toast se Zpět, spodní panel, gesta na řádcích, formátování
@@ -128,11 +129,31 @@ Hotovo (0.3.0):
 - Domů: karty Úkoly (co je na dnes) a Peníze (měsíční součet, platby splatné do 7 dní).
 - Gesta na řádcích (ťuknutí, podržení, potažení) jsou sdílená v `ui.js` (`rowGestures`).
 
+Hotovo (0.4.0):
+- Úkoly: barva podle toho, čí úkol je (první člen, druhý člen, oba; pruh vlevo a značka
+  vpravo, třídy `who-1` / `who-2` / `who-both`, pomocníci `whoClass` a `whoBadge` v `ui.js`),
+  důležitost 1-3 jako číslo v řádku, termín vždy vidět, podrobnosti (poznámka) po podržení.
+  Úkol pro oba (`assignee = 'both'`) musí odškrtnout každý za sebe (`doneParts`).
+- Nákup: katalog produktů s variantami zápisu (jedna věc = jedna položka ve správné
+  kategorii), našeptávač z historie i katalogu, kategorie na rozkliknutí s katalogem
+  (nejčastěji kupované nahoře), množství tlačítky - a + v řádku i v katalogu.
+  Kategorie rozdělené na Ovoce, Zelenina, Uzeniny, Sladké, Slané atd.
+- Obchody: seznam se řadí podle pořadí oddělení ve vybraném obchodě. Vestavěné jsou
+  Albert Černovice a Lidl Blackfield (`BUILTIN_SHOPS`), pořadí jde upravit a přidat další.
+  Úpravy se sdílí (tabulka `shops`), vybraný obchod si pamatuje každý telefon zvlášť.
+- Peníze: tři druhy plateb (pravidelná, jednorázová, na dobu určitou s počtem plateb),
+  sekce Zaplatit (splatné do 7 dní a po termínu) / Pravidelné / Jednou / Na dobu,
+  odškrtnutí „zaplaceno“ se Zpět (pravidelné se posune splatnost, u plateb na dobu ubude
+  zbývající). Barvy plátců stejné jako u úkolů.
+
 Další kroky:
-1. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).
-2. Peníze, další část: společné jednorázové výdaje (kdo platil, dělení 50/50 nebo jinak),
+1. Push notifikace na platby k zaplacení (a později úkoly). Potřebuje serverovou část:
+   Web Push přes Supabase Edge Function s plánovačem, VAPID klíče v Supabase Secrets
+   (soukromý klíč nikdy do repozitáře), tabulka odběrů s RLS, obsluha `push` v `sw.js`.
+   Na iPhonu funguje jen u appky přidané na plochu a po povolení uživatelem.
+2. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).
+3. Peníze, další část: společné jednorázové výdaje (kdo platil, dělení 50/50 nebo jinak),
    zůstatek kdo komu kolik dluží + Vyrovnat. Později import CSV z banky.
-3. Úkoly: připomenutí (notifikace) jen u toho, co vyžaduje akci.
 4. Více: pes (léky, očkování), záruky a dokumenty, info o domácnosti.
 
 ## Testování

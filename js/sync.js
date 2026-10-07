@@ -13,6 +13,7 @@
 
 import * as db from './db.js';
 import { supabase } from './supabase.js';
+import { nextDayOfMonth } from './dates.js';
 
 const iso = (ms) => (ms ? new Date(ms).toISOString() : null);
 const ms = (text) => (text ? Date.parse(text) : null);
@@ -95,6 +96,9 @@ const SPECS = {
       done_at: iso(t.doneAt),
       done_by: t.doneBy ?? null,
       prev_due: t.prevDue ?? null,
+      note: t.note ?? null,
+      priority: t.priority ?? 2,
+      done_parts: t.doneParts ?? [],
       created_by: t.createdBy ?? null,
       created_at: iso(t.createdAt ?? t.updatedAt ?? Date.now()),
       updated_at: iso(t.updatedAt ?? Date.now()),
@@ -110,6 +114,9 @@ const SPECS = {
       doneAt: ms(r.done_at),
       doneBy: r.done_by,
       prevDue: r.prev_due,
+      note: r.note ?? null,
+      priority: r.priority ?? 2,
+      doneParts: r.done_parts ?? [],
       createdBy: r.created_by,
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
@@ -129,7 +136,13 @@ const SPECS = {
       amount: p.amount ?? 0,
       period: p.period ?? 'month',
       payer: p.payer ?? null,
-      due_day: p.dueDay ?? null,
+      kind: p.kind ?? 'recurring',
+      next_due: p.nextDue ?? null,
+      total_count: p.total ?? null,
+      remaining: p.remaining ?? null,
+      done: Boolean(p.done),
+      paid_at: iso(p.paidAt),
+      paid_by: p.paidBy ?? null,
       created_at: iso(p.createdAt ?? p.updatedAt ?? Date.now()),
       updated_at: iso(p.updatedAt ?? Date.now()),
       deleted: Boolean(p.deleted),
@@ -140,8 +153,37 @@ const SPECS = {
       amount: Number(r.amount),
       period: r.period,
       payer: r.payer,
-      dueDay: r.due_day,
+      kind: r.kind ?? 'recurring',
+      // Starší verze měla jen den v měsíci
+      nextDue: r.next_due ?? (r.due_day ? nextDayOfMonth(r.due_day) : null),
+      total: r.total_count ?? null,
+      remaining: r.remaining ?? null,
+      done: Boolean(r.done),
+      paidAt: ms(r.paid_at),
+      paidBy: r.paid_by ?? null,
       createdAt: ms(r.created_at),
+      updatedAt: ms(r.updated_at),
+    }),
+    pullFilter: (query) => query.eq('deleted', false),
+    removeMissing: true,
+  },
+  shops: {
+    table: 'shops',
+    conflict: 'household_id,key',
+    keyOf: (row) => row.key,
+    stamp: (local) => local.updatedAt ?? 0,
+    toRemote: (s, householdId) => ({
+      household_id: householdId,
+      key: s.key,
+      name: s.name,
+      category_order: s.order ?? [],
+      updated_at: iso(s.updatedAt ?? Date.now()),
+      deleted: Boolean(s.deleted),
+    }),
+    fromRemote: (r) => ({
+      key: r.key,
+      name: r.name,
+      order: r.category_order ?? [],
       updatedAt: ms(r.updated_at),
     }),
     pullFilter: (query) => query.eq('deleted', false),
@@ -387,7 +429,8 @@ async function pull(id, { keepMissing = false } = {}) {
 }
 
 function sameRow(a, b) {
-  return Object.keys(b).every((k) => (a[k] ?? null) === (b[k] ?? null));
+  // Pole a objekty (repeat, doneParts, order) se porovnávají obsahem
+  return Object.keys(b).every((k) => JSON.stringify(a[k] ?? null) === JSON.stringify(b[k] ?? null));
 }
 
 // Jedna živá změna z Realtime

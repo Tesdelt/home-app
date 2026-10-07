@@ -13,6 +13,16 @@
   --danger: #B3402F;
   --danger-soft: #F6E3DF;
 
+  /* Čí to je: první člen, druhý člen, společné */
+  --who-1: #B4532A;
+  --who-1-soft: #F8E7DC;
+  --who-2: #2B63A8;
+  --who-2-soft: #DFEAF7;
+  --who-both: #7A4AA8;
+  --who-both-soft: #ECE3F5;
+  --warn: #A66A00;
+  --warn-soft: #F7EBCF;
+
   --radius: 14px;
   --radius-sm: 10px;
   --tap: 48px;
@@ -42,6 +52,14 @@
     --on-accent: #0E1A16;
     --danger: #E07A68;
     --danger-soft: #3A221D;
+    --who-1: #E8946A;
+    --who-1-soft: #3A261B;
+    --who-2: #7FB0EA;
+    --who-2-soft: #1B2A3D;
+    --who-both: #B693E0;
+    --who-both-soft: #2C2239;
+    --warn: #E0B050;
+    --warn-soft: #3A2F17;
   }
 }
 
@@ -280,6 +298,49 @@ a.card:active { background: var(--surface-2); }
   transition: transform 0.2s ease;
 }
 .item-main.is-dragging { transition: none; }
+
+/* Řádek s počítadlem: posouvá se celý obal, tlačítko zabere zbytek šířky */
+.item-slide {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  transition: transform 0.2s ease;
+}
+.item-slide.is-dragging { transition: none; }
+.item-slide .item-main { flex: 1; min-width: 0; width: auto; transition: none; }
+.item + .item .item-slide { border-top: 1px solid var(--border); }
+.item + .item .item-slide .item-main { border-top: 0; }
+
+.stepper { flex: none; display: flex; align-items: center; padding-right: 6px; }
+.stepper button {
+  width: 38px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 22px;
+  line-height: 1;
+}
+.stepper button:disabled { color: var(--text-3); opacity: 0.5; }
+.stepper button:active:not(:disabled) { background: var(--surface-2); border-radius: 8px; }
+.stepper-value { min-width: 30px; text-align: center; font-variant-numeric: tabular-nums; font-size: 15px; color: var(--text-2); white-space: nowrap; }
+
+/* Katalog, výběr obchodu a pořadí oddělení (řádky ve spodním panelu) */
+.catalog-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 2px 0 2px 14px; background: var(--surface); }
+.catalog-row + .catalog-row { border-top: 1px solid var(--border); }
+.catalog-row.is-on .item-name { font-weight: 600; }
+.catalog-row.is-on .stepper-value { color: var(--accent); font-weight: 700; }
+.catalog-row .btn-ghost { margin-right: 6px; }
+.shop-pick { flex: 1; display: flex; align-items: center; gap: 12px; min-height: 48px; border: 0; background: transparent; text-align: left; padding: 0; }
+.catalog-row.is-on .check { background: var(--accent); border-color: var(--accent); }
+.catalog-row.is-on .check svg { opacity: 1; }
+.order-num { flex: none; width: 22px; color: var(--text-3); font-size: 14px; font-variant-numeric: tabular-nums; }
+.shop-btn { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shop-btn::after { content: " ▾"; color: var(--text-3); }
+.cat-chips { padding-top: 8px; }
+.chip.cat-chip { background: var(--surface-2); border-color: transparent; }
+.chip.cat-chip::before { content: none; }
 .item-main:active { background: var(--surface-2); }
 
 .check {
@@ -313,12 +374,52 @@ a.card:active { background: var(--surface-2); }
 .item-sub .is-late { color: var(--danger); font-weight: 600; }
 .item.is-done .item-sub { color: var(--text-3); }
 .item-who.is-me { background: var(--accent-soft); color: var(--accent); }
+
+/* Barvy podle toho, čí věc je: pruh vlevo a značka vpravo */
+.who-1 { --who: var(--who-1); --who-soft: var(--who-1-soft); }
+.who-2 { --who: var(--who-2); --who-soft: var(--who-2-soft); }
+.who-both { --who: var(--who-both); --who-soft: var(--who-both-soft); }
+.who-any { --who: var(--border); --who-soft: var(--surface-2); }
+.item-main.has-stripe { box-shadow: inset 5px 0 0 var(--who, transparent); padding-left: 16px; }
+.item-who.who-1, .item-who.who-2, .item-who.who-both { background: var(--who-soft); color: var(--who); width: auto; min-width: 24px; padding: 0 6px; border-radius: 12px; }
+.segmented button.who-1[aria-pressed="true"], .segmented button.who-2[aria-pressed="true"], .segmented button.who-both[aria-pressed="true"] { background: var(--who-soft); color: var(--who); }
+.legend { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 16px 4px 0; font-size: 13px; color: var(--text-2); }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--who); margin-right: 4px; }
+.legend .legend-dot { margin-left: 8px; }
+.legend .legend-dot:first-child { margin-left: 0; }
+.legend-gap { flex: 1; }
+
+/* Důležitost 1-3 */
+.prio {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.prio-1 { color: var(--text-3); background: var(--surface-2); }
+.prio-2 { color: var(--warn); background: var(--warn-soft); }
+.prio-3 { color: #fff; background: var(--danger); }
+
+/* Úkol pro oba, který jsem odškrtl jen já: napůl plné kolečko */
+.item.is-mine .check { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
+.item-sub .is-part { color: var(--accent); }
+.item-note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
+.check.is-empty { border-color: transparent; }
+.card-meta.is-late { color: var(--danger); }
+.seg-count.is-alert { color: var(--danger); }
+textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize: vertical; }
 .item-main.is-compact { min-height: 48px; padding-top: 6px; padding-bottom: 6px; }
 .item-amount { flex: none; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 
 /* ---------- Přepínač pod polem (záložky úkolů, filtr plateb) ---------- */
 .seg-bar { margin-top: 10px; }
 .filter-bar { margin: 0 0 12px; }
+.filter-bar button { font-size: 14px; white-space: nowrap; padding: 0 2px; }
 .seg-count { font-size: 13px; color: var(--accent); font-weight: 600; }
 
 .quick-row { display: flex; gap: 8px; flex-wrap: wrap; margin: -4px 0 12px; }

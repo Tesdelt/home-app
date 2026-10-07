@@ -8,8 +8,9 @@
 
 import * as db from './db.js';
 import * as sync from './sync.js';
-import { guessCategory, normalize } from './categories.js';
-import { today, addInterval } from './dates.js';
+import { guessCategory, normalize, CATEGORIES, BUILTIN_SHOPS } from './categories.js';
+import { findProduct, searchProducts, productsIn } from './catalog.js';
+import { today, addDays, addInterval, nextDayOfMonth } from './dates.js';
 
 const listeners = new Set();
 const channel = 'BroadcastChannel' in self ? new BroadcastChannel('home-app') : null;
@@ -77,7 +78,7 @@ async function live(store) {
 async function save(store, rows) {
   if (!rows.length) return;
   await db.putAll(store, rows);
-  await sync.markDirty(store, rows.map((row) => row.id));
+  await sync.markDirty(store, rows.map((row) => row.id ?? row.key));
 }
 
 async function markDeleted(store, rows) {
@@ -118,13 +119,19 @@ export async function listItems() {
 // Přidá položku. Když už stejná na seznamu je, nepřidá ji podruhé:
 // koupenou vrátí zpět na seznam, nekoupenou jen případně doplní množství.
 // Vrací { item, status: 'added' | 'restored' | 'exists' }.
+// Různé zápisy téže věci ("mlíko", "mléko") mají stejný klíč
+const itemKey = (name) => normalize(findProduct(name)?.name ?? name);
+
 export async function addItem({ name, qty = '' }) {
-  const clean = String(name).trim();
-  if (!clean) throw new Error('Prázdný název');
+  const typed = String(name).trim();
+  if (!typed) throw new Error('Prázdný název');
+  // Známý produkt se zapíše pod názvem z katalogu a do jeho kategorie
+  const product = findProduct(typed);
+  const clean = product?.name ?? typed;
   const key = normalize(clean);
   const now = Date.now();
 
-  const existing = (await liveItems()).find((i) => normalize(i.name) === key);
+  const existing = (await liveItems()).find((i) => itemKey(i.name) === key);
   if (existing) {
     const status = existing.done ? 'restored' : 'exists';
     const item = { ...existing, done: false, doneAt: null, qty: qty || existing.qty, updatedAt: now };
@@ -139,7 +146,7 @@ export async function addItem({ name, qty = '' }) {
     id: db.newId(),
     name: clean,
     qty,
-    category: hist?.category ?? guessCategory(clean),
+    category: hist?.category ?? product?.category ?? guessCategory(clean),
     done: false,
     doneAt: null,
     addedBy: await getMe(),
@@ -197,19 +204,117 @@ async function touchHistory(name, category, countIt) {
 
 async function historyNotOnList() {
   const [history, items] = await Promise.all([db.getAll('history'), liveItems()]);
-  const active = new Set(items.filter((i) => !i.done).map((i) => normalize(i.name)));
-  return history.filter((h) => !active.has(h.key));
+  const active = new Set(items.filter((i) => !i.done).map((i) => itemKey(i.name)));
+  return history.filter((h) => !active.has(itemKey(h.name)));
 }
 
 export async function suggestions(query, limit = 5) {
   const q = normalize(query);
   if (!q) return [];
   const list = await historyNotOnList();
-  return list
+  const fromHistory = list
     .filter((h) => h.key.split(' ').some((w) => w.startsWith(q)) || h.key.startsWith(q))
-    .filter((h) => h.key !== q)
-    .sort((a, b) => b.count - a.count || b.lastAt - a.lastAt)
-    .slice(0, limit);
+    .sort((a, b) => b.count - a.count || b.lastAt - a.lastAt);
+  // Doplní se z katalogu, i podle jiného zápisu ("mlí" najde Mléko)
+  const active = new Set((await liveItems()).filter((i) => !i.done).map((i) => itemKey(i.name)));
+  const seen = new Set(fromHistory.map((h) => itemKey(h.name)));
+  const fromCatalog = searchProducts(q, limit)
+    .filter((p) => !seen.has(normalize(p.name)) && !active.has(normalize(p.name)))
+    .map((p) => ({ key: normalize(p.name), name: p.name, category: p.category, count: 0 }));
+  return [...fromHistory, ...fromCatalog].slice(0, limit);
+}
+
+// Katalog jedné kategorie: nahoře to, co kupujeme nejčastěji, pak zbytek.
+// Každý záznam: { name, count, item } (item = položka na seznamu, nebo null).
+export async function catalog(category) {
+  const [history, items] = await Promise.all([db.getAll('history'), liveItems()]);
+  const onList = new Map(items.filter((i) => !i.done).map((i) => [itemKey(i.name), i]));
+  const entries = new Map();
+  productsIn(category).forEach((p, index) => {
+    entries.set(normalize(p.name), { name: p.name, count: 0, order: index });
+  });
+  // Vlastní věci z historie, které v katalogu nejsou, a počty nákupů
+  for (const h of history) {
+    const key = itemKey(h.name);
+    const known = entries.get(key);
+    if (known) known.count += h.count ?? 0;
+    else if (h.category === category && !findProduct(h.name)) entries.set(key, { name: h.name, count: h.count ?? 0, order: 9999 });
+  }
+  return [...entries.entries()]
+    .map(([key, e]) => ({ name: e.name, count: e.count, order: e.order, item: onList.get(key) ?? null }))
+    .sort((a, b) => b.count - a.count || a.order - b.order || a.name.localeCompare(b.name, 'cs'));
+}
+
+// ---------- Obchody ----------
+// Obchod: { key, name, order: [id kategorií], updatedAt }. Pořadí určuje,
+// jak se seřadí nákupní seznam. Vestavěné obchody jsou v categories.js,
+// do skladu shops se ukládají jen jejich úpravy a vlastní obchody.
+// Který obchod je vybraný, si pamatuje každý telefon zvlášť (meta "shop").
+
+// Doplní do pořadí kategorie, které v něm chybí, a vyhodí neznámé
+function fullOrder(order = []) {
+  const known = CATEGORIES.map((c) => c.id);
+  const kept = order.filter((id) => known.includes(id));
+  return [...kept, ...known.filter((id) => !kept.includes(id))];
+}
+
+export async function listShops() {
+  const saved = await db.getAll('shops');
+  const byKey = new Map(saved.map((s) => [s.key, s]));
+  const builtin = BUILTIN_SHOPS.map((b) => ({ ...b, ...(byKey.get(b.key) ?? {}), builtin: true }));
+  const custom = saved.filter((s) => !BUILTIN_SHOPS.some((b) => b.key === s.key));
+  return [...builtin, ...custom]
+    .filter((s) => !s.deleted)
+    .map((s) => ({ key: s.key, name: s.name, order: fullOrder(s.order), builtin: Boolean(s.builtin) }));
+}
+
+export async function currentShop() {
+  const [shops, key] = await Promise.all([listShops(), getMeta('shop', null)]);
+  return shops.find((s) => s.key === key) ?? shops[0];
+}
+
+export const selectShop = (key) => setMeta('shop', key);
+
+// Uloží obchod (nový dostane key sám). Vrací key.
+export async function saveShop({ key = null, name, order }) {
+  const shop = { key: key ?? db.newId(), name: String(name).trim() || 'Obchod', order: fullOrder(order), deleted: false, updatedAt: Date.now() };
+  await save('shops', [shop]);
+  emit();
+  return shop.key;
+}
+
+export async function removeShop(key) {
+  const shop = await db.get('shops', key);
+  if (!shop) return;
+  await save('shops', [{ ...shop, deleted: true, updatedAt: Date.now() }]);
+  emit();
+}
+
+// ---------- Jednorázové úpravy dat po aktualizaci appky ----------
+
+// 0.4.0: "Ovoce a zelenina" se rozdělilo, přibyly Uzeniny, Sladké a Slané.
+// Položky a historie ze starých společných kategorií se zařadí znovu.
+export async function upgradeData() {
+  if ((await getMeta('dataVersion', 0)) >= 4) return;
+  const split = { ovoce: ['zelenina'], maso: ['uzeniny'], trvanlive: ['sladke', 'slane'] };
+  const move = (row) => {
+    const guess = guessCategory(row.name);
+    return split[row.category]?.includes(guess) ? guess : null;
+  };
+  const items = (await liveItems()).map((i) => [i, move(i)]).filter(([, cat]) => cat);
+  const now = Date.now();
+  await saveItems(items.map(([i, category]) => ({ ...i, category, updatedAt: now })));
+  for (const h of await db.getAll('history')) {
+    const category = move(h);
+    if (!category) continue;
+    await db.put('history', { ...h, category, lastAt: now });
+    await sync.markDirty('history', h.key);
+  }
+  // Platby měly jen den v měsíci, teď mají datum nejbližší splatnosti
+  const payments = (await live('payments')).filter((p) => p.dueDay && !p.nextDue);
+  await save('payments', payments.map((p) => ({ ...p, nextDue: nextDayOfMonth(p.dueDay), updatedAt: now })));
+  await db.put('meta', { key: 'dataVersion', value: 4 });
+  if (items.length) emit();
 }
 
 export async function frequent(limit = 10) {
@@ -223,7 +328,10 @@ export async function frequent(limit = 10) {
 // ---------- Úkoly ----------
 // Úkol: { id, title, assignee, due, repeat, done, doneAt, doneBy, prevDue,
 //         createdBy, createdAt, updatedAt }
-//   assignee  jméno člena, nebo null = kdokoliv
+//   assignee  jméno člena, null = kdokoliv, nebo 'both' = oba
+//             ('both' je hotový, až ho odškrtnou všichni, doneParts = kdo už)
+//   priority  1 = bylo by fajn, 2 = běžné, 3 = hoří
+//   note      podrobnosti, nebo null
 //   due       "RRRR-MM-DD", nebo null = někdy
 //   repeat    null, nebo { every, unit: 'day'|'week'|'month'|'year', mode }
 //             mode 'fixed' = další termín se počítá od termínu,
@@ -237,7 +345,9 @@ export async function listTasks() {
   return tasks.sort((a, b) => a.createdAt - b.createdAt);
 }
 
-export async function addTask({ title, due = null, assignee = null, repeat = null }) {
+export const BOTH = 'both';
+
+export async function addTask({ title, due = null, assignee = null, repeat = null, priority = 2, note = null }) {
   const clean = String(title).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
@@ -247,9 +357,12 @@ export async function addTask({ title, due = null, assignee = null, repeat = nul
     assignee,
     due,
     repeat,
+    priority,
+    note,
     done: false,
     doneAt: null,
     doneBy: null,
+    doneParts: [],
     prevDue: null,
     createdBy: await getMe(),
     createdAt: now,
@@ -277,20 +390,39 @@ export async function setTaskDone(id, done) {
   const task = await db.get('tasks', id);
   if (!task || task.deleted) return null;
   const me = await getMe();
+  let who = me;
+  let parts = [];
+  if (task.assignee === BOTH) {
+    // Úkol pro oba: každý odškrtává za sebe, hotovo je až od všech
+    const members = await listMembers();
+    // U opakovaného je "uzavřeno" jen pro vrácení posledního splnění,
+    // nové odškrtávání začíná vždy od nuly
+    const mine = (task.doneParts ?? []).includes(me);
+    const closed = task.repeat ? (!done && !mine && Boolean(task.doneAt && task.prevDue)) : task.done;
+    const had = closed ? members : (task.doneParts ?? []);
+    parts = done ? [...new Set([...had, me])] : had.filter((name) => name !== me);
+    const all = members.every((name) => parts.includes(name));
+    if (!all && !closed) return updateTask(id, { doneParts: parts });
+    if (all && closed) return task;
+    done = all;
+    who = members.join(' + ');
+    // Po úplném splnění se u opakovaného začíná znovu od nuly
+    if (done && task.repeat) parts = [];
+  }
   let patch;
   if (!task.repeat) {
-    patch = { done, doneAt: done ? Date.now() : null, doneBy: done ? me : null };
+    patch = { done, doneAt: done ? Date.now() : null, doneBy: done ? who : null };
   } else if (done) {
     const { every, unit, mode } = task.repeat;
     const day = today();
     let next = addInterval(mode === 'after' ? day : (task.due ?? day), every, unit);
     // Zameškané pevné termíny se přeskočí, další musí být v budoucnu
     while (next <= day) next = addInterval(next, every, unit);
-    patch = { due: next, prevDue: task.due ?? day, doneAt: Date.now(), doneBy: me };
+    patch = { due: next, prevDue: task.due ?? day, doneAt: Date.now(), doneBy: who };
   } else {
     patch = { due: task.prevDue ?? task.due, prevDue: null, doneAt: null, doneBy: null };
   }
-  return updateTask(id, patch);
+  return updateTask(id, { ...patch, doneParts: parts });
 }
 
 export const removeTasks = (ids) => removeByIds('tasks', ids);
@@ -304,11 +436,15 @@ export async function clearDoneTasks() {
   return done;
 }
 
-// ---------- Pravidelné platby ----------
-// Platba: { id, name, amount, period, payer, dueDay, createdAt, updatedAt }
-//   period  'month' | 'quarter' | 'year'
-//   payer   jméno člena, nebo 'split' = napůl
-//   dueDay  den v měsíci 1-31, nebo null
+// ---------- Platby ----------
+// Platba: { id, name, amount, kind, period, payer, nextDue, total, remaining,
+//           done, paidAt, paidBy, createdAt, updatedAt }
+//   kind     'recurring' pravidelná, 'once' jednorázová, 'term' pravidelná po dobu X
+//   period   'month' | 'quarter' | 'year' (u jednorázové se nepoužívá)
+//   payer    jméno člena, nebo 'split' = napůl
+//   nextDue  nejbližší splatnost "RRRR-MM-DD", nebo null = bez hlídání
+//   total / remaining  počet plateb celkem a kolik zbývá (jen 'term')
+//   done     jednorázová zaplacena, nebo 'term' doplacena
 
 export const SPLIT = 'split';
 export const PERIOD_MONTHS = { month: 1, quarter: 3, year: 12 };
@@ -321,25 +457,46 @@ export async function listPayments() {
 // Částka přepočtená na jeden měsíc
 export const monthly = (payment) => (payment.amount || 0) / (PERIOD_MONTHS[payment.period] ?? 1);
 
-// Souhrn za měsíc: { total, perPerson: { Tom: 123, Domi: 456 } }.
-// Platba napůl se rozdělí rovným dílem mezi všechny členy.
-export async function paymentsSummary() {
-  const [payments, members] = await Promise.all([live('payments'), listMembers()]);
-  const perPerson = Object.fromEntries(members.map((m) => [m, 0]));
-  let total = 0;
-  for (const p of payments) {
-    const amount = monthly(p);
-    total += amount;
-    if (p.payer === SPLIT || !p.payer) {
-      members.forEach((m) => { perPerson[m] += amount / members.length; });
-    } else {
-      perPerson[p.payer] = (perPerson[p.payer] ?? 0) + amount;
-    }
+// Kolik z částky připadá na jednoho člena (napůl = rovný díl)
+function addShare(perPerson, members, payer, amount) {
+  if (payer === SPLIT || !payer) {
+    members.forEach((m) => { perPerson[m] += amount / members.length; });
+  } else {
+    perPerson[payer] = (perPerson[payer] ?? 0) + amount;
   }
-  return { total, perPerson };
 }
 
-export async function addPayment({ name, amount = 0, period = 'month', payer = undefined, dueDay = null }) {
+// Souhrn: co stojí běžný měsíc (pravidelné a běžící platby na dobu určitou)
+// a kolik zbývá zaplatit jednorázově. { total, perPerson, onceTotal, oncePerPerson }
+export async function paymentsSummary() {
+  const [payments, members] = await Promise.all([live('payments'), listMembers()]);
+  const zero = () => Object.fromEntries(members.map((m) => [m, 0]));
+  const perPerson = zero();
+  const oncePerPerson = zero();
+  let total = 0;
+  let onceTotal = 0;
+  for (const p of payments) {
+    if (p.done) continue;
+    if (p.kind === 'once') {
+      onceTotal += p.amount || 0;
+      addShare(oncePerPerson, members, p.payer, p.amount || 0);
+    } else {
+      total += monthly(p);
+      addShare(perPerson, members, p.payer, monthly(p));
+    }
+  }
+  return { total, perPerson, onceTotal, oncePerPerson };
+}
+
+// Nezaplacené platby se splatností nejpozději za daný počet dní (i po termínu)
+export async function duePayments(days = 7) {
+  const limit = addDays(today(), days);
+  return (await live('payments'))
+    .filter((p) => !p.done && p.nextDue && p.nextDue <= limit)
+    .sort((a, b) => a.nextDue.localeCompare(b.nextDue));
+}
+
+export async function addPayment({ name, amount = 0, kind = 'recurring', period = 'month', payer = undefined, nextDue = null, total = null }) {
   const clean = String(name).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
@@ -347,9 +504,15 @@ export async function addPayment({ name, amount = 0, period = 'month', payer = u
     id: db.newId(),
     name: clean,
     amount,
+    kind,
     period,
     payer: payer === undefined ? await getMe() : payer,
-    dueDay,
+    nextDue,
+    total: kind === 'term' ? total : null,
+    remaining: kind === 'term' ? total : null,
+    done: false,
+    paidAt: null,
+    paidBy: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -364,8 +527,37 @@ export async function updatePayment(id, patch) {
   return next;
 }
 
+// Odškrtne "zaplaceno": jednorázová je hotová, pravidelné se posune splatnost,
+// u platby na dobu určitou navíc ubude jedna zbývající. Vrací stav před
+// zaplacením, kterým jde platbu vrátit (Zpět) přes updatePayment.
+export async function payPayment(id) {
+  const p = await db.get('payments', id);
+  if (!p || p.deleted || p.done) return null;
+  const before = { nextDue: p.nextDue, remaining: p.remaining, done: p.done, paidAt: p.paidAt, paidBy: p.paidBy };
+  const patch = { paidAt: Date.now(), paidBy: await getMe() };
+  if (p.kind === 'once') {
+    patch.done = true;
+  } else {
+    if (p.nextDue) patch.nextDue = addInterval(p.nextDue, PERIOD_MONTHS[p.period] ?? 1, 'month');
+    if (p.kind === 'term' && p.remaining != null) {
+      patch.remaining = Math.max(0, p.remaining - 1);
+      patch.done = patch.remaining === 0;
+    }
+  }
+  await updatePayment(id, patch);
+  return { payment: p, before };
+}
+
 export const removePayments = (ids) => removeByIds('payments', ids);
 export const restorePayments = (payments) => restore('payments', payments);
+
+// Smaže zaplacené a doplacené platby a vrátí je (kvůli tlačítku Zpět)
+export async function clearDonePayments() {
+  const done = (await live('payments')).filter((p) => p.done);
+  await markDeleted('payments', done);
+  emit();
+  return done;
+}
 
 // ---------- Záloha ----------
 

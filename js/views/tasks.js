@@ -1,9 +1,10 @@
 // Úkoly: rychlé přidání nahoře, pohledy Dnes / Týden / Někdy,
-// ťuknutí = hotovo, podržení = úprava, potažení doleva = smazat (se Zpět).
-// U splněného je vidět, kdo a kdy ho odškrtl (třeba prášek pro psa).
+// ťuknutí = hotovo, podržení = podrobnosti a úprava, potažení doleva = smazat.
+// V řádku je vidět pro koho úkol je (barva), termín a důležitost (1-3).
+// Úkol pro oba musí odškrtnout každý za sebe.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, rowGestures } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, whoClass, whoBadge, wireSegmented } from '../ui.js';
 import { today, dayStr, addDays, dueLabel, dayHeading, timeLabel, isSameDay } from '../dates.js';
 
 export const title = 'Úkoly';
@@ -33,17 +34,18 @@ const repeatLabel = (repeat) => REPEAT_SHORT[repeatValue(repeat)] ?? `co ${repea
 // Zvolená záložka vydrží, dokud je appka otevřená
 let tab = 'today';
 
-// Rozdělí úkoly do záložek. Používá i Domů.
+// Rozdělí úkoly do záložek. Používá i Domů. Důležitější jsou výš.
 export function splitTasks(tasks, day = today()) {
   const weekEnd = addDays(day, 7);
-  const byDue = (a, b) => (a.due ?? '').localeCompare(b.due ?? '') || a.createdAt - b.createdAt;
+  const byDue = (a, b) => (a.due ?? '').localeCompare(b.due ?? '') || (b.priority ?? 2) - (a.priority ?? 2) || a.createdAt - b.createdAt;
+  const byPriority = (a, b) => (b.priority ?? 2) - (a.priority ?? 2) || byDue(a, b);
   const open = tasks.filter((t) => !t.done);
   return {
-    today: open.filter((t) => t.due && t.due <= day).sort(byDue),
+    today: open.filter((t) => t.due && t.due <= day).sort(byPriority),
     doneToday: tasks.filter((t) => isSameDay(t.doneAt, day)).sort((a, b) => b.doneAt - a.doneAt),
     week: open.filter((t) => t.due && t.due > day && t.due <= weekEnd).sort(byDue),
     later: open.filter((t) => t.due && t.due > weekEnd).sort(byDue),
-    noDue: open.filter((t) => !t.due),
+    noDue: open.filter((t) => !t.due).sort(byPriority),
     done: tasks.filter((t) => t.done).sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0)),
   };
 }
@@ -66,6 +68,7 @@ export async function render(el, { subEl }) {
   const listRoot = el.querySelector('.list-root');
 
   let me = await store.getMe();
+  let members = await store.listMembers();
   let renderToken = 0;
 
   // ---------- Přidávání ----------
@@ -85,36 +88,41 @@ export async function render(el, { subEl }) {
     const btn = e.target.closest('[data-tab]');
     if (!btn) return;
     tab = btn.dataset.tab;
-    listRoot.parentElement.scrollTop = 0;
+    el.scrollTop = 0;
     renderList();
   });
 
   // ---------- Vykreslení ----------
 
   // checked = řádek se ukazuje jako splněný (i opakovaný úkol splněný dnes)
-  function row(task, { checked = false, showDue = true } = {}) {
+  function row(task, { checked = false } = {}) {
     const meta = [];
+    const parts = task.doneParts ?? [];
+    const mine = !checked && parts.includes(me);
     if (checked) {
       if (task.doneAt) meta.push(`${escapeHtml(task.doneBy ?? '')} ${isSameDay(task.doneAt) ? timeLabel(task.doneAt) : dueLabel(dayStr(new Date(task.doneAt)))}`.trim());
       if (task.repeat && task.due) meta.push(`další ${dueLabel(task.due)}`);
     } else {
-      if (task.due && showDue) {
-        const late = task.due < today();
-        meta.push(late ? `<span class="is-late">${dueLabel(task.due)}</span>` : dueLabel(task.due));
-      }
+      // Termín je vidět vždy, zpožděný červeně
+      if (task.due) meta.push(task.due < today() ? `<span class="is-late">${dueLabel(task.due)}</span>` : dueLabel(task.due));
       if (task.repeat) meta.push(repeatLabel(task.repeat));
-      // U opakovaného je vidět, kdo ho splnil minule
-      if (task.repeat && task.doneAt) meta.push(`naposledy ${escapeHtml(task.doneBy ?? '')}`.trim());
+      if (task.assignee === store.BOTH && parts.length) {
+        const waiting = members.filter((m) => !parts.includes(m));
+        meta.push(`<span class="is-part">hotovo ${escapeHtml(parts.join(', '))}, zbývá ${escapeHtml(waiting.join(', '))}</span>`);
+      } else if (task.repeat && task.doneAt) {
+        // U opakovaného je vidět, kdo ho splnil minule
+        meta.push(`naposledy ${escapeHtml(task.doneBy ?? '')}`.trim());
+      }
     }
-    const who = task.assignee
-      ? `<span class="item-who${task.assignee === me ? ' is-me' : ''}" title="${escapeHtml(task.assignee)}">${escapeHtml(task.assignee.charAt(0))}</span>`
-      : '';
-    return `<li class="item${checked ? ' is-done' : ''}" data-id="${escapeHtml(task.id)}">
+    const note = task.note ? `<span class="item-sub item-note">${escapeHtml(task.note)}</span>` : '';
+    const priority = task.priority ?? 2;
+    return `<li class="item ${whoClass(task.assignee, members)}${checked ? ' is-done' : ''}${mine ? ' is-mine' : ''}" data-id="${escapeHtml(task.id)}">
       <div class="item-bg" aria-hidden="true">Smazat</div>
-      <button type="button" class="item-main" aria-pressed="${checked}">
+      <button type="button" class="item-main has-stripe" aria-pressed="${checked}">
         <span class="check">${ICONS.check}</span>
-        <span class="item-text"><span class="item-name">${escapeHtml(task.title)}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}</span>
-        ${who}
+        <span class="item-text"><span class="item-name">${escapeHtml(task.title)}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}${note}</span>
+        ${checked ? '' : `<span class="prio prio-${priority}" title="Důležitost ${priority} ze 3">${priority}</span>`}
+        ${whoBadge(task.assignee, members)}
       </button>
     </li>`;
   }
@@ -129,10 +137,17 @@ export async function render(el, { subEl }) {
       <p>${text}</p>
     </div>`;
 
+  // Vysvětlivka barev, ať je jasné, čí úkol je
+  function legend() {
+    const who = [...members.map((m) => [m, m]), [store.BOTH, 'Oba']];
+    return `<p class="legend">${who.map(([value, name]) => `<span class="legend-dot ${whoClass(value, members)}"></span>${escapeHtml(name)}`).join('')}
+      <span class="legend-gap"></span><span class="prio prio-1">1</span><span class="prio prio-2">2</span><span class="prio prio-3">3</span>důležitost</p>`;
+  }
+
   async function renderList() {
     const token = ++renderToken;
     const tasks = await store.listTasks();
-    me = await store.getMe();
+    [me, members] = await Promise.all([store.getMe(), store.listMembers()]);
     if (token !== renderToken) return;
 
     const s = splitTasks(tasks);
@@ -144,8 +159,7 @@ export async function render(el, { subEl }) {
 
     let out = '';
     if (tab === 'today') {
-      // Termín se ukazuje, jen když některý úkol čeká už z dřívějška
-      out += group('', s.today, { showDue: s.today.some((t) => t.due < today()) });
+      out += group('', s.today);
       if (!s.today.length) {
         out += s.doneToday.length
           ? `<div class="empty" style="padding: 28px 24px 12px"><div class="empty-icon">${ICONS.check}</div><p class="empty-title">Na dnes hotovo</p></div>`
@@ -154,7 +168,7 @@ export async function render(el, { subEl }) {
       out += group(`Hotovo dnes (${s.doneToday.length})`, s.doneToday, { checked: true });
     } else if (tab === 'week') {
       const days = [...new Set(s.week.map((t) => t.due))];
-      out += days.map((day) => group(dayHeading(day), s.week.filter((t) => t.due === day), { showDue: false })).join('');
+      out += days.map((day) => group(dayHeading(day), s.week.filter((t) => t.due === day))).join('');
       if (!s.week.length) out += empty('Tento týden nic', 'Úkoly s termínem v příštích 7 dnech se objeví tady.');
     } else {
       out += group(s.later.length ? 'Bez termínu' : '', s.noDue);
@@ -169,15 +183,17 @@ export async function render(el, { subEl }) {
       }
     }
 
-    if (tasks.length) out += '<p class="hint">Ťuknutím odškrtnete, podržením upravíte, potažením doleva smažete.</p>';
+    if (tasks.length) out += `${legend()}<p class="hint">Ťuknutím odškrtnete, podržením otevřete podrobnosti, potažením doleva smažete.</p>`;
     listRoot.innerHTML = out;
   }
 
   // ---------- Akce ----------
 
   async function toggle(li) {
-    const nowDone = !li.classList.contains('is-done');
-    li.classList.toggle('is-done', nowDone);
+    // Odškrtnutý řádek nebo moje půlka úkolu pro oba: ťuknutí ji vrátí
+    const nowDone = !(li.classList.contains('is-done') || li.classList.contains('is-mine'));
+    li.classList.remove('is-done', 'is-mine');
+    if (nowDone) li.classList.add(li.classList.contains('who-both') ? 'is-mine' : 'is-done');
     // krátká pauza, ať je vidět odškrtnutí, než úkol odjede
     await new Promise((r) => setTimeout(r, 180));
     await store.setTaskDone(li.dataset.id, nowDone);
@@ -194,20 +210,29 @@ export async function render(el, { subEl }) {
   }
 
   async function openEdit(id) {
-    const [tasks, members] = await Promise.all([store.listTasks(), store.listMembers()]);
-    const task = tasks.find((t) => t.id === id);
+    const task = (await store.listTasks()).find((t) => t.id === id);
     if (!task) return;
 
-    openSheet('Upravit úkol', (body, close) => {
+    openSheet('Úkol', (body, close) => {
       const current = repeatValue(task.repeat);
       const repeats = REPEATS.some((r) => r.value === current) ? REPEATS : [...REPEATS, { value: current, name: repeatLabel(task.repeat) }];
+      const who = [['', 'Kdokoliv'], ...members.map((m) => [m, m]), [store.BOTH, 'Oba']];
+      const priority = task.priority ?? 2;
       body.innerHTML = `<form class="edit-form" autocomplete="off">
         <label class="field"><span>Název</span>
           <input class="input" name="title" value="${escapeHtml(task.title)}" required></label>
-        <div class="field"><span>Kdo</span>
+        <label class="field"><span>Podrobnosti</span>
+          <textarea class="input" name="note" rows="3" placeholder="Co přesně, kde, s kým…">${escapeHtml(task.note ?? '')}</textarea></label>
+        <div class="field"><span>Pro koho</span>
           <div class="segmented" data-name="assignee">
-            ${['', ...members].map((m) => `<button type="button" data-value="${escapeHtml(m)}" aria-pressed="${(task.assignee ?? '') === m}">${escapeHtml(m || 'Kdokoliv')}</button>`).join('')}
-          </div></div>
+            ${who.map(([value, name]) => `<button type="button" class="${value ? whoClass(value, members) : ''}" data-value="${escapeHtml(value)}" aria-pressed="${(task.assignee ?? '') === value}">${escapeHtml(name)}</button>`).join('')}
+          </div>
+          <p class="field-hint">Oba: úkol je hotový, až ho odškrtne každý za sebe.</p></div>
+        <div class="field"><span>Důležitost</span>
+          <div class="segmented" data-name="priority">
+            ${[1, 2, 3].map((n) => `<button type="button" data-value="${n}" aria-pressed="${n === priority}"><span class="prio prio-${n}">${n}</span></button>`).join('')}
+          </div>
+          <p class="field-hint">1 bylo by fajn, 2 běžné, 3 hoří.</p></div>
         <label class="field"><span>Termín</span>
           <input class="input" type="date" name="due" value="${escapeHtml(task.due ?? '')}"></label>
         <div class="quick-row">
@@ -233,18 +258,15 @@ export async function render(el, { subEl }) {
       </form>`;
 
       const f = body.querySelector('form');
+      const picked = wireSegmented(f);
       const repeatOnly = f.querySelector('[data-repeat-only]');
       const syncRepeat = () => { repeatOnly.hidden = !f.elements.repeat.value; };
       syncRepeat();
       f.elements.repeat.addEventListener('change', syncRepeat);
-
       f.addEventListener('click', (e) => {
-        const seg = e.target.closest('.segmented button');
-        if (seg) seg.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b === seg));
         const quick = e.target.closest('[data-due]');
         if (quick) f.elements.due.value = quick.dataset.due;
       });
-      const picked = (name) => f.querySelector(`[data-name="${name}"] [aria-pressed="true"]`)?.dataset.value ?? '';
 
       f.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -254,7 +276,18 @@ export async function render(el, { subEl }) {
         const repeat = unit ? { every: Number(every), unit, mode: picked('mode') || 'fixed' } : null;
         // Opakovaný úkol potřebuje termín, od kterého se počítá
         const due = f.elements.due.value || (repeat ? today() : null);
-        await store.updateTask(id, { title: titleText, assignee: picked('assignee') || null, due, repeat });
+        const assignee = picked('assignee') || null;
+        const patch = {
+          title: titleText,
+          note: f.elements.note.value.trim() || null,
+          assignee,
+          priority: Number(picked('priority')) || 2,
+          due,
+          repeat,
+        };
+        // Rozdělané odškrtnutí "za oba" nedává smysl, když už úkol pro oba není
+        if (assignee !== store.BOTH) patch.doneParts = [];
+        await store.updateTask(id, patch);
         close();
       });
       f.querySelector('[data-action="delete"]').addEventListener('click', () => {

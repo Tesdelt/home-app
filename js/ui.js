@@ -105,7 +105,8 @@ export function rowGestures(listEl, { onTap, onPress, onSwipe }) {
     if (!main || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const li = main.closest('.item');
     gesture = {
-      main,
+      // Posouvá se celý řádek (.item-slide), když ho položka má, jinak jen tlačítko
+      main: main.closest('.item-slide') ?? main,
       li,
       id: li.dataset.id,
       x: e.clientX,
@@ -174,6 +175,34 @@ export function rowGestures(listEl, { onTap, onPress, onSwipe }) {
   });
 
   return endGesture;
+}
+
+// ---------- Čí to je: barva a značka ----------
+// Každý člen má svou barvu (podle pořadí v domácnosti, na obou telefonech
+// stejně), společné věci třetí. value: jméno člena, 'both' / 'split', nebo null.
+
+export function whoClass(value, members) {
+  if (!value) return 'who-any';
+  if (value === 'both' || value === 'split') return 'who-both';
+  const index = members.indexOf(value);
+  return index === 0 ? 'who-1' : index === 1 ? 'who-2' : 'who-any';
+}
+
+export function whoBadge(value, members, sharedLabel = 'Oba') {
+  if (!value) return '';
+  const shared = value === 'both' || value === 'split';
+  const text = shared ? members.map((m) => m.charAt(0)).join('') : value.charAt(0);
+  return `<span class="item-who ${whoClass(value, members)}" title="${escapeHtml(shared ? sharedLabel : value)}">${escapeHtml(text)}</span>`;
+}
+
+// Přepínač s jednou volbou: tlačítka s data-value, vybrané má aria-pressed.
+// wireSegmented zapojí klikání v celém formuláři, picked vrátí vybranou hodnotu.
+export function wireSegmented(formEl) {
+  formEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.segmented button');
+    if (btn) btn.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b === btn));
+  });
+  return (name) => formEl.querySelector(`[data-name="${name}"] [aria-pressed="true"]`)?.dataset.value ?? '';
 }
 
 // ---------- Peníze ----------
