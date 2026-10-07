@@ -4,6 +4,7 @@
 #      Denní dotazy ho drží vzhůru, i když appku nikdo neotevře.
 #   2. Kdyby kontrola soukromí neprošla nebo databáze neodpovídala,
 #      běh skončí chybou a GitHub pošle majiteli repozitáře e-mail.
+#   3. Zavolá funkci send-reminders, která rozešle upozornění na platby.
 # Používá jen veřejný klíč z js/config.js, žádná tajemství.
 #
 # Pozor: GitHub naplánované běhy sám vypne, když se v repozitáři 60 dní
@@ -27,3 +28,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Nepřihlášený nesmí nic přečíst ani zapsat
         run: sh supabase/check-anon.sh
+      # Funkce pošle push notifikace na platby splatné dnes nebo po termínu.
+      # Nic tajného nevrací a o každé platbě upozorní nejvýš jednou denně.
+      - name: Ranní upozornění na platby
+        if: always()
+        run: |
+          URL=$(sed -n "s/.*SUPABASE_URL = '\(.*\)'.*/\1/p" js/config.js)
+          KEY=$(sed -n "s/.*SUPABASE_KEY = '\(.*\)'.*/\1/p" js/config.js)
+          CODE=$(curl -s -o odpoved.txt -w '%{http_code}' -X POST "$URL/functions/v1/send-reminders" -H "apikey: $KEY")
+          cat odpoved.txt; echo " [$CODE]"
+          # 404 = funkce v Supabase ještě není nasazená, to není chyba
+          [ "$CODE" = 200 ] || [ "$CODE" = 404 ]

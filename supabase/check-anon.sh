@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 URL=$(sed -n "s/.*SUPABASE_URL = '\(.*\)'.*/\1/p" js/config.js)
 KEY=$(sed -n "s/.*SUPABASE_KEY = '\(.*\)'.*/\1/p" js/config.js)
-TABLES="households household_members shopping_items shopping_history tasks payments shops"
+TABLES="households household_members shopping_items shopping_history tasks payments shops push_subscriptions payment_reminders"
 FAIL=0
 
 for T in $TABLES; do

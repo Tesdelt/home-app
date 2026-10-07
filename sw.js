@@ -1,6 +1,6 @@
 // Service worker: offline cache. Při každém nasazení zvýšit VERSION
 // (a APP_VERSION v js/config.js) a nové soubory doplnit do ASSETS.
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 const CACHE = `home-app-v${VERSION}`;
 
 const ASSETS = [
@@ -19,6 +19,7 @@ const ASSETS = [
   'js/dates.js',
   'js/supabase.js',
   'js/auth.js',
+  'js/push.js',
   'js/sync.js',
   'js/vendor/supabase.js',
   'js/views/login.js',
@@ -66,5 +67,36 @@ self.addEventListener('fetch', (event) => {
       }
       throw err;
     }
+  })());
+});
+
+// ---------- Push notifikace ----------
+// Zprávu posílá supabase/functions/send-reminders: { title, body, url }.
+// iPhone vyžaduje, aby každá doručená zpráva ukázala upozornění.
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data?.json() ?? {}; } catch { /* zpráva bez obsahu */ }
+  event.waitUntil(self.registration.showNotification(data.title || 'Domácnost', {
+    body: data.body || '',
+    icon: 'icons/icon-192.png',
+    tag: 'platby',
+    data: { url: data.url || '' },
+  }));
+});
+
+// Ťuknutí na upozornění otevře appku na správné obrazovce
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(`./${event.notification.data?.url || ''}`, self.registration.scope).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const open = windows.find((client) => client.url.startsWith(self.registration.scope));
+    if (open) {
+      await open.focus();
+      if ('navigate' in open) await open.navigate(target).catch(() => {});
+      return;
+    }
+    await self.clients.openWindow(target);
   })());
 });

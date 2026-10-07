@@ -12,6 +12,7 @@
 import * as db from './db.js';
 import * as sync from './sync.js';
 import * as store from './store.js';
+import * as push from './push.js';
 import { supabase, hasStoredSession } from './supabase.js';
 import { normalize } from './categories.js';
 
@@ -161,6 +162,8 @@ export async function signOut({ force = false } = {}) {
     await sync.syncNow();
     if (sync.getStatus().pending > 0 && !force) return false;
   }
+  // Odhlášený telefon už nesmí dostávat upozornění
+  await push.disable();
   await forget();
   // scope local: druhé zařízení téhož účtu zůstane přihlášené
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});

@@ -2,6 +2,7 @@
 
 import * as store from '../store.js';
 import * as auth from '../auth.js';
+import * as push from '../push.js';
 import { APP_VERSION } from '../config.js';
 import { escapeHtml, ICONS, toast } from '../ui.js';
 
@@ -14,6 +15,7 @@ export async function render(el) {
   async function draw() {
     const me = await store.getMe();
     const { email } = auth.getState();
+    const pushState = await push.status();
     root.innerHTML = `
       <p class="section-label">Na tomto telefonu</p>
       <section class="card">
@@ -25,6 +27,16 @@ export async function render(el) {
       <section class="card">
         <div class="card-head"><span class="card-icon">${ICONS.sync}</span><h2 class="card-title">Sdílení mezi telefony</h2></div>
         <p class="card-meta" style="margin: 0">${escapeHtml(syncLabel(store.syncStatus()))}</p>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><span class="card-icon">${ICONS.bell}</span><h2 class="card-title">Upozornění</h2><span class="card-meta">${pushState === 'on' ? 'zapnuto' : ''}</span></div>
+        <p class="card-meta" style="margin: 0 0 10px">${escapeHtml(PUSH_TEXT[pushState])}</p>
+        ${pushState === 'off' ? '<button type="button" class="btn btn-primary" data-action="push-on">Zapnout upozornění</button>' : ''}
+        ${pushState === 'on' ? `<div class="btn-row">
+          <button type="button" class="btn" data-action="push-test">Zkusit</button>
+          <button type="button" class="btn" data-action="push-off">Vypnout</button>
+        </div>` : ''}
       </section>
 
       <p class="section-label">Záloha</p>
@@ -43,6 +55,17 @@ export async function render(el) {
   root.addEventListener('click', async (e) => {
     const action = e.target.closest('[data-action]')?.dataset.action;
     if (action === 'signout') signOut(e.target.closest('button'));
+    if (action === 'push-test') push.test();
+    if (action === 'push-on' || action === 'push-off') {
+      e.target.closest('button').disabled = true;
+      try {
+        if (action === 'push-on') await push.enable(auth.getState().householdId);
+        else await push.disable();
+      } catch (err) {
+        toast(err?.message || 'Nepovedlo se');
+      }
+      draw();
+    }
     if (action === 'export') exportBackup();
     if (action === 'import') root.querySelector('input[type="file"]').click();
   });
@@ -68,6 +91,14 @@ export async function render(el) {
     offSync();
   };
 }
+
+const PUSH_TEXT = {
+  on: 'Ráno přijde upozornění, když je potřeba něco zaplatit. Týká se jen plateb, které platíte vy nebo napůl.',
+  off: 'Appka umí ráno upozornit na platby k zaplacení. Zapíná se na každém telefonu zvlášť.',
+  denied: 'Upozornění jsou pro appku zakázaná. Povolíte je v Nastavení telefonu - Oznámení - Domácnost.',
+  install: 'Na iPhonu fungují upozornění jen v appce přidané na plochu (Safari - Sdílet - Přidat na plochu).',
+  unsupported: 'Tento prohlížeč upozornění neumí.',
+};
 
 function syncLabel({ pending, online, error, lastSyncAt }) {
   if (pending) {

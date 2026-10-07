@@ -130,6 +130,29 @@ create table if not exists public.shops (
   primary key (household_id, key)
 );
 
+-- Push notifikace: adresy, na které se telefonům posílají upozornění.
+-- Každý vidí a mění jen své vlastní odběry.
+create table if not exists public.push_subscriptions (
+  endpoint     text primary key,
+  household_id uuid not null references public.households (id) on delete cascade,
+  user_id      uuid not null references auth.users (id) on delete cascade,
+  p256dh       text not null,
+  auth         text not null,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists push_subscriptions_household_idx
+  on public.push_subscriptions (household_id);
+
+-- Které platbě už dnes šlo upozornění (ať nechodí dvakrát). Zapisuje jen
+-- funkce send-reminders servisním klíčem, z appky se sem nikdo nedostane:
+-- RLS je zapnuté a žádná politika neexistuje.
+create table if not exists public.payment_reminders (
+  payment_id uuid not null references public.payments (id) on delete cascade,
+  day        date not null,
+  primary key (payment_id, day)
+);
+
 -- ---------- Pomocné funkce ----------
 
 -- Schéma private není vystavené přes API, funkce v něm nejdou volat zvenku.
@@ -203,6 +226,8 @@ revoke all on public.shopping_history  from public, anon, authenticated;
 revoke all on public.tasks             from public, anon, authenticated;
 revoke all on public.payments          from public, anon, authenticated;
 revoke all on public.shops             from public, anon, authenticated;
+revoke all on public.push_subscriptions from public, anon, authenticated;
+revoke all on public.payment_reminders  from public, anon, authenticated;
 
 grant select on public.households        to authenticated;
 grant select on public.household_members to authenticated;
@@ -211,6 +236,7 @@ grant select, insert, update, delete on public.shopping_history to authenticated
 grant select, insert, update, delete on public.tasks            to authenticated;
 grant select, insert, update, delete on public.payments         to authenticated;
 grant select, insert, update, delete on public.shops            to authenticated;
+grant select, insert, update, delete on public.push_subscriptions to authenticated;
 
 -- ---------- RLS ----------
 
@@ -221,6 +247,8 @@ alter table public.shopping_history  enable row level security;
 alter table public.tasks             enable row level security;
 alter table public.payments          enable row level security;
 alter table public.shops             enable row level security;
+alter table public.push_subscriptions enable row level security;
+alter table public.payment_reminders  enable row level security;
 
 drop policy if exists "clen vidi svou domacnost" on public.households;
 create policy "clen vidi svou domacnost" on public.households
@@ -261,6 +289,12 @@ create policy "clen cte a zapisuje obchody" on public.shops
   for all to authenticated
   using (household_id in (select private.my_household_ids()))
   with check (household_id in (select private.my_household_ids()));
+
+drop policy if exists "kazdy jen sve odbery" on public.push_subscriptions;
+create policy "kazdy jen sve odbery" on public.push_subscriptions
+  for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()) and household_id in (select private.my_household_ids()));
 
 -- ---------- Realtime ----------
 -- Živé změny chodí jen z datových tabulek a jen členům domácnosti (platí RLS).
