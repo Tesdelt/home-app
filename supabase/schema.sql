@@ -173,6 +173,10 @@ create table if not exists public.recipes (
 
 create index if not exists recipes_household_idx on public.recipes (household_id);
 
+-- 0.11.0: vysvětlivky k postupu, pole objektů { term, note }. Výraz (term),
+-- který se v postupu najde, je podtržený a po ťuknutí ukáže vysvětlení.
+alter table public.recipes add column if not exists hints jsonb not null default '[]';
+
 -- Push notifikace: adresy, na které se telefonům posílají upozornění.
 -- Každý vidí a mění jen své vlastní odběry.
 create table if not exists public.push_subscriptions (

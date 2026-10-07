@@ -7,9 +7,9 @@
 //   #/recepty/<id>/zasoby      recept otevřený ze zásob (předvybrané jen to, co chybí)
 
 import * as store from '../store.js';
-import { parseEntry } from '../categories.js';
+import { parseEntry, normalize } from '../categories.js';
 import { findProduct, searchProducts } from '../catalog.js';
-import { escapeHtml, ICONS, toast, undoToast, rowGestures } from '../ui.js';
+import { escapeHtml, ICONS, toast, undoToast, rowGestures, openMenu, openSheet, dragSort } from '../ui.js';
 import { navigate } from '../router.js';
 
 export const title = 'Recepty';
@@ -17,8 +17,6 @@ export const tab = 'vice';
 
 const NEW = 'novy';
 const PANTRY = 'zasoby';
-
-const ingredientLine = (ing) => `${ing.name}${ing.qty ? ` ${ing.qty}` : ''}`;
 
 function plural(n, one, few, many) {
   if (n === 1) return `1 ${one}`;
@@ -125,10 +123,17 @@ async function renderRecipe(el, id, fromPantry) {
           </button>
         </li>`).join('')}</ul>
         <button type="button" class="btn btn-primary btn-block" data-action="shop" style="margin-top: 12px"${picked.size ? '' : ' disabled'}>${ICONS.cart} Do nákupu (${picked.size})</button>` : ''}
-      ${recipe.method ? `<p class="section-label">Postup</p><div class="note-view is-open recipe-method">${escapeHtml(recipe.method)}</div>` : ''}`;
+      ${recipe.method ? `<p class="section-label">Postup</p><div class="note-view is-open recipe-method">${methodHtml(recipe.method, recipe.hints)}</div>` : ''}`;
   }
 
   root.addEventListener('click', async (e) => {
+    // Podtržený výraz v postupu: ťuknutí ukáže vysvětlení, další ho schová
+    const term = e.target.closest('[data-hint]');
+    if (term) {
+      const hint = (recipe.hints ?? [])[Number(term.dataset.hint)];
+      if (hint) openMenu(term, (menu) => { menu.innerHTML = `<p class="hint-pop">${escapeHtml(hint.note)}</p>`; });
+      return;
+    }
     const row = e.target.closest('[data-index]');
     if (row) {
       const i = Number(row.dataset.index);
@@ -174,44 +179,271 @@ async function renderRecipe(el, id, fromPantry) {
 
 // ---------- Nový recept a úprava ----------
 
+// Jednotky množství. "ks" se do množství nepíše ("2"), ostatní ano ("500 g").
+const UNITS = ['ks', 'g', 'kg', 'ml', 'l', 'lžíce', 'lžička', 'hrnek', 'špetka'];
+
+// Jednotka, která se nabídne jako první: tekutiny v ml, sypké a maso v g
+const LIQUID = ['mlek', 'mlik', 'smetan', 'olej', 'vod', 'vin', 'piv', 'ocet', 'sirup', 'dzus', 'vyvar', 'kefir', 'podmasl', 'slehack'];
+const WEIGHT = ['mouk', 'cukr', 'ryz', 'maso', 'mlet', 'kurec', 'veprov', 'hovez', 'krut', 'syr', 'masl', 'testovin', 'spaget', 'cock',
+  'fazol', 'cizrn', 'strouhank', 'tvaroh', 'vlock', 'kakao', 'sunk', 'slanin', 'salam', 'parmaz', 'eidam', 'mozzarel', 'orech', 'cokolad'];
+
+function defaultUnit(name) {
+  const words = normalize(name).split(' ');
+  const has = (stems) => words.some((w) => stems.some((stem) => w.startsWith(stem)));
+  if (has(['sul', 'pepr', 'koreni', 'skoric', 'kmin', 'majorank', 'oregan'])) return 'špetka';
+  if (has(LIQUID)) return 'ml';
+  if (has(WEIGHT)) return 'g';
+  return 'ks';
+}
+
+// "500 g" -> { n: '500', unit: 'g' }, "2" -> { n: '2', unit: 'ks' }
+function splitQty(qty, name) {
+  const m = String(qty ?? '').trim().match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+  if (!m) return { n: '', unit: defaultUnit(name) };
+  return { n: m[1], unit: m[2].trim() || 'ks' };
+}
+
+const joinQty = ({ n, unit }) => (!n ? '' : unit === 'ks' ? n : `${n} ${unit}`);
+
+// Postup s podtrženými výrazy, ke kterým existuje vysvětlení
+function methodHtml(method, hints = []) {
+  const known = (hints ?? []).map((h, index) => ({ ...h, index })).filter((h) => h.term);
+  if (!known.length) return escapeHtml(method);
+  // Delší výrazy mají přednost, ať se "zesklovatět cibuli" nerozpadne na "cibuli"
+  const sorted = [...known].sort((x, y) => y.term.length - x.term.length);
+  const pattern = new RegExp(`(${sorted.map((h) => h.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  return method.split(pattern).map((part) => {
+    const hint = sorted.find((h) => h.term.toLowerCase() === part.toLowerCase());
+    return hint ? `<button type="button" class="hint-term" data-hint="${hint.index}">${escapeHtml(part)}</button>` : escapeHtml(part);
+  }).join('');
+}
+
 async function renderEdit(el, id) {
   const { root, back } = page(el, id ? `recepty/${id}` : 'recepty');
-  const recipe = id ? await store.getRecipe(id) : { name: '', ingredients: [], method: '' };
+  const recipe = id ? await store.getRecipe(id) : { name: '', ingredients: [], method: '', hints: [] };
   if (!recipe) {
     navigate('recepty');
     return undefined;
   }
+
+  // Rozpracovaný stav je jen v paměti, uloží se tlačítkem
+  let rows = (recipe.ingredients ?? []).map((ing) => ({ key: store.newId(), name: ing.name, ...splitQty(ing.qty, ing.name) }));
+  let hints = (recipe.hints ?? []).map((h) => ({ ...h }));
 
   root.innerHTML = `
     <form class="edit-form" autocomplete="off">
       <div class="detail-head">${back}
         <textarea class="input detail-title" name="name" rows="1" aria-label="Název" placeholder="Nový recept"></textarea>
       </div>
-      <label class="field"><span>Ingredience, každá na řádek</span>
-        <textarea class="input" name="ingredients" rows="8" autocapitalize="sentences"></textarea></label>
-      <label class="field"><span>Postup</span>
-        <textarea class="input" name="method" rows="8" autocapitalize="sentences"></textarea></label>
-      <div class="btn-row">
+
+      <p class="section-label">Ingredience</p>
+      <ul class="item-list group ing-list"></ul>
+      <div class="add-form ing-add">
+        <input class="input" name="entry" type="text" placeholder="Přidat ingredienci…" aria-label="Přidat ingredienci"
+          enterkeyhint="done" autocapitalize="sentences" spellcheck="false">
+        <button class="add-btn" type="button" data-action="ing-add" aria-label="Přidat">${ICONS.plus}</button>
+      </div>
+      <div class="chips suggest" hidden></div>
+
+      <p class="section-label">Postup</p>
+      <textarea class="input" name="method" rows="6" autocapitalize="sentences" aria-label="Postup"></textarea>
+      <div class="hint-bar">
+        <button type="button" class="btn btn-small" data-action="hint-add">${ICONS.plus} Vysvětlení</button>
+        <span class="hint-chips"></span>
+      </div>
+
+      <div class="btn-row" style="margin-top: 18px">
         ${id ? '<button type="button" class="btn btn-danger" data-action="delete">Smazat</button>' : ''}
         <button type="submit" class="btn btn-primary">${id ? 'Uložit' : 'Přidat'}</button>
       </div>
     </form>`;
 
   const form = root.querySelector('form');
+  const listEl = root.querySelector('.ing-list');
+  const entry = form.elements.entry;
+  const suggestEl = root.querySelector('.suggest');
+  const hintChips = root.querySelector('.hint-chips');
+  const methodEl = form.elements.method;
   const grow = (area) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
+
   form.elements.name.value = recipe.name;
-  form.elements.ingredients.value = (recipe.ingredients ?? []).map(ingredientLine).join('\n');
-  form.elements.method.value = recipe.method ?? '';
-  [...form.querySelectorAll('textarea')].forEach((area) => {
+  methodEl.value = recipe.method ?? '';
+  [form.elements.name, methodEl].forEach((area) => {
     grow(area);
     area.addEventListener('input', () => grow(area));
   });
   form.elements.name.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    form.elements.ingredients.focus();
+    entry.focus();
   });
   if (!id) form.elements.name.focus();
+
+  // ---------- Ingredience: každá na svém řádku s množstvím a jednotkou ----------
+
+  function drawRows() {
+    listEl.innerHTML = rows.map((row) => `<li class="ing-row" data-key="${row.key}">
+        <span class="ing-name">${escapeHtml(row.name)}</span>
+        <input class="input ing-qty" name="qty" inputmode="decimal" value="${escapeHtml(row.n)}" placeholder="1" aria-label="Množství">
+        <button type="button" class="opt ing-unit" data-action="unit">${escapeHtml(row.unit)}</button>
+        <button type="button" class="icon-btn" data-action="ing-remove" aria-label="Odebrat">×</button>
+      </li>`).join('');
+  }
+
+  // Věc se zapíše pod názvem z katalogu, "mouka 500 g" se rozdělí
+  function addRow(text) {
+    const parsed = parseEntry(text);
+    if (!parsed.name) return;
+    const name = findProduct(parsed.name)?.name ?? parsed.name;
+    rows = [...rows, { key: store.newId(), name, ...splitQty(parsed.qty, name) }];
+    drawRows();
+  }
+
+  function suggest() {
+    const typed = entry.value.trim();
+    const found = typed ? searchProducts(parseEntry(typed).name, 6) : [];
+    suggestEl.hidden = !found.length;
+    suggestEl.innerHTML = found
+      .map((p) => `<button type="button" class="chip" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`)
+      .join('');
+  }
+
+  const submitEntry = () => {
+    const text = entry.value;
+    entry.value = '';
+    suggest();
+    addRow(text);
+    entry.focus();
+  };
+  entry.addEventListener('input', suggest);
+  entry.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    submitEntry();
+  });
+  suggestEl.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.chip')) e.preventDefault();
+  });
+  suggestEl.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-name]');
+    if (!chip) return;
+    // Množství napsané za názvem se použije i s vybraným našeptaným názvem
+    const qty = parseEntry(entry.value).qty;
+    entry.value = '';
+    suggest();
+    addRow(`${chip.dataset.name}${qty ? ` ${qty}` : ''}`);
+    entry.focus();
+  });
+
+  listEl.addEventListener('input', (e) => {
+    const row = rows.find((r) => r.key === e.target.closest('[data-key]')?.dataset.key);
+    if (row && e.target.name === 'qty') row.n = e.target.value.trim().replace(/[^\d.,]/g, '');
+  });
+
+  // Enter v množství nesmí odeslat celý recept
+  listEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    e.target.blur();
+  });
+
+  const endSort = dragSort(listEl, {
+    item: '.ing-row',
+    handle: '.ing-name',
+    attr: 'data-key',
+    onDrop: (keys) => {
+      rows = keys.map((key) => rows.find((r) => r.key === key)).filter(Boolean);
+    },
+  });
+
+  // ---------- Vysvětlení k postupu ----------
+  // V postupu se označí slovo nebo kus textu a ťukne se na "+ Vysvětlení".
+  // Výraz je pak v receptu podtržený a po ťuknutí ukáže vysvětlení.
+
+  function drawHints() {
+    hintChips.innerHTML = hints
+      .map((h, i) => `<button type="button" class="chip hint-chip${methodEl.value.toLowerCase().includes(h.term.toLowerCase()) ? '' : ' is-missing'}" data-hint="${i}">${escapeHtml(h.term)}</button>`)
+      .join('');
+  }
+  methodEl.addEventListener('input', drawHints);
+
+  function openHint(index, term = '') {
+    const existing = index === null ? null : hints[index];
+    openSheet('Vysvětlení', (body, close) => {
+      body.innerHTML = `<form class="edit-form" autocomplete="off">
+        <label class="field"><span>Výraz v postupu</span>
+          <input class="input" name="term" value="${escapeHtml(existing?.term ?? term)}" required></label>
+        <label class="field"><span>Vysvětlení</span>
+          <textarea class="input" name="note" rows="3" required>${escapeHtml(existing?.note ?? '')}</textarea></label>
+        <div class="btn-row">
+          ${existing ? '<button type="button" class="btn btn-danger" data-action="remove">Smazat</button>' : ''}
+          <button type="submit" class="btn btn-primary">Uložit</button>
+        </div>
+      </form>`;
+      const f = body.querySelector('form');
+      (f.elements.term.value ? f.elements.note : f.elements.term).focus();
+      f.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const hint = { term: f.elements.term.value.trim(), note: f.elements.note.value.trim() };
+        if (!hint.term || !hint.note) return;
+        if (existing) hints[index] = hint;
+        else hints = [...hints, hint];
+        close();
+        drawHints();
+      });
+      f.querySelector('[data-action="remove"]')?.addEventListener('click', () => {
+        hints = hints.filter((_, i) => i !== index);
+        close();
+        drawHints();
+      });
+    });
+  }
+
+  // Tlačítko nesmí vzít fokus postupu, jinak by se ztratilo označení textu
+  root.querySelector('[data-action="hint-add"]').addEventListener('pointerdown', (e) => e.preventDefault());
+
+  // ---------- Akce ----------
+
+  root.addEventListener('click', async (e) => {
+    const chip = e.target.closest('.hint-chip');
+    if (chip) {
+      openHint(Number(chip.dataset.hint));
+      return;
+    }
+    const action = e.target.closest('[data-action]')?.dataset.action;
+    if (action === 'ing-add') submitEntry();
+    if (action === 'hint-add') {
+      const selected = methodEl.value.slice(methodEl.selectionStart, methodEl.selectionEnd).replace(/\s+/g, ' ').trim();
+      openHint(null, selected);
+    }
+    const rowEl = e.target.closest('[data-key]');
+    if (rowEl && action === 'ing-remove') {
+      rows = rows.filter((r) => r.key !== rowEl.dataset.key);
+      drawRows();
+    }
+    if (rowEl && action === 'unit') {
+      const row = rows.find((r) => r.key === rowEl.dataset.key);
+      const options = UNITS.includes(row.unit) ? UNITS : [row.unit, ...UNITS];
+      openMenu(e.target.closest('button'), (menu, close) => {
+        menu.classList.add('menu-narrow');
+        menu.innerHTML = options
+          .map((unit) => `<button type="button" class="menu-item" data-value="${escapeHtml(unit)}" aria-pressed="${unit === row.unit}">${escapeHtml(unit)}</button>`)
+          .join('');
+        menu.addEventListener('click', (ev) => {
+          const btn = ev.target.closest('[data-value]');
+          if (!btn) return;
+          close();
+          row.unit = btn.dataset.value;
+          drawRows();
+        });
+      });
+    }
+    if (action === 'delete') {
+      const removed = await store.removeRecipes([id]);
+      if (removed.length) undoToast(`${removed[0].name}: smazáno`, () => store.restoreRecipes(removed));
+      navigate('recepty');
+    }
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -220,19 +452,16 @@ async function renderEdit(el, id) {
       form.elements.name.focus();
       return;
     }
-    // "mouka 500 g", "2 vejce" -> název a množství, stejně jako v nákupu
-    const ingredients = form.elements.ingredients.value.split('\n').map((line) => line.trim()).filter(Boolean).map(parseEntry);
-    const saved = await store.saveRecipe({ id, name, ingredients, method: form.elements.method.value });
+    // Rozepsaná ingredience v poli se nesmí ztratit
+    if (entry.value.trim()) addRow(entry.value);
+    const ingredients = rows.map((row) => ({ name: row.name, qty: joinQty(row) }));
+    const saved = await store.saveRecipe({ id, name, ingredients, method: methodEl.value, hints });
     navigate(`recepty/${saved.id}`);
   });
 
-  form.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
-    const removed = await store.removeRecipes([id]);
-    if (removed.length) undoToast(`${removed[0].name}: smazáno`, () => store.restoreRecipes(removed));
-    navigate('recepty');
-  });
-
-  return undefined;
+  drawRows();
+  drawHints();
+  return endSort;
 }
 
 // ---------- Co máme doma -> co uvařit ----------

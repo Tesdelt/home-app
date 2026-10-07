@@ -6,7 +6,7 @@
 
 import * as store from '../store.js';
 import { CATEGORIES, categoryName, parseEntry, stepQty, qtyNumber } from '../categories.js';
-import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount, rowGestures } from '../ui.js';
+import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount, rowGestures, dragSort } from '../ui.js';
 
 export const title = 'Nákup';
 
@@ -176,7 +176,7 @@ export async function render(el, { subEl, extraEl }) {
     });
   }
 
-  // Úprava obchodu: název a pořadí kategorií šipkami nahoru a dolů
+  // Úprava obchodu: název a pořadí kategorií (podržet a přetáhnout)
   function openShopEdit(target) {
     let order = [...target.order];
     openSheet(target.key ? 'Pořadí v obchodě' : 'Nový obchod', (body, close) => {
@@ -193,26 +193,24 @@ export async function render(el, { subEl, extraEl }) {
       const f = body.querySelector('form');
       const listEl = f.querySelector('.order-list');
       const drawOrder = () => {
-        listEl.innerHTML = order.map((id, i) => `<li class="catalog-row">
+        listEl.innerHTML = order.map((id, i) => `<li class="catalog-row order-row" data-cat="${id}">
           <span class="order-num">${i + 1}</span>
           <span class="item-text"><span class="item-name">${escapeHtml(categoryName(id))}</span></span>
-          <span class="stepper">
-            <button type="button" data-move="-1" data-index="${i}" aria-label="Výš"${i === 0 ? ' disabled' : ''}>↑</button>
-            <button type="button" data-move="1" data-index="${i}" aria-label="Níž"${i === order.length - 1 ? ' disabled' : ''}>↓</button>
-          </span>
+          <span class="order-grip" aria-hidden="true">≡</span>
         </li>`).join('');
       };
       drawOrder();
       if (!target.key) f.elements.name.focus();
 
-      listEl.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-move]');
-        if (!btn) return;
-        const from = Number(btn.dataset.index);
-        const to = from + Number(btn.dataset.move);
-        if (to < 0 || to >= order.length) return;
-        [order[from], order[to]] = [order[to], order[from]];
-        drawOrder();
+      // Pořadí oddělení: podržet a přetáhnout
+      dragSort(listEl, {
+        item: '.order-row',
+        handle: '.order-row',
+        attr: 'data-cat',
+        onDrop: (ids) => {
+          order = ids;
+          drawOrder();
+        },
       });
 
       f.addEventListener('submit', async (e) => {

@@ -910,9 +910,9 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 
 /* ---------- Řazení přetažením ---------- */
 .step-row { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.step.is-held { position: relative; z-index: 1; background: var(--surface-2); border-radius: var(--radius-sm); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); transform: scale(1.02); }
+.step.is-held { position: relative; z-index: 2; background: var(--surface-2); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
 .is-sorting { cursor: grabbing; }
-.is-sorting .step:not(.is-held) { opacity: 0.7; }
+.is-sorting .step:not(.is-held) { opacity: 0.75; transition: opacity 170ms ease; }
 
 /* Rozbalený krok: řádek s názvem (ťuknutí sbalí) a tužka na přejmenování */
 .step-headline { display: flex; align-items: center; gap: 4px; }
@@ -922,3 +922,38 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .icon-btn:active { background: var(--surface-2); }
 .icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .step-remove { margin: 4px 0 0 -8px; }
+
+/* ---------- Recept: ingredience po řádcích, vysvětlivky v postupu ---------- */
+.ing-row { display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 2px 2px 2px 14px; background: var(--surface); }
+.ing-row + .ing-row { border-top: 1px solid var(--border); }
+.ing-name { flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; overflow-wrap: anywhere; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.ing-qty { flex: none; width: 64px; min-height: 38px; padding: 0 8px; text-align: right; font-size: 16px; font-variant-numeric: tabular-nums; }
+.ing-unit { flex: none; width: 62px; min-height: 38px; border-radius: var(--radius-sm); }
+.ing-row .icon-btn { font-size: 22px; line-height: 1; color: var(--text-3); width: 36px; }
+.ing-row.is-held { position: relative; z-index: 2; background: var(--surface-2); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
+.ing-list.is-sorting { overflow: visible; }
+.ing-add { margin-top: 8px; }
+.hint-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.hint-bar .btn svg { width: 16px; height: 16px; }
+.hint-chips { display: contents; }
+.chip.hint-chip { text-decoration: underline dotted; text-underline-offset: 3px; }
+.chip.hint-chip::before { content: none; }
+.chip.hint-chip.is-missing { color: var(--text-3); text-decoration: line-through; }
+.hint-term {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline dotted var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.hint-pop { margin: 0; padding: 8px 10px; max-width: 280px; font-size: 15px; line-height: 1.4; white-space: pre-wrap; }
+
+/* Pořadí oddělení v obchodě: řazení přetažením */
+.order-row { padding-right: 14px; min-height: 44px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.order-grip { flex: none; color: var(--text-3); font-size: 20px; line-height: 1; }
+.order-row.is-held { position: relative; z-index: 2; background: var(--surface-2); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
+.order-list.is-sorting { overflow: visible; }

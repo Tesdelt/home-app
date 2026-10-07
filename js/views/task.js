@@ -36,8 +36,18 @@ export async function renderTask(el, id, { subEl }) {
   let me = await store.getMe();
   let members = await store.listMembers();
   let editing = null; // id komentáře, který se právě upravuje
-  let stepsOpen = (task.steps ?? []).length > 0;
-  let openStep = null; // id kroku rozbaleného k úpravě
+  // Kroky jsou zabalené, dokud je člověk nerozbalí. Co nechal rozbalené
+  // (seznam kroků, konkrétní krok), si telefon u každého úkolu pamatuje.
+  const viewState = draft ? {} : (await store.getMeta('taskView', {}))[id] ?? {};
+  let stepsOpen = Boolean(viewState.steps);
+  let openStep = (task.steps ?? []).some((s) => s.id === viewState.step) ? viewState.step : null; // id kroku rozbaleného k úpravě
+  const remember = async () => {
+    if (draft) return;
+    const all = await store.getMeta('taskView', {});
+    if (stepsOpen || openStep) all[id] = { steps: stepsOpen, step: openStep };
+    else delete all[id];
+    await store.setLocal('taskView', all);
+  };
   let renameStep = null; // id kroku, kterému se právě přepisuje název
   let noteOpen = false; // dlouhé podrobnosti rozbalené
   let noteEditing = false;
@@ -444,6 +454,7 @@ export async function renderTask(el, id, { subEl }) {
     }
     if (opt === 'steps') {
       stepsOpen = !stepsOpen;
+      remember();
       drawHead();
       drawSteps();
     }
@@ -487,6 +498,7 @@ export async function renderTask(el, id, { subEl }) {
         const reopen = openStep !== stepId;
         await closeStep();
         openStep = reopen ? stepId : null;
+        remember();
         drawSteps();
       }
       if (action === 'step-rename') {
@@ -504,6 +516,7 @@ export async function renderTask(el, id, { subEl }) {
       const stepId = store.newId();
       openStep = stepId;
       renameStep = stepId;
+      remember();
       await stepsApi.add(stepId);
       drawSteps();
       stepsList.querySelector('.step.is-open .step-title')?.focus();

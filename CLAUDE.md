@@ -119,7 +119,8 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   odškrtnete“), vysvětlivky barev ani druhé řádky v prázdných stavech. Zůstávají jen stavové
   údaje, popisky polí, chyby a varování před ztrátou dat.
 - Ruční řazení je vždy podržet a přetáhnout (`dragSort` v `ui.js`), nikdy šipky
-  nahoru/dolů. Rozbalené věci se zavírají dalším ťuknutím na ně, ne tlačítkem Hotovo.
+  nahoru/dolů. Pohyb musí být plynulý s lehkou animací (položka jede s prstem, ostatní
+  uhýbají), nic nesmí skákat po blocích. Totéž platí pro další pohyby v rozhraní. Rozbalené věci se zavírají dalším ťuknutím na ně, ne tlačítkem Hotovo.
 - Volby u malého tlačítka se otevírají jako nabídka přímo u něj (`openMenu` v `ui.js`),
   spodní panel (`openSheet`) je jen pro větší formuláře.
 - Spodní lišta max. 5 položek. Co se otevírá jen občas, patří do „Více“.
@@ -191,6 +192,8 @@ Hotovo (0.6.0):
   „+ Krok“ rovnou rozbalí (název i ostatní jde vyplnit hned, prázdný se při zavření zahodí).
   Pořadí: změna termínu krok zařadí podle data, jinak se krok podrží a přetáhne.
   Rozbalený krok se sbalí dalším ťuknutím na něj, název se přepisuje přes tužku bokem.
+  Seznam kroků je ve výchozím stavu zabalený; co člověk nechal rozbalené (seznam i
+  konkrétní krok), si telefon u úkolu pamatuje (meta `taskView`, přes `store.setLocal`).
 - V nabídce termínu se výběr dne z kalendáře i čas ukládají hned a nabídka zůstává otevřená
   (iPhone hlásí změnu už při otevření kalendáře, zavření na první změnu by výběr znemožnilo).
 
@@ -218,8 +221,11 @@ Hotovo (0.9.1), úpravy po testování:
 - V Úkolech není podtitulek „Na dnes: X“, počet je v záložce.
 
 Hotovo (0.9.0):
-- Recepty (`#/recepty`, otevírají se z Více, tabulka `recipes`): název, ingredience
-  (každá na řádek, „mouka 500 g“ se rozdělí na název a množství) a postup.
+- Recepty (`#/recepty`, otevírají se z Více, tabulka `recipes`): název, ingredience a postup.
+  Ingredience se v úpravě přidávají po jedné (pole s našeptávačem), každá má řádek s
+  množstvím a jednotkou (ks, g, ml…; výchozí podle druhu věci) a řadí se přetažením.
+  K postupu jdou přidat vysvětlivky (`hints`: výraz + vysvětlení): v úpravě se označí text
+  a ťukne na „+ Vysvětlení“; v receptu je výraz podtržený a po ťuknutí ukáže vysvětlení.
 - Recept -> nákup: u receptu se odškrtnou ingredience, které už doma jsou, zbytek jde
   jedním tlačítkem do nákupního seznamu (bez zdvojení, ve správné kategorii).
 - Co uvařit (`#/recepty/zasoby`): zásoby se přidávají po jedné (pole + našeptávač z katalogu,

@@ -219,33 +219,46 @@ export function money(amount) {
 
 // ---------- Ruční řazení: podržet a přetáhnout ----------
 // Položky seznamu se řadí podržením a přetažením, nikdy šipkami nahoru/dolů.
+// Pohyb je plynulý: držená položka jede s prstem a ostatní jí s krátkou
+// animací uhýbají, nic neskáče po blocích.
 // handle = selektor části položky, za kterou se dá chytit. Po puštění zavolá
 // onDrop(ids) s novým pořadím (ids z data atributu attr). Vrací úklid.
 
 const DRAG_HOLD_MS = 350;
+const DRAG_EASE = 'transform 170ms cubic-bezier(0.2, 0, 0, 1)';
 
 export function dragSort(listEl, { item, handle, attr, onDrop }) {
-  let drag = null; // { el, timer, active, x, y }
+  let drag = null; // { el, timer, active, x, y, grab, shift, before }
   let ignoreClickUntil = 0;
 
-  const stop = () => {
+  const items = () => [...listEl.querySelectorAll(item)];
+
+  function cancel() {
     if (!drag) return;
     clearTimeout(drag.timer);
-    drag.el.classList.remove('is-held');
-    listEl.classList.remove('is-sorting');
     drag = null;
-  };
+  }
+
+  // Držená položka: posun o shift px vůči svému místu v seznamu
+  function place(shift) {
+    drag.shift = shift;
+    drag.el.style.transform = `translateY(${shift}px) scale(1.02)`;
+  }
 
   const onDown = (e) => {
     const grip = e.target.closest(handle);
     const el = grip?.closest(item);
     if (!el || !listEl.contains(el) || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    drag = { el, active: false, x: e.clientX, y: e.clientY, before: [...listEl.querySelectorAll(item)].map((n) => n.getAttribute(attr)).join() };
+    cancel();
+    drag = { el, active: false, x: e.clientX, y: e.clientY, shift: 0, before: items().map((n) => n.getAttribute(attr)).join() };
     drag.timer = setTimeout(() => {
       if (!drag) return;
       drag.active = true;
+      drag.grab = drag.y - drag.el.getBoundingClientRect().top;
+      drag.el.style.transition = 'box-shadow 170ms ease, background 170ms ease';
       drag.el.classList.add('is-held');
       listEl.classList.add('is-sorting');
+      place(0);
       navigator.vibrate?.(10);
     }, DRAG_HOLD_MS);
   };
@@ -254,30 +267,57 @@ export function dragSort(listEl, { item, handle, attr, onDrop }) {
     if (!drag) return;
     if (!drag.active) {
       // Pohyb před uplynutím podržení je posouvání stránky, ne řazení
-      if (Math.abs(e.clientX - drag.x) > 8 || Math.abs(e.clientY - drag.y) > 8) stop();
+      if (Math.abs(e.clientX - drag.x) > 8 || Math.abs(e.clientY - drag.y) > 8) cancel();
+      else drag.y = e.clientY;
       return;
     }
-    // Položka se zařadí před první sousední, jejíž střed je pod prstem
-    const others = [...listEl.querySelectorAll(item)].filter((n) => n !== drag.el);
+    const { el } = drag;
+    const rect = el.getBoundingClientRect();
+    const home = rect.top - drag.shift; // kde položka v seznamu opravdu leží
+    const wanted = e.clientY - drag.grab; // kde ji chce mít prst
+    place(wanted - home);
+
+    // Střed držené položky rozhoduje, mezi které sousedy patří
+    const center = wanted + rect.height / 2;
+    const others = items().filter((n) => n !== el);
     const next = others.find((n) => {
       const r = n.getBoundingClientRect();
-      return e.clientY < r.top + r.height / 2;
-    });
-    if (next) {
-      if (drag.el.nextElementSibling !== next) listEl.insertBefore(drag.el, next);
-    } else if (others.length && drag.el !== listEl.lastElementChild) {
-      listEl.append(drag.el);
+      return center < r.top + r.height / 2;
+    }) ?? null;
+    if (el.nextElementSibling === next || (next === null && el === others.at(-1)?.nextElementSibling)) return;
+
+    // Sousedé se na nové místo plynule dosunou (odkud byli -> kam patří)
+    const tops = new Map(others.map((n) => [n, n.getBoundingClientRect().top]));
+    listEl.insertBefore(el, next);
+    for (const n of others) {
+      const delta = tops.get(n) - n.getBoundingClientRect().top;
+      if (!delta) continue;
+      n.style.transition = 'none';
+      n.style.transform = `translateY(${delta}px)`;
+      n.getBoundingClientRect(); // vynutit překreslení, ať animace začne odtud
+      n.style.transition = DRAG_EASE;
+      n.style.transform = '';
     }
+    // Držená položka změnila místo v seznamu, pod prstem ale zůstává
+    place(wanted - (el.getBoundingClientRect().top - drag.shift));
   };
 
   const onUp = () => {
     if (!drag) return;
-    const { active, before } = drag;
-    stop();
+    const { el, active, before } = drag;
+    cancel();
     if (!active) return;
     ignoreClickUntil = Date.now() + 400;
-    const ids = [...listEl.querySelectorAll(item)].map((n) => n.getAttribute(attr));
-    if (ids.join() !== before) onDrop(ids);
+    // Položka plynule dosedne na své místo
+    el.style.transition = `${DRAG_EASE}, box-shadow 170ms ease, background 170ms ease`;
+    el.style.transform = '';
+    el.classList.remove('is-held');
+    listEl.classList.remove('is-sorting');
+    const ids = items().map((n) => n.getAttribute(attr));
+    setTimeout(() => {
+      items().forEach((n) => { n.style.transition = ''; n.style.transform = ''; });
+      if (ids.join() !== before) onDrop(ids);
+    }, 180);
   };
 
   // Během tažení se stránka nesmí posouvat ani nabízet výběr textu
@@ -299,7 +339,7 @@ export function dragSort(listEl, { item, handle, attr, onDrop }) {
   listEl.addEventListener('contextmenu', onContext);
 
   return () => {
-    stop();
+    cancel();
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('pointercancel', onUp);

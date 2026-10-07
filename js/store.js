@@ -46,6 +46,10 @@ export async function setMeta(key, value) {
   emit();
 }
 
+// Místní stav obrazovky (co je rozbalené apod.): uloží se bez upozornění
+// pohledům, ať se kvůli tomu nic nepřekresluje. Čte se přes getMeta.
+export const setLocal = (key, value) => db.put('meta', { key, value });
+
 // Kdo appku na tomto telefonu používá, kvůli "kdo přidal". Jméno se bere
 // z účtu (display_name v household_members), nastavuje ho js/auth.js.
 export const getMe = () => getMeta('me', null);
@@ -291,7 +295,9 @@ export async function removeShop(key) {
 }
 
 // ---------- Recepty ----------
-// Recept: { id, name, ingredients: [{ name, qty }], method, createdAt, updatedAt }
+// Recept: { id, name, ingredients: [{ name, qty }], method, hints, createdAt, updatedAt }
+//   hints  vysvětlivky k postupu: [{ term, note }]. Kde se term v postupu
+//          najde, je podtržený a po ťuknutí ukáže vysvětlení.
 
 export async function listRecipes() {
   const recipes = await live('recipes');
@@ -304,7 +310,7 @@ export async function getRecipe(id) {
 }
 
 // Uloží recept (nový dostane id sám). Vrací ho.
-export async function saveRecipe({ id = null, name, ingredients = [], method = null }) {
+export async function saveRecipe({ id = null, name, ingredients = [], method = null, hints = [] }) {
   const clean = String(name).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
@@ -314,6 +320,7 @@ export async function saveRecipe({ id = null, name, ingredients = [], method = n
     name: clean,
     ingredients: ingredients.filter((i) => i?.name).map((i) => ({ name: i.name, qty: i.qty ?? '' })),
     method: String(method ?? '').trim() || null,
+    hints: hints.filter((h) => h?.term && h?.note).map((h) => ({ term: String(h.term).trim(), note: String(h.note).trim() })),
     createdAt: before?.createdAt ?? now,
     updatedAt: now,
   };
