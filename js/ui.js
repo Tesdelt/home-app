@@ -19,6 +19,7 @@ export const ICONS = {
   repeat: '<svg viewBox="0 0 24 24"><path d="M17 3l3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4"/></svg>',
   recipe: '<svg viewBox="0 0 24 24"><path d="M5 11h14v4a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5zM3 11h18M9 7c0-1.5 1-1.5 1-3M14 7c0-1.5 1-1.5 1-3"/></svg>',
   lock: '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>',
   back: '<svg viewBox="0 0 24 24"><path d="m14.5 5-7 7 7 7"/></svg>',
   send: '<svg viewBox="0 0 24 24"><path d="M5 12h13M12.5 6l6 6-6 6"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>',
@@ -214,6 +215,95 @@ export function wireSegmented(formEl) {
 
 export function money(amount) {
   return `${Math.round(amount).toLocaleString('cs-CZ')} Kč`;
+}
+
+// ---------- Ruční řazení: podržet a přetáhnout ----------
+// Položky seznamu se řadí podržením a přetažením, nikdy šipkami nahoru/dolů.
+// handle = selektor části položky, za kterou se dá chytit. Po puštění zavolá
+// onDrop(ids) s novým pořadím (ids z data atributu attr). Vrací úklid.
+
+const DRAG_HOLD_MS = 350;
+
+export function dragSort(listEl, { item, handle, attr, onDrop }) {
+  let drag = null; // { el, timer, active, x, y }
+  let ignoreClickUntil = 0;
+
+  const stop = () => {
+    if (!drag) return;
+    clearTimeout(drag.timer);
+    drag.el.classList.remove('is-held');
+    listEl.classList.remove('is-sorting');
+    drag = null;
+  };
+
+  const onDown = (e) => {
+    const grip = e.target.closest(handle);
+    const el = grip?.closest(item);
+    if (!el || !listEl.contains(el) || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    drag = { el, active: false, x: e.clientX, y: e.clientY, before: [...listEl.querySelectorAll(item)].map((n) => n.getAttribute(attr)).join() };
+    drag.timer = setTimeout(() => {
+      if (!drag) return;
+      drag.active = true;
+      drag.el.classList.add('is-held');
+      listEl.classList.add('is-sorting');
+      navigator.vibrate?.(10);
+    }, DRAG_HOLD_MS);
+  };
+
+  const onMove = (e) => {
+    if (!drag) return;
+    if (!drag.active) {
+      // Pohyb před uplynutím podržení je posouvání stránky, ne řazení
+      if (Math.abs(e.clientX - drag.x) > 8 || Math.abs(e.clientY - drag.y) > 8) stop();
+      return;
+    }
+    // Položka se zařadí před první sousední, jejíž střed je pod prstem
+    const others = [...listEl.querySelectorAll(item)].filter((n) => n !== drag.el);
+    const next = others.find((n) => {
+      const r = n.getBoundingClientRect();
+      return e.clientY < r.top + r.height / 2;
+    });
+    if (next) {
+      if (drag.el.nextElementSibling !== next) listEl.insertBefore(drag.el, next);
+    } else if (others.length && drag.el !== listEl.lastElementChild) {
+      listEl.append(drag.el);
+    }
+  };
+
+  const onUp = () => {
+    if (!drag) return;
+    const { active, before } = drag;
+    stop();
+    if (!active) return;
+    ignoreClickUntil = Date.now() + 400;
+    const ids = [...listEl.querySelectorAll(item)].map((n) => n.getAttribute(attr));
+    if (ids.join() !== before) onDrop(ids);
+  };
+
+  // Během tažení se stránka nesmí posouvat ani nabízet výběr textu
+  const onTouchMove = (e) => { if (drag?.active) e.preventDefault(); };
+  const onClick = (e) => {
+    if (Date.now() < ignoreClickUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  const onContext = (e) => { if (e.target.closest(handle)) e.preventDefault(); };
+
+  listEl.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+  listEl.addEventListener('touchmove', onTouchMove, { passive: false });
+  listEl.addEventListener('click', onClick, true);
+  listEl.addEventListener('contextmenu', onContext);
+
+  return () => {
+    stop();
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+  };
 }
 
 // ---------- Rozbalovací nabídka u tlačítka ----------

@@ -118,6 +118,8 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
 - Žádné vysvětlující texty v appce: žádné nápovědy pod poli, popisy ovládání („ťuknutím
   odškrtnete“), vysvětlivky barev ani druhé řádky v prázdných stavech. Zůstávají jen stavové
   údaje, popisky polí, chyby a varování před ztrátou dat.
+- Ruční řazení je vždy podržet a přetáhnout (`dragSort` v `ui.js`), nikdy šipky
+  nahoru/dolů. Rozbalené věci se zavírají dalším ťuknutím na ně, ne tlačítkem Hotovo.
 - Volby u malého tlačítka se otevírají jako nabídka přímo u něj (`openMenu` v `ui.js`),
   spodní panel (`openSheet`) je jen pro větší formuláře.
 - Spodní lišta max. 5 položek. Co se otevírá jen občas, patří do „Více“.
@@ -187,7 +189,8 @@ Hotovo (0.6.0):
   to nezbytné, ťuknutím se krok rozbalí k úpravě (stejné nabídky jako hlavní úkol, menší).
   U opakovaného úkolu se kroky s každým kolem vrátí na neodškrtnuté. Nový krok se tlačítkem
   „+ Krok“ rovnou rozbalí (název i ostatní jde vyplnit hned, prázdný se při zavření zahodí).
-  Pořadí: změna termínu krok zařadí podle data, jinak se posouvá ručně šipkami.
+  Pořadí: změna termínu krok zařadí podle data, jinak se krok podrží a přetáhne.
+  Rozbalený krok se sbalí dalším ťuknutím na něj, název se přepisuje přes tužku bokem.
 - V nabídce termínu se výběr dne z kalendáře i čas ukládají hned a nabídka zůstává otevřená
   (iPhone hlásí změnu už při otevření kalendáře, zavření na první změnu by výběr znemožnilo).
 

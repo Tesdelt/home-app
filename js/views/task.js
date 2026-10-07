@@ -7,7 +7,7 @@
 // předem a úkol vznikne až tlačítkem Přidat. Do té doby je jen v paměti (draft).
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openMenu, whoClass } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openMenu, dragSort, whoClass } from '../ui.js';
 import { navigate } from '../router.js';
 import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
 import { REPEATS, repeatValue, repeatLabel } from './tasks.js';
@@ -38,6 +38,7 @@ export async function renderTask(el, id, { subEl }) {
   let editing = null; // id komentáře, který se právě upravuje
   let stepsOpen = (task.steps ?? []).length > 0;
   let openStep = null; // id kroku rozbaleného k úpravě
+  let renameStep = null; // id kroku, kterému se právě přepisuje název
   let noteOpen = false; // dlouhé podrobnosti rozbalené
   let noteEditing = false;
 
@@ -102,13 +103,13 @@ export async function renderTask(el, id, { subEl }) {
     },
     setDone: (stepId, done) => draftSteps(task.steps.map((s) => (s.id === stepId ? { ...s, done } : s))),
     remove: (stepId) => draftSteps(task.steps.filter((s) => s.id !== stepId)),
-    move: (stepId, direction) => draftSteps(store.moveStepIn(task.steps, stepId, direction)),
+    reorder: (ids) => draftSteps(store.orderSteps(task.steps, ids)),
   } : {
     add: (stepId) => store.addStep(id, { id: stepId }),
     update: (stepId, patch) => store.updateStep(id, stepId, patch),
     setDone: (stepId, done) => store.setStepDone(id, stepId, done),
     remove: (stepId) => store.removeStep(id, stepId),
-    move: (stepId, direction) => store.moveStep(id, stepId, direction),
+    reorder: (ids) => store.reorderSteps(id, ids),
   };
 
   async function create() {
@@ -212,39 +213,40 @@ export async function renderTask(el, id, { subEl }) {
     stepsBox.hidden = !stepsOpen;
     // Rozepsaný krok se nepřekresluje
     if (stepsList.contains(document.activeElement)) return;
-    stepsList.innerHTML = steps.map((step, index) => {
+    stepsList.innerHTML = steps.map((step) => {
       const priority = step.priority ?? 2;
       const late = step.due && step.due < today() && !step.done;
-      const head = `<button type="button" class="check-tap" data-action="step-done" aria-label="Krok hotov"><span class="check">${ICONS.check}</span></button>`;
-      if (step.id !== openStep) {
-        const meta = [];
-        if (step.done && step.doneAt) meta.push(`${escapeHtml(step.doneBy ?? '')} ${when(step.doneAt)}`.trim());
-        else if (step.due) meta.push(late ? `<span class="is-late">${escapeHtml(dueTimeLabel(step.due, step.time))}</span>` : escapeHtml(dueTimeLabel(step.due, step.time)));
-        return `<li class="step ${whoClass(step.assignee, members)}${step.done ? ' is-done' : ''}" data-step="${escapeHtml(step.id)}">${head}
-          <button type="button" class="step-row" data-action="step-open">
-            <span class="item-text"><span class="item-name${step.title ? '' : ' is-blank'}">${escapeHtml(step.title || 'Krok')}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}</span>
-            ${priority !== 2 && !step.done ? `<span class="prio prio-${priority}">${priority}</span>` : ''}
-            ${step.assignee ? `<span class="legend-dot" title="${escapeHtml(whoName(step.assignee))}"></span>` : ''}
-          </button>
-        </li>`;
-      }
-      return `<li class="step is-open ${whoClass(step.assignee, members)}${step.done ? ' is-done' : ''}" data-step="${escapeHtml(step.id)}">${head}
+      const open = step.id === openStep;
+      const meta = [];
+      if (step.done && step.doneAt) meta.push(`${escapeHtml(step.doneBy ?? '')} ${when(step.doneAt)}`.trim());
+      else if (step.due && !open) meta.push(late ? `<span class="is-late">${escapeHtml(dueTimeLabel(step.due, step.time))}</span>` : escapeHtml(dueTimeLabel(step.due, step.time)));
+      // Řádek kroku: ťuknutí rozbalí a zase sbalí, podržení ho přetáhne jinam
+      const headline = `<button type="button" class="step-row" data-action="step-toggle" aria-expanded="${open}">
+          <span class="item-text"><span class="item-name${step.title ? '' : ' is-blank'}">${escapeHtml(step.title || 'Krok')}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}</span>
+          ${priority !== 2 && !step.done && !open ? `<span class="prio prio-${priority}">${priority}</span>` : ''}
+          ${step.assignee && !open ? `<span class="legend-dot" title="${escapeHtml(whoName(step.assignee))}"></span>` : ''}
+        </button>`;
+      const check = `<button type="button" class="check-tap" data-action="step-done" aria-label="Krok hotov"><span class="check">${ICONS.check}</span></button>`;
+      const cls = `step ${whoClass(step.assignee, members)}${step.done ? ' is-done' : ''}`;
+      if (!open) return `<li class="${cls}" data-step="${escapeHtml(step.id)}">${check}${headline}</li>`;
+
+      // Název se přepisuje jen po ťuknutí na tužku, jinak by ťuknutí na něj
+      // krok nesbalilo
+      const top = step.id === renameStep
+        ? `<input class="input step-title" name="title" value="${escapeHtml(step.title)}" placeholder="Krok" aria-label="Název kroku" enterkeyhint="done">`
+        : `<div class="step-headline">${headline}
+            <button type="button" class="icon-btn" data-action="step-rename" aria-label="Přejmenovat">${ICONS.edit}</button>
+          </div>`;
+      return `<li class="${cls} is-open" data-step="${escapeHtml(step.id)}">${check}
         <div class="step-body">
-          <input class="input step-title" name="title" value="${escapeHtml(step.title)}" placeholder="Krok" aria-label="Název kroku" enterkeyhint="done">
+          ${top}
           <div class="opts opts-small">
             <button type="button" class="opt opt-who ${whoClass(step.assignee, members)}" data-step-opt="who"><span class="legend-dot"></span><span class="opt-text">${escapeHtml(whoName(step.assignee))}</span></button>
             <button type="button" class="opt opt-prio" data-step-opt="priority" aria-label="Důležitost ${priority} ze 3"><span class="prio prio-${priority}">${priority}</span></button>
             <button type="button" class="opt opt-due${late ? ' is-late' : ''}" data-step-opt="due"><span class="opt-text">${step.due ? escapeHtml(dueTimeLabel(step.due, step.time)) : 'Bez termínu'}</span></button>
           </div>
           <textarea class="input step-note" name="note" rows="1" placeholder="Popis" aria-label="Popis kroku">${escapeHtml(step.note ?? '')}</textarea>
-          <div class="step-meta">
-            <button type="button" class="btn btn-ghost btn-danger btn-small" data-action="step-remove">Odebrat</button>
-            <span class="stepper">
-              <button type="button" data-action="step-up" aria-label="Posunout výš"${index === 0 ? ' disabled' : ''}>↑</button>
-              <button type="button" data-action="step-down" aria-label="Posunout níž"${index === steps.length - 1 ? ' disabled' : ''}>↓</button>
-            </span>
-            <button type="button" class="btn btn-ghost btn-small" data-action="step-close">Hotovo</button>
-          </div>
+          <button type="button" class="btn btn-ghost btn-danger btn-small step-remove" data-action="step-remove">Odebrat</button>
         </div>
       </li>`;
     }).join('');
@@ -480,12 +482,19 @@ export async function renderTask(el, id, { subEl }) {
       document.activeElement?.blur();
       if (action === 'step-done') await stepsApi.setDone(stepId, !stepEl.classList.contains('is-done'));
       if (action === 'step-remove') await stepsApi.remove(stepId);
-      if (action === 'step-up') await stepsApi.move(stepId, -1);
-      if (action === 'step-down') await stepsApi.move(stepId, 1);
-      if (action === 'step-open' || action === 'step-close') {
+      if (action === 'step-toggle') {
+        // Ťuknutí na krok ho rozbalí, další ťuknutí zase sbalí
+        const reopen = openStep !== stepId;
         await closeStep();
-        openStep = action === 'step-open' ? stepId : null;
+        openStep = reopen ? stepId : null;
         drawSteps();
+      }
+      if (action === 'step-rename') {
+        renameStep = stepId;
+        drawSteps();
+        const field = stepsList.querySelector('.step-title');
+        field?.focus();
+        field?.select();
       }
     }
     if (action === 'step-add') {
@@ -494,6 +503,7 @@ export async function renderTask(el, id, { subEl }) {
       await closeStep();
       const stepId = store.newId();
       openStep = stepId;
+      renameStep = stepId;
       await stepsApi.add(stepId);
       drawSteps();
       stepsList.querySelector('.step.is-open .step-title')?.focus();
@@ -525,6 +535,7 @@ export async function renderTask(el, id, { subEl }) {
     const step = (task.steps ?? []).find((s) => s.id === openStep);
     const typed = stepsList.querySelector('.step.is-open .step-title')?.value.trim();
     openStep = null;
+    renameStep = null;
     if (step && !step.title && !typed && !step.note && !step.due && !step.assignee) await stepsApi.remove(step.id);
   }
 
@@ -558,7 +569,23 @@ export async function renderTask(el, id, { subEl }) {
     if (opt === 'priority') openPriority(btn, step.priority, (priority) => stepsApi.update(stepId, { priority }));
     if (opt === 'due') openDue(btn, step, false, (patch) => stepsApi.update(stepId, patch));
   });
-  stepsList.addEventListener('focusout', () => setTimeout(drawSteps, 0));
+  stepsList.addEventListener('focusout', (e) => {
+    // Po opuštění názvu se krok vrátí do běžné podoby (název jako text)
+    if (e.target.name === 'title') renameStep = null;
+    setTimeout(drawSteps, 0);
+  });
+
+  // Pořadí kroků: podržet a přetáhnout
+  const endSort = dragSort(stepsList, {
+    item: '.step',
+    handle: '.step-row',
+    attr: 'data-step',
+    onDrop: (ids) => {
+      // Bez fokusu v seznamu, jinak by se po uložení nepřekreslil
+      document.activeElement?.blur();
+      stepsApi.reorder(ids);
+    },
+  });
 
   root.querySelector('.comment-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -585,13 +612,14 @@ export async function renderTask(el, id, { subEl }) {
   await draw();
   if (draft) {
     titleEl.focus();
-    return undefined;
+    return endSort;
   }
   const unsubscribe = store.subscribe(draw);
   const onVisible = () => { if (document.visibilityState === 'visible') draw(); };
   document.addEventListener('visibilitychange', onVisible);
   return () => {
     unsubscribe();
+    endSort();
     document.removeEventListener('visibilitychange', onVisible);
   };
 }

@@ -907,3 +907,18 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 /* Jméno "Kdokoliv" se musí vejít celé */
 .opt-who { width: 98px; }
 .opts-small .opt-who { width: 90px; }
+
+/* ---------- Řazení přetažením ---------- */
+.step-row { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.step.is-held { position: relative; z-index: 1; background: var(--surface-2); border-radius: var(--radius-sm); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); transform: scale(1.02); }
+.is-sorting { cursor: grabbing; }
+.is-sorting .step:not(.is-held) { opacity: 0.7; }
+
+/* Rozbalený krok: řádek s názvem (ťuknutí sbalí) a tužka na přejmenování */
+.step-headline { display: flex; align-items: center; gap: 4px; }
+.step.is-open .step-row { min-height: 40px; }
+.step.is-open .step-row .item-name { font-weight: 600; }
+.icon-btn { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); }
+.icon-btn:active { background: var(--surface-2); }
+.icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.step-remove { margin: 4px 0 0 -8px; }

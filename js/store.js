@@ -551,14 +551,10 @@ export function sortStepsByDue(steps) {
     .map(({ step }) => step);
 }
 
-// Posune krok o jedno místo nahoru (-1) nebo dolů (1)
-export function moveStepIn(steps, stepId, direction) {
-  const from = steps.findIndex((s) => s.id === stepId);
-  const to = from + direction;
-  if (from < 0 || to < 0 || to >= steps.length) return steps;
-  const next = [...steps];
-  [next[from], next[to]] = [next[to], next[from]];
-  return next;
+// Přeskládá kroky podle seznamu id (po ručním přetažení)
+export function orderSteps(steps, ids) {
+  const rank = new Map(ids.map((stepId, index) => [stepId, index]));
+  return [...steps].sort((x, y) => (rank.get(x.id) ?? 999) - (rank.get(y.id) ?? 999));
 }
 
 // Krok může vzniknout i bez názvu, doplní se při úpravě
@@ -569,10 +565,10 @@ export async function addStep(taskId, { title = '', id = null } = {}) {
   return saveSteps(task, [...(task.steps ?? []), step]);
 }
 
-export async function moveStep(taskId, stepId, direction) {
+export async function reorderSteps(taskId, ids) {
   const task = await getTask(taskId);
   if (!task) return null;
-  return saveSteps(task, moveStepIn(task.steps ?? [], stepId, direction));
+  return saveSteps(task, orderSteps(task.steps ?? [], ids));
 }
 
 export async function updateStep(taskId, stepId, patch) {
