@@ -564,12 +564,25 @@ export function orderSteps(steps, ids) {
   return [...steps].sort((x, y) => (rank.get(x.id) ?? 999) - (rank.get(y.id) ?? 999));
 }
 
+// Nový krok: převezme od úkolu, pro koho je a kdy má být (jde to pak změnit)
+export const newStep = (task, { id = null, title = '' } = {}) => ({
+  id: id ?? db.newId(),
+  title: String(title).trim(),
+  note: null,
+  assignee: task.assignee ?? null,
+  priority: 2,
+  due: task.due ?? null,
+  time: task.due ? task.time ?? null : null,
+  done: false,
+  doneAt: null,
+  doneBy: null,
+});
+
 // Krok může vzniknout i bez názvu, doplní se při úpravě
 export async function addStep(taskId, { title = '', id = null } = {}) {
   const task = await getTask(taskId);
   if (!task) return null;
-  const step = { id: id ?? db.newId(), title: String(title).trim(), note: null, assignee: null, priority: 2, due: null, time: null, done: false, doneAt: null, doneBy: null };
-  return saveSteps(task, [...(task.steps ?? []), step]);
+  return saveSteps(task, [...(task.steps ?? []), newStep(task, { id, title })]);
 }
 
 // Přesune úkol do jiného úkolu jako krok (i s jeho vlastními kroky). Kroky

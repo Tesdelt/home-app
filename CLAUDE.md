@@ -191,7 +191,8 @@ Hotovo (0.6.0):
   důležitost a termín s časem a odškrtává se zvlášť. Hlavní úkol neovlivňují: jeho termín
   i opakování jdou měnit vždy a splnit ho musí člověk sám. V seznamu kroků je vidět jen
   to nezbytné, ťuknutím se krok rozbalí k úpravě (stejné nabídky jako hlavní úkol, menší).
-  U opakovaného úkolu se kroky s každým kolem vrátí na neodškrtnuté. Nový krok se tlačítkem
+  U opakovaného úkolu se kroky s každým kolem vrátí na neodškrtnuté. Nový krok převezme
+  od úkolu „pro koho“ a termín (`newStep` ve `store.js`). Nový krok se tlačítkem
   „+ Krok“ rovnou rozbalí (název i ostatní jde vyplnit hned, prázdný se při zavření zahodí).
   Pořadí: změna termínu krok zařadí podle data, jinak se krok podrží a přetáhne.
   Rozbalený krok se sbalí dalším ťuknutím na něj, název se přepisuje přes tužku bokem.

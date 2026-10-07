@@ -105,7 +105,7 @@ export async function renderTask(el, id, { subEl }) {
   // Změna termínu krok zařadí podle data, jinak pořadí určuje ruční posouvání.
   const draftSteps = (steps) => save({ steps });
   const stepsApi = draft ? {
-    add: (stepId) => draftSteps([...task.steps, { id: stepId, title: '', note: null, assignee: null, priority: 2, due: null, time: null, done: false, doneAt: null, doneBy: null }]),
+    add: (stepId) => draftSteps([...task.steps, store.newStep(task, { id: stepId })]),
     update: (stepId, patch) => {
       const steps = task.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s));
       return draftSteps('due' in patch || 'time' in patch ? store.sortStepsByDue(steps) : steps);
@@ -551,7 +551,8 @@ export async function renderTask(el, id, { subEl }) {
     const typed = stepsList.querySelector('.step.is-open .step-title')?.value.trim();
     openStep = null;
     renameStep = null;
-    if (step && !step.title && !typed && !step.note && !step.due && !step.assignee) await stepsApi.remove(step.id);
+    // (termín a "pro koho" má krok převzaté z úkolu, ty se nepočítají)
+    if (step && !step.title && !typed && !step.note) await stepsApi.remove(step.id);
   }
 
   // Název a popis kroku se ukládají po opuštění pole
