@@ -4,7 +4,8 @@
 // tohoto pole, migrace se spouštějí postupně od verze, kterou má uživatel.
 // Data uživatele se nikdy nemažou, jen se doplňují nové sklady a indexy.
 //
-// Tenhle soubor používá jen js/store.js. Pohledy (js/views) sem nesahají.
+// Tenhle soubor používá jen datová vrstva (js/store.js, js/sync.js, js/auth.js).
+// Pohledy (js/views) sem nesahají.
 
 const DB_NAME = 'home';
 
@@ -15,9 +16,14 @@ const MIGRATIONS = [
     db.createObjectStore('items', { keyPath: 'id' });
     db.createObjectStore('history', { keyPath: 'key' });
   },
+  // v2: fronta změn čekajících na odeslání do Supabase (js/sync.js)
+  (db) => {
+    db.createObjectStore('outbox', { keyPath: 'k' });
+  },
 ];
 
 export const DB_VERSION = MIGRATIONS.length;
+// Sklady, které jdou do zálohy. Fronta outbox mezi ně nepatří.
 export const STORES = ['meta', 'items', 'history'];
 
 let dbPromise = null;
@@ -101,7 +107,12 @@ export async function clear(store) {
 
 export function newId() {
   if (crypto.randomUUID) return crypto.randomUUID();
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  // Server chce UUID, takže ho poskládáme i bez randomUUID
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 // Trvalé úložiště: iOS jinak může data smazat při nedostatku místa.

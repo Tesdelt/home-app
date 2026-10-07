@@ -1,7 +1,8 @@
 // Více: věci, které se otevírají jen občas. Nastavení, záloha, info.
 
 import * as store from '../store.js';
-import { PEOPLE, APP_VERSION } from '../config.js';
+import * as auth from '../auth.js';
+import { APP_VERSION } from '../config.js';
 import { escapeHtml, ICONS, toast } from '../ui.js';
 
 export const title = 'Více';
@@ -12,23 +13,23 @@ export async function render(el) {
 
   async function draw() {
     const me = await store.getMe();
+    const { email } = auth.getState();
     root.innerHTML = `
       <p class="section-label">Na tomto telefonu</p>
       <section class="card">
-        <div class="card-head"><span class="card-icon">${ICONS.user}</span><h2 class="card-title">Kdo jsem</h2></div>
-        <div class="segmented">
-          ${PEOPLE.map((p) => `<button type="button" data-me="${escapeHtml(p)}" aria-pressed="${p === me}">${escapeHtml(p)}</button>`).join('')}
-        </div>
+        <div class="card-head"><span class="card-icon">${ICONS.user}</span><h2 class="card-title">Kdo jsem</h2><span class="card-meta">${escapeHtml(me ?? '')}</span></div>
+        <p class="card-meta" style="margin: 0 0 10px">${escapeHtml(email ?? '')}</p>
+        <button type="button" class="btn" data-action="signout">Odhlásit</button>
       </section>
 
-      <section class="card is-muted">
-        <div class="card-head"><span class="card-icon">${ICONS.sync}</span><h2 class="card-title">Sdílení mezi telefony</h2><span class="card-meta">brzy</span></div>
-        <p class="card-meta" style="margin: 0">Zatím má každý telefon vlastní data. Společný seznam pro oba přijde v další verzi.</p>
+      <section class="card">
+        <div class="card-head"><span class="card-icon">${ICONS.sync}</span><h2 class="card-title">Sdílení mezi telefony</h2></div>
+        <p class="card-meta" style="margin: 0">${escapeHtml(syncLabel(store.syncStatus()))}</p>
       </section>
 
       <p class="section-label">Záloha</p>
       <section class="card">
-        <p class="card-meta" style="margin: 0 0 10px">Uloží všechna data appky do souboru. Hodí se před větší změnou nebo výměnou telefonu.</p>
+        <p class="card-meta" style="margin: 0 0 10px">Uloží nákupní seznam a historii do souboru. Obnovení položky ze zálohy přidá do společného seznamu.</p>
         <div class="btn-row">
           <button type="button" class="btn" data-action="export">${ICONS.download} Stáhnout zálohu</button>
           <button type="button" class="btn" data-action="import">Obnovit ze zálohy</button>
@@ -40,12 +41,8 @@ export async function render(el) {
   }
 
   root.addEventListener('click', async (e) => {
-    const meBtn = e.target.closest('[data-me]');
-    if (meBtn) {
-      await store.setMe(meBtn.dataset.me);
-      return;
-    }
     const action = e.target.closest('[data-action]')?.dataset.action;
+    if (action === 'signout') signOut(e.target.closest('button'));
     if (action === 'export') exportBackup();
     if (action === 'import') root.querySelector('input[type="file"]').click();
   });
@@ -54,7 +51,7 @@ export async function render(el) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!confirm('Obnovit data ze zálohy? Současná data v appce se nahradí.')) return;
+    if (!confirm('Obnovit data ze zálohy? Položky ze zálohy se přidají do společného seznamu.')) return;
     try {
       await store.importAll(JSON.parse(await file.text()));
       toast('Data obnovena ze zálohy');
@@ -64,7 +61,34 @@ export async function render(el) {
   });
 
   await draw();
-  return store.subscribe(draw);
+  const offData = store.subscribe(draw);
+  const offSync = store.subscribeSync(draw);
+  return () => {
+    offData();
+    offSync();
+  };
+}
+
+function syncLabel({ pending, online, error, lastSyncAt }) {
+  if (pending) {
+    const wait = `Čeká na odeslání: ${pending}.`;
+    return online ? `${wait} Odešle se při nejbližší synchronizaci.` : `${wait} Odešle se, až bude připojení.`;
+  }
+  if (!online) return 'Bez připojení. Změny se uloží v telefonu a odešlou se později.';
+  if (error) return 'Synchronizace se teď nedaří, appka to zkusí znovu.';
+  if (!lastSyncAt) return 'Synchronizuji…';
+  const time = new Date(lastSyncAt).toLocaleTimeString('cs-CZ', { hour: 'numeric', minute: '2-digit' });
+  return `Seznam je společný pro oba telefony. Naposledy synchronizováno v ${time}.`;
+}
+
+async function signOut(button) {
+  button.disabled = true;
+  // Odhlášení smaže lokální kopii, neodeslané změny by se ztratily
+  if (!(await auth.signOut())) {
+    const lose = confirm('Některé změny se ještě neodeslaly a odhlášením se ztratí. Odhlásit i tak?');
+    if (lose) await auth.signOut({ force: true });
+    else button.disabled = false;
+  }
 }
 
 async function exportBackup() {

@@ -1,6 +1,8 @@
 import { addRoute, startRouter } from './router.js';
 import { openDB, requestPersistentStorage } from './db.js';
 import { escapeHtml } from './ui.js';
+import * as auth from './auth.js';
+import * as login from './views/login.js';
 import * as home from './views/home.js';
 import * as shopping from './views/shopping.js';
 import * as tasks from './views/tasks.js';
@@ -19,6 +21,7 @@ const titleEl = document.getElementById('screen-title');
 const subEl = document.getElementById('screen-sub');
 const extraEl = document.getElementById('topbar-extra');
 const tabs = document.querySelectorAll('.tab');
+const tabbar = document.querySelector('.tabbar');
 
 init();
 
@@ -32,11 +35,38 @@ async function init() {
     return;
   }
   requestPersistentStorage();
+  registerServiceWorker();
 
   // Pohled může vrátit funkci na úklid (odhlášení odběru změn apod.)
   let cleanup = null;
+  let rerender = null;
+  let shown = null;
 
-  startRouter(async (name, view, params) => {
+  // Dovnitř se dostane jen přihlášený člen domácnosti. Do té doby je vidět
+  // jen přihlašovací obrazovka a pohledy s daty se vůbec nevykreslí.
+  auth.onChange((state) => {
+    if (state.status === shown && state.status !== 'denied') return;
+    shown = state.status;
+    const inside = state.status === 'ready';
+    tabbar.hidden = !inside;
+    if (inside) {
+      if (rerender) rerender();
+      else rerender = startRouter(route);
+      return;
+    }
+    if (typeof cleanup === 'function') cleanup();
+    cleanup = null;
+    document.querySelectorAll('.sheet-backdrop').forEach((sheet) => sheet.remove());
+    titleEl.textContent = login.TITLES[state.status] ?? 'Domácnost';
+    document.title = 'Domácnost';
+    subEl.hidden = true;
+    extraEl.replaceChildren();
+    viewEl.replaceChildren();
+    login.render(viewEl, state);
+  });
+
+  async function route(name, view, params) {
+    if (auth.getState().status !== 'ready') return;
     if (typeof cleanup === 'function') cleanup();
     cleanup = null;
 
@@ -62,9 +92,11 @@ async function init() {
       viewEl.innerHTML = `<section class="card"><h2 class="card-title">Něco se pokazilo</h2>
         <p class="muted">${escapeHtml(err?.message ?? String(err))}</p></section>`;
     }
-  });
+  }
 
-  registerServiceWorker();
+  tabbar.hidden = true;
+  login.render(viewEl, auth.getState());
+  await auth.start();
 }
 
 async function registerServiceWorker() {

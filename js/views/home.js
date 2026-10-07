@@ -1,7 +1,6 @@
 // Domů: jedna obrazovka "co je dnes". Většinu dní by měla stačit jen tahle.
 
 import * as store from '../store.js';
-import { PEOPLE } from '../config.js';
 import { escapeHtml, ICONS, todayLabel, itemsCount } from '../ui.js';
 
 export const title = 'Dnes';
@@ -15,17 +14,9 @@ export async function render(el, { subEl }) {
   el.append(root);
 
   async function draw() {
-    const [me, items] = await Promise.all([store.getMe(), store.listItems()]);
+    const items = await store.listItems();
     const open = items.filter((i) => !i.done);
     let out = '';
-
-    if (!me) {
-      out += `<section class="card">
-        <div class="card-head"><span class="card-icon">${ICONS.user}</span><h2 class="card-title">Kdo jste?</h2></div>
-        <p class="card-meta" style="margin: 0 0 10px">Ať je u položek vidět, kdo je přidal. Stačí jednou na každém telefonu.</p>
-        <div class="segmented">${PEOPLE.map((p) => `<button type="button" data-me="${escapeHtml(p)}" aria-pressed="false">${escapeHtml(p)}</button>`).join('')}</div>
-      </section>`;
-    }
 
     const preview = open.slice(0, 4).map((i) => escapeHtml(i.name)).join(', ');
     const rest = open.length > 4 ? ` a ${open.length - 4} další` : '';
@@ -49,11 +40,6 @@ export async function render(el, { subEl }) {
 
     root.innerHTML = out;
   }
-
-  root.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-me]');
-    if (btn) store.setMe(btn.dataset.me);
-  });
 
   await draw();
   return store.subscribe(draw);

@@ -24,4 +24,6 @@ export function startRouter(onChange) {
   };
   window.addEventListener('hashchange', handle);
   handle();
+  // Vrací funkci, která aktuální pohled vykreslí znovu
+  return handle;
 }
