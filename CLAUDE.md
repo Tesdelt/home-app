@@ -87,6 +87,9 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
 - Odhlášení smaže lokální kopii dat z telefonu.
 - Po každé změně `supabase/schema.sql` doplnit novou tabulku do `supabase/check-anon.sh`
   a skript pustit: nepřihlášený dotaz musí u každé tabulky skončit chybou nebo prázdně.
+- `.github/workflows/denni-kontrola.yml` pouští `check-anon.sh` každý den. Drží tím
+  bezplatný projekt Supabase vzhůru (jinak se po týdnu bez dotazů uspí) a při chybě
+  pošle GitHub e-mail. Žádná tajemství v něm nejsou a být nesmí.
 - Změny schématu jen přidávat do `supabase/schema.sql` tak, aby šel pustit opakovaně
   a nemazal data.
 
