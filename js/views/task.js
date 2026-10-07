@@ -48,6 +48,7 @@ export async function renderTask(el, id, { subEl }) {
     await store.setLocal('taskView', all);
   };
   let renameStep = null; // id kroku, kterému se právě přepisuje název
+  let moving = false; // úkol se právě přesouvá do jiného úkolu
   let noteOpen = false; // dlouhé podrobnosti rozbalené
   let noteEditing = false;
 
@@ -79,7 +80,10 @@ export async function renderTask(el, id, { subEl }) {
       <button class="add-btn" type="submit" aria-label="Odeslat">${ICONS.send}</button>
     </form>
 
-    <button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat úkol</button>`}`;
+    <div class="detail-foot">
+      <button type="button" class="btn btn-ghost btn-danger btn-small" data-action="delete">Smazat úkol</button>
+      <button type="button" class="btn btn-ghost btn-small" data-action="move">Přesunout do úkolu</button>
+    </div>`}`;
 
   const titleEl = root.querySelector('.detail-title');
   const optsEl = root.querySelector('.opts');
@@ -298,9 +302,10 @@ export async function renderTask(el, id, { subEl }) {
       return;
     }
     const fresh = await store.getTask(id);
-    // Úkol mezitím smazal druhý telefon (nebo já): zpět na seznam
+    // Úkol mezitím smazal druhý telefon (nebo já): zpět na seznam.
+    // Při přesunu do jiného úkolu se jde rovnou tam.
     if (!fresh) {
-      navigate('ukoly');
+      if (!moving) navigate('ukoly');
       return;
     }
     task = fresh;
@@ -478,6 +483,29 @@ export async function renderTask(el, id, { subEl }) {
       const removed = await store.removeTasks([id]);
       if (removed.length) undoToast(`${removed[0].title}: smazáno`, () => store.restoreTasks(removed));
       navigate('ukoly');
+    }
+    if (action === 'move') {
+      // Výběr úkolu, do kterého tenhle přejde jako krok
+      const others = (await store.listTasks()).filter((t) => t.id !== id && !t.done);
+      openMenu(e.target.closest('button'), (menu, close) => {
+        menu.innerHTML = others.length
+          ? others.map((t) => `<button type="button" class="menu-item ${whoClass(t.assignee, members)}" data-value="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')
+          : '<p class="hint-pop">Žádný další úkol</p>';
+        menu.addEventListener('click', async (ev) => {
+          const btn = ev.target.closest('[data-value]');
+          if (!btn) return;
+          close();
+          moving = true;
+          const moved = await store.moveTaskIntoTask(id, btn.dataset.value);
+          if (!moved) {
+            moving = false;
+            return;
+          }
+          undoToast(`${moved.source.title}: přesunuto`, () => store.undoMoveTask(moved));
+          navigate(`ukoly/${moved.target}`);
+        });
+      });
+      return;
     }
     if (action === 'note-edit') editNote();
     if (action === 'note-toggle') {

@@ -572,6 +572,37 @@ export async function addStep(taskId, { title = '', id = null } = {}) {
   return saveSteps(task, [...(task.steps ?? []), step]);
 }
 
+// Přesune úkol do jiného úkolu jako krok (i s jeho vlastními kroky). Kroky
+// s termínem se zařadí podle data. Původní úkol zmizí. Vrací, co je potřeba k vrácení
+// (Zpět): { source, target, steps } = původní úkol a kroky cíle před přesunem.
+export async function moveTaskIntoTask(taskId, targetId) {
+  const [source, target] = await Promise.all([getTask(taskId), getTask(targetId)]);
+  if (!source || !target || taskId === targetId) return null;
+  const asStep = {
+    id: db.newId(),
+    title: source.title,
+    note: source.note ?? null,
+    assignee: source.assignee ?? null,
+    priority: source.priority ?? 2,
+    due: source.due ?? null,
+    time: source.time ?? null,
+    done: Boolean(source.done),
+    doneAt: source.done ? source.doneAt ?? null : null,
+    doneBy: source.done ? source.doneBy ?? null : null,
+  };
+  const before = target.steps ?? [];
+  await saveSteps(target, sortStepsByDue([...before, asStep, ...(source.steps ?? [])]));
+  await markDeleted('tasks', [source]);
+  emit();
+  return { source, target: targetId, steps: before };
+}
+
+// Vrátí přesun úkolu do úkolu
+export async function undoMoveTask({ source, target, steps }) {
+  await restore('tasks', [source]);
+  await updateTask(target, { steps });
+}
+
 export async function reorderSteps(taskId, ids) {
   const task = await getTask(taskId);
   if (!task) return null;

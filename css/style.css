@@ -960,3 +960,8 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 
 /* Neviditelné pole, které drží klávesnici, než se objeví to skutečné */
 .kb-ghost { position: fixed; top: 0; left: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; pointer-events: none; }
+
+/* Spodek stránky úkolu: smazat a přesunout */
+.detail-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 20px; }
+.menu-item { white-space: normal; text-align: left; }
+.menu { max-width: min(calc(100vw - 24px), 320px); }
