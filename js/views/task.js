@@ -40,9 +40,12 @@ export async function renderTask(el, id, { subEl }) {
   let noteOpen = false; // dlouhé podrobnosti rozbalené
   let noteEditing = false;
 
+  // Stránka úkolu nemá horní lištu s názvem sekce, nahoře je rovnou název úkolu
+  document.getElementById('app').classList.add('no-topbar');
+
   root.innerHTML = `
-    <a class="back-link" href="#/ukoly">${ICONS.back} Úkoly</a>
     <div class="detail-head">
+      <a class="back-btn" href="#/ukoly" aria-label="Zpět na úkoly">${ICONS.back}</a>
       ${draft ? '' : `<button type="button" class="check-tap" data-action="done" aria-label="Hotovo"><span class="check">${ICONS.check}</span></button>`}
       <textarea class="input detail-title" name="title" rows="1" aria-label="Název" placeholder="Nový úkol" enterkeyhint="done"></textarea>
     </div>

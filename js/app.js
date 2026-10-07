@@ -23,6 +23,7 @@ const subEl = document.getElementById('screen-sub');
 const extraEl = document.getElementById('topbar-extra');
 const tabs = document.querySelectorAll('.tab');
 const tabbar = document.querySelector('.tabbar');
+const appEl = document.getElementById('app');
 
 init();
 
@@ -57,7 +58,8 @@ async function init() {
     }
     if (typeof cleanup === 'function') cleanup();
     cleanup = null;
-    document.querySelectorAll('.sheet-backdrop').forEach((sheet) => sheet.remove());
+    document.querySelectorAll('.sheet-backdrop, .menu-backdrop').forEach((sheet) => sheet.remove());
+    appEl.classList.remove('no-topbar');
     titleEl.textContent = login.TITLES[state.status] ?? 'Domácnost';
     document.title = 'Domácnost';
     subEl.hidden = true;
@@ -72,6 +74,8 @@ async function init() {
     cleanup = null;
 
     titleEl.textContent = view.title;
+    // Pohled si horní lištu může schovat (stránka úkolu), každý další začíná s ní
+    appEl.classList.remove('no-topbar');
     subEl.hidden = true;
     subEl.textContent = '';
     extraEl.replaceChildren();
