@@ -86,7 +86,7 @@ export async function renderTask(el, id, { subEl }) {
     const late = task.due && task.due < today() && !task.done;
     const opts = [
       `<button type="button" class="opt ${whoClass(task.assignee, members)}" data-opt="who"><span class="legend-dot"></span>${escapeHtml(whoName(task.assignee))}</button>`,
-      `<button type="button" class="opt" data-opt="priority" aria-label="Důležitost ${priority} ze 3, ťuknutím změníte"><span class="prio prio-${priority}">${priority}</span></button>`,
+      `<button type="button" class="opt" data-opt="priority" aria-label="Důležitost ${priority} ze 3"><span class="prio prio-${priority}">${priority}</span></button>`,
     ];
     if (!steps.length) {
       opts.push(`<button type="button" class="opt${late ? ' is-late' : ''}" data-opt="due">${task.due ? escapeHtml(dueLabel(task.due)) : 'Bez termínu'}</button>`);
@@ -249,6 +249,21 @@ export async function renderTask(el, id, { subEl }) {
     });
   }
 
+  function openPriority(anchor) {
+    openMenu(anchor, (menu, close) => {
+      menu.classList.add('menu-narrow');
+      menu.innerHTML = [3, 2, 1]
+        .map((n) => `<button type="button" class="menu-item" data-value="${n}" aria-pressed="${n === (task.priority ?? 2)}"><span class="prio prio-${n}">${n}</span></button>`)
+        .join('');
+      menu.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-value]');
+        if (!btn) return;
+        close();
+        save({ priority: Number(btn.dataset.value) });
+      });
+    });
+  }
+
   function openDue(anchor) {
     const quick = [[today(), 'Dnes'], [addDays(today(), 1), 'Zítra'], [addDays(today(), 7), 'Za týden'], ['', 'Bez termínu']];
     openMenu(anchor, (menu, close) => {
@@ -299,8 +314,7 @@ export async function renderTask(el, id, { subEl }) {
     const btn = e.target.closest('[data-opt]');
     const opt = btn?.dataset.opt;
     if (opt === 'who') openWho(btn);
-    // Důležitost se ťukáním přepíná dokola 1 - 2 - 3
-    if (opt === 'priority') save({ priority: ((task.priority ?? 2) % 3) + 1 });
+    if (opt === 'priority') openPriority(btn);
     if (opt === 'due') openDue(btn);
     if (opt === 'repeat') openRepeat(btn);
     if (opt === 'steps') {

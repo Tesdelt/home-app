@@ -731,6 +731,8 @@ button.opt:active { background: var(--surface-2); }
   background: var(--who);
 }
 .menu-item.who-any::before { background: var(--text-3); }
+.menu.menu-narrow { min-width: 0; }
+.menu-narrow .menu-item { justify-content: center; padding: 0 18px; }
 .menu-date { margin-top: 6px; min-height: 44px; }
 .menu-seg { margin-top: 6px; }
 .menu-seg button { font-size: 15px; white-space: nowrap; padding: 0 8px; }
