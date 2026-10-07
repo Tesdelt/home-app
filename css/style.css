@@ -1006,3 +1006,9 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 @media (prefers-reduced-motion: reduce) { .item.is-moving .item-slide { animation: none; } }
 
 .item .item-slide.is-dragging { transition: none; }
+
+/* Řádek bublinek pod polem je všude stejný (nákup, recept, co uvařit) */
+.ing-chips, .pantry-chips { padding-top: 8px; }
+.detail .chips { margin: 0 calc(var(--gutter) * -1); }
+
+.ing-list:empty { display: none; }

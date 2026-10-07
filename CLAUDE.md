@@ -28,11 +28,13 @@ js/supabase.js        klient Supabase (z js/vendor/supabase.js)
 js/push.js            push notifikace: zapnutí a vypnutí na tomto telefonu
 js/categories.js      kategorie nákupu, vestavěné obchody, odhad kategorie, parsování "mléko 2"
 js/catalog.js         katalog produktů podle kategorií a varianty zápisu ("mlíko" = Mléko)
+js/catalogui.js       řádek bublinek pod polem + katalog kategorie, společné pro nákup a recepty
 js/dates.js           termíny jako text RRRR-MM-DD, posun o interval, popisky „dnes“, „zítra“
 js/config.js          adresa a veřejný klíč Supabase, zobrazovaná verze
 js/ui.js              escapeHtml, ikony, toast se Zpět, spodní panel, gesta na řádcích, formátování
 js/views/*.js         jednotlivé obrazovky
 js/views/task.js      stránka jednoho úkolu (#/ukoly/<id>): pole, kroky, komentáře
+js/views/wishes.js    wishlist a bucketlist (#/wishlist, #/bucketlist, z Více), jedno rozhraní
 js/views/recipes.js   recepty (#/recepty, z Více): seznam, recept, úprava, „co uvařit“
 js/views/login.js     přihlášení, „Nemáte přístup“, nabídka nahrát stará lokální data
 sw.js                 offline cache
@@ -212,6 +214,15 @@ Hotovo (0.6.0):
   a nabídka zůstává otevřená (iPhone hlásí změnu už při otevření kalendáře). Prázdná pole
   bez popisku do nabídek nepatří. Čas úkolu (`time`) se zatím v appce nenastavuje, uložené
   časy se dál zobrazují a řadí.
+
+Hotovo (0.12.0):
+- Wishlist a bucketlist (z Více, tabulka `wishes`, sloupec `list`): položka má název, pro
+  koho, orientační „do kdy“ (do roka / 2 / 3 / 5 / 10 let / někdy; ukládá se cílový rok
+  `untilYear`, není to termín) a podrobnosti. Ovládání stejné jako u úkolů.
+- Bublinky kategorií s katalogem jsou stejné v nákupu, v úpravě receptu i v „Co uvařit“
+  (`productChips` v `js/catalogui.js`): řádek návrhů a kategorií, ťuknutí na kategorii otevře
+  produkty od nejčastěji kupovaných s - a +. V receptech jen kategorie jídla.
+- Stejná věc má mít všude stejné rozhraní: sdílet jeden kód, ne ho kopírovat do pohledů.
 
 Hotovo (0.10.0):
 - Úkoly jsou jeden seznam všech nehotových úkolů bez ohledu na termín (žádné záložky

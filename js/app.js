@@ -10,6 +10,7 @@ import * as tasks from './views/tasks.js';
 import * as money from './views/money.js';
 import * as more from './views/more.js';
 import * as recipes from './views/recipes.js';
+import { wishlist, bucketlist } from './views/wishes.js';
 
 // Pořadí = pořadí v liště. První trasa je výchozí.
 addRoute('domu', home);
@@ -19,6 +20,8 @@ addRoute('penize', money);
 addRoute('vice', more);
 // Mimo spodní lištu, otevírá se z Více
 addRoute('recepty', recipes);
+addRoute('wishlist', wishlist);
+addRoute('bucketlist', bucketlist);
 
 const viewEl = document.getElementById('view');
 const titleEl = document.getElementById('screen-title');

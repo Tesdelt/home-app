@@ -7,6 +7,7 @@
 import * as store from '../store.js';
 import { CATEGORIES, categoryName, parseEntry, stepQty, qtyNumber } from '../categories.js';
 import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount, rowGestures, dragSort } from '../ui.js';
+import { productChips } from '../catalogui.js';
 
 export const title = 'Nákup';
 
@@ -55,91 +56,34 @@ export async function render(el, { subEl, extraEl }) {
     await add(name, qty);
   });
 
-  input.addEventListener('input', () => refreshChips());
+  // ---------- Bublinky pod polem a katalog kategorií ----------
+  // Společné s recepty (js/catalogui.js), ať se všude chovají stejně.
 
-  // Čip nesmí vzít fokus poli, jinak by se na iPhonu zavřela klávesnice
-  chipsEl.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.chip')) e.preventDefault();
+  const refreshChips = productChips(chipsEl, {
+    input,
+    // Při psaní našeptává z historie i z katalogu, jinak nabízí často kupované
+    quick: async (typed) => (typed ? await store.suggestions(parseEntry(typed).name, 8) : await store.frequent(6)).map((h) => h.name),
+    onPick: async (name) => {
+      const typed = input.value.trim() ? parseEntry(input.value) : { qty: '' };
+      input.value = '';
+      await add(name, typed.qty);
+    },
+    count: async (name) => {
+      const item = await store.shoppingItem(name);
+      return item ? qtyNumber(item.qty) : 0;
+    },
+    step: async (name, direction) => {
+      const item = await store.shoppingItem(name);
+      if (!item) {
+        if (direction > 0) await store.addItem({ name });
+      } else if (direction < 0 && stepQty(item.qty, -1) === item.qty) {
+        // Z jednoho kusu dolů = pryč ze seznamu
+        await store.removeItems([item.id]);
+      } else {
+        await store.updateItem(item.id, { qty: stepQty(item.qty, direction) });
+      }
+    },
   });
-  chipsEl.addEventListener('click', async (e) => {
-    const cat = e.target.closest('[data-cat]');
-    if (cat) {
-      openCatalog(cat.dataset.cat);
-      return;
-    }
-    const chip = e.target.closest('[data-name]');
-    if (!chip) return;
-    const typed = input.value.trim() ? parseEntry(input.value) : { qty: '' };
-    input.value = '';
-    await add(chip.dataset.name, typed.qty);
-  });
-
-  // Jeden řádek, který nikdy nepřidá další: na začátku často kupované (při
-  // psaní našeptávač z historie a katalogu), za nimi kategorie s katalogem.
-  let chipsToken = 0;
-  async function refreshChips() {
-    const token = ++chipsToken;
-    const typed = input.value.trim();
-    const [entries, current] = await Promise.all([
-      typed ? store.suggestions(parseEntry(typed).name, 8) : store.frequent(6),
-      store.currentShop(),
-    ]);
-    if (token !== chipsToken) return;
-    const quick = entries
-      .map((h) => `<button type="button" class="chip" data-name="${escapeHtml(h.name)}">${escapeHtml(h.name)}</button>`)
-      .join('');
-    const cats = current.order.filter((id) => id !== 'ostatni')
-      .map((id) => `<button type="button" class="chip cat-chip" data-cat="${id}">${escapeHtml(categoryName(id))}</button>`)
-      .join('');
-    chipsEl.innerHTML = quick + cats;
-    if (typed) chipsEl.scrollLeft = 0;
-  }
-
-  // ---------- Katalog podle kategorií ----------
-
-  function openCatalog(category) {
-    openSheet(categoryName(category), (body, close) => {
-      const draw = async () => {
-        const entries = await store.catalog(category);
-        body.innerHTML = `<ul class="item-list group catalog">${entries.map((entry) => {
-          const n = entry.item ? qtyNumber(entry.item.qty) : '0';
-          return `<li class="catalog-row${entry.item ? ' is-on' : ''}" data-name="${escapeHtml(entry.name)}" data-id="${escapeHtml(entry.item?.id ?? '')}">
-            <span class="item-text"><span class="item-name">${escapeHtml(entry.name)}</span></span>
-            <span class="stepper">
-              <button type="button" data-step="-1" aria-label="Ubrat"${entry.item ? '' : ' disabled'}>−</button>
-              <span class="stepper-value">${escapeHtml(n)}</span>
-              <button type="button" data-step="1" aria-label="Přidat">+</button>
-            </span>
-          </li>`;
-        }).join('')}</ul>
-        <div class="sheet-done"><button type="button" class="btn btn-primary btn-block" data-action="done">Hotovo</button></div>`;
-      };
-
-      body.addEventListener('click', async (e) => {
-        if (e.target.closest('[data-action="done"]')) {
-          close();
-          return;
-        }
-        const btn = e.target.closest('[data-step]');
-        if (!btn) return;
-        const rowEl = btn.closest('.catalog-row');
-        const direction = Number(btn.dataset.step);
-        const id = rowEl.dataset.id;
-        if (!id) {
-          if (direction > 0) await store.addItem({ name: rowEl.dataset.name });
-        } else {
-          const item = (await store.listItems()).find((i) => i.id === id);
-          if (!item) return;
-          // Z jednoho kusu dolů = pryč ze seznamu
-          if (direction < 0 && stepQty(item.qty, -1) === item.qty) await store.removeItems([id]);
-          else await store.updateItem(id, { qty: stepQty(item.qty, direction) });
-        }
-        await draw();
-      });
-
-      draw();
-    });
-  }
 
   // ---------- Obchody ----------
 

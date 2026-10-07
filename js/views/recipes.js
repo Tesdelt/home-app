@@ -8,7 +8,8 @@
 
 import * as store from '../store.js';
 import { parseEntry, normalize } from '../categories.js';
-import { findProduct, searchProducts } from '../catalog.js';
+import { findProduct } from '../catalog.js';
+import { productChips } from '../catalogui.js';
 import { escapeHtml, ICONS, toast, undoToast, rowGestures, openMenu, openSheet, dragSort, holdKeyboard } from '../ui.js';
 import { navigate } from '../router.js';
 
@@ -245,7 +246,7 @@ async function renderEdit(el, id) {
           enterkeyhint="done" autocapitalize="sentences" spellcheck="false">
         <button class="add-btn" type="button" data-action="ing-add" aria-label="Přidat">${ICONS.plus}</button>
       </div>
-      <div class="chips suggest" hidden></div>
+      <div class="chips ing-chips"></div>
 
       <p class="section-label">Postup</p>
       <textarea class="input" name="method" rows="6" autocapitalize="sentences" aria-label="Postup"></textarea>
@@ -263,7 +264,6 @@ async function renderEdit(el, id) {
   const form = root.querySelector('form');
   const listEl = root.querySelector('.ing-list');
   const entry = form.elements.entry;
-  const suggestEl = root.querySelector('.suggest');
   const hintChips = root.querySelector('.hint-chips');
   const methodEl = form.elements.method;
   const grow = (area) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
@@ -301,40 +301,47 @@ async function renderEdit(el, id) {
     drawRows();
   }
 
-  function suggest() {
-    const typed = entry.value.trim();
-    const found = typed ? searchProducts(parseEntry(typed).name, 6) : [];
-    suggestEl.hidden = !found.length;
-    suggestEl.innerHTML = found
-      .map((p) => `<button type="button" class="chip" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`)
-      .join('');
-  }
+  // Bublinky pod polem a katalog kategorií: stejné jako v nákupu
+  const refreshChips = productChips(root.querySelector('.ing-chips'), {
+    input: entry,
+    foodOnly: true,
+    quick: (typed) => store.productSuggestions(typed ? parseEntry(typed).name : '', 6),
+    onPick: (name) => {
+      // Množství napsané za názvem se použije i s vybraným názvem
+      const qty = entry.value.trim() ? parseEntry(entry.value).qty : '';
+      entry.value = '';
+      addRow(`${name}${qty ? ` ${qty}` : ''}`);
+      refreshChips();
+    },
+    count: (name) => {
+      const row = rows.find((r) => r.name === name);
+      return row ? row.n || '1' : 0;
+    },
+    step: (name, direction) => {
+      const row = rows.find((r) => r.name === name);
+      if (!row) {
+        if (direction > 0) addRow(name);
+        return;
+      }
+      const next = (parseFloat(String(row.n || '1').replace(',', '.')) || 1) + direction;
+      // Z jednoho kusu dolů = pryč z receptu
+      if (next < 1) rows = rows.filter((r) => r !== row);
+      else row.n = String(next).replace('.', ',');
+      drawRows();
+    },
+  });
 
   const submitEntry = () => {
     const text = entry.value;
     entry.value = '';
-    suggest();
     addRow(text);
+    refreshChips();
     entry.focus();
   };
-  entry.addEventListener('input', suggest);
   entry.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
     submitEntry();
-  });
-  suggestEl.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.chip')) e.preventDefault();
-  });
-  suggestEl.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-name]');
-    if (!chip) return;
-    // Množství napsané za názvem se použije i s vybraným našeptaným názvem
-    const qty = parseEntry(entry.value).qty;
-    entry.value = '';
-    suggest();
-    addRow(`${chip.dataset.name}${qty ? ` ${qty}` : ''}`);
-    entry.focus();
   });
 
   listEl.addEventListener('input', (e) => {
@@ -463,6 +470,7 @@ async function renderEdit(el, id) {
 
   drawRows();
   drawHints();
+  refreshChips();
   return endSort;
 }
 
@@ -480,13 +488,12 @@ async function renderPantry(el) {
         enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="false">
       <button class="add-btn" type="submit" aria-label="Přidat">${ICONS.plus}</button>
     </form>
-    <div class="chips suggest" hidden></div>
+    <div class="chips pantry-chips"></div>
     <div class="pantry-items"></div>
     <div class="list-root"></div>`;
 
   const form = root.querySelector('form');
   const input = form.elements.entry;
-  const suggestEl = root.querySelector('.suggest');
   const itemsEl = root.querySelector('.pantry-items');
   const countEl = root.querySelector('.pantry-count');
   const listRoot = root.querySelector('.list-root');
@@ -531,35 +538,30 @@ async function renderPantry(el) {
     if (!store.hasIngredient(have, name)) await setHave([...have, name]);
   }
 
-  function suggest() {
-    const typed = input.value.trim();
-    const found = typed ? searchProducts(typed, 6).filter((p) => !store.hasIngredient(have, p.name)) : [];
-    suggestEl.hidden = !found.length;
-    suggestEl.innerHTML = found
-      .map((p) => `<button type="button" class="chip" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`)
-      .join('');
-  }
+  // Bublinky pod polem a katalog kategorií: stejné jako v nákupu
+  const refreshChips = productChips(root.querySelector('.pantry-chips'), {
+    input,
+    foodOnly: true,
+    quick: async (typed) => (await store.productSuggestions(typed, 8)).filter((name) => !store.hasIngredient(have, name)).slice(0, 6),
+    onPick: async (name) => {
+      input.value = '';
+      await add(name);
+      refreshChips();
+    },
+    count: (name) => (store.hasIngredient(have, name) ? 1 : 0),
+    step: async (name, direction) => {
+      if (direction > 0) await add(name);
+      else await setHave(have.filter((h) => !store.hasIngredient([h], name)));
+    },
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value;
     input.value = '';
     input.focus();
-    suggest();
     await add(text);
-  });
-  input.addEventListener('input', suggest);
-
-  // Čip nesmí vzít fokus poli, jinak by se na iPhonu zavřela klávesnice
-  suggestEl.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.chip')) e.preventDefault();
-  });
-  suggestEl.addEventListener('click', async (e) => {
-    const chip = e.target.closest('[data-name]');
-    if (!chip) return;
-    input.value = '';
-    suggest();
-    await add(chip.dataset.name);
+    refreshChips();
   });
 
   itemsEl.addEventListener('click', (e) => {
@@ -574,5 +576,6 @@ async function renderPantry(el) {
   });
 
   await draw();
+  refreshChips();
   return store.subscribe(draw);
 }

@@ -228,25 +228,41 @@ export async function suggestions(query, limit = 5) {
   return [...fromHistory, ...fromCatalog].slice(0, limit);
 }
 
-// Katalog jedné kategorie: nahoře to, co kupujeme nejčastěji, pak zbytek.
-// Každý záznam: { name, count, item } (item = položka na seznamu, nebo null).
-export async function catalog(category) {
-  const [history, items] = await Promise.all([db.getAll('history'), liveItems()]);
-  const onList = new Map(items.filter((i) => !i.done).map((i) => [itemKey(i.name), i]));
+// Produkty jedné kategorie: nahoře to, co kupujeme nejčastěji, pak zbytek
+// katalogu a vlastní věci z historie. Vrací [{ name, count }].
+export async function catalogProducts(category) {
+  const history = await db.getAll('history');
   const entries = new Map();
   productsIn(category).forEach((p, index) => {
     entries.set(normalize(p.name), { name: p.name, count: 0, order: index });
   });
-  // Vlastní věci z historie, které v katalogu nejsou, a počty nákupů
   for (const h of history) {
     const key = itemKey(h.name);
     const known = entries.get(key);
     if (known) known.count += h.count ?? 0;
     else if (h.category === category && !findProduct(h.name)) entries.set(key, { name: h.name, count: h.count ?? 0, order: 9999 });
   }
-  return [...entries.entries()]
-    .map(([key, e]) => ({ name: e.name, count: e.count, order: e.order, item: onList.get(key) ?? null }))
-    .sort((a, b) => b.count - a.count || a.order - b.order || a.name.localeCompare(b.name, 'cs'));
+  return [...entries.values()]
+    .sort((a, b) => b.count - a.count || a.order - b.order || a.name.localeCompare(b.name, 'cs'))
+    .map(({ name, count }) => ({ name, count }));
+}
+
+// Nekoupená položka nákupu se stejnou věcí (i v jiném zápisu), nebo null
+export async function shoppingItem(name) {
+  const key = itemKey(name);
+  return (await liveItems()).find((i) => !i.done && itemKey(i.name) === key) ?? null;
+}
+
+// Návrhy produktů bez ohledu na nákupní seznam (recepty, zásoby): při psaní
+// našeptávač z historie a katalogu, jinak nejčastěji kupované. Vrací názvy.
+export async function productSuggestions(query, limit = 6) {
+  const q = normalize(query);
+  const history = (await db.getAll('history')).sort((a, b) => b.count - a.count || b.lastAt - a.lastAt);
+  if (!q) return history.filter((h) => h.count > 0).slice(0, limit).map((h) => findProduct(h.name)?.name ?? h.name);
+  const fromHistory = history
+    .filter((h) => h.key.split(' ').some((w) => w.startsWith(q)) || h.key.startsWith(q))
+    .map((h) => findProduct(h.name)?.name ?? h.name);
+  return [...new Set([...fromHistory, ...searchProducts(q, limit).map((p) => p.name)])].slice(0, limit);
 }
 
 // ---------- Obchody ----------
@@ -367,6 +383,42 @@ export async function matchRecipes(have) {
 // Co máme doma: seznam názvů, pamatuje si ho každý telefon zvlášť
 export const getPantry = () => getMeta('pantry', []);
 export const setPantry = (list) => db.put('meta', { key: 'pantry', value: list });
+
+// ---------- Wishlist a bucketlist ----------
+// Položka: { id, list, title, note, assignee, untilYear, done, doneAt, createdAt, updatedAt }
+//   list       'wish' (wishlist) nebo 'bucket' (bucketlist)
+//   assignee   jméno člena, 'both' = oba, nebo null = kdokoliv
+//   untilYear  orientační rok, do kdy by to člověk chtěl (ne termín), nebo null
+
+export async function listWishes(list) {
+  const rows = (await live('wishes')).filter((w) => w.list === list);
+  return rows.sort((a, b) => (a.untilYear ?? 9999) - (b.untilYear ?? 9999) || a.createdAt - b.createdAt);
+}
+
+export async function getWish(id) {
+  const wish = await db.get('wishes', id);
+  return wish && !wish.deleted ? wish : null;
+}
+
+export async function addWish({ list, title, note = null, assignee = null, untilYear = null }) {
+  const clean = String(title).trim();
+  if (!clean) throw new Error('Prázdný název');
+  const now = Date.now();
+  const wish = { id: db.newId(), list, title: clean, note, assignee, untilYear, done: false, doneAt: null, createdAt: now, updatedAt: now };
+  await save('wishes', [wish]);
+  emit();
+  return wish;
+}
+
+export async function updateWish(id, patch) {
+  const next = await patchRow('wishes', id, patch);
+  emit();
+  return next;
+}
+
+export const setWishDone = (id, done) => updateWish(id, { done, doneAt: done ? Date.now() : null });
+export const removeWishes = (ids) => removeByIds('wishes', ids);
+export const restoreWishes = (wishes) => restore('wishes', wishes);
 
 // ---------- Jednorázové úpravy dat po aktualizaci appky ----------
 
@@ -849,7 +901,7 @@ export async function exportAll() {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Sklady s řádky podle id, které se synchronizují stejným způsobem
-const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes'];
+const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes'];
 
 export async function importAll(backup) {
   if (backup?.app !== 'home-app' || !backup.data) throw new Error('Tohle není záloha této aplikace.');

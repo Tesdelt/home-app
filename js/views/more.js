@@ -20,6 +20,12 @@ export async function render(el) {
       <a class="card" href="#/recepty">
         <div class="card-head" style="margin: 0"><span class="card-icon">${ICONS.recipe}</span><h2 class="card-title">Recepty</h2></div>
       </a>
+      <a class="card" href="#/wishlist">
+        <div class="card-head" style="margin: 0"><span class="card-icon">${ICONS.gift}</span><h2 class="card-title">Wishlist</h2></div>
+      </a>
+      <a class="card" href="#/bucketlist">
+        <div class="card-head" style="margin: 0"><span class="card-icon">${ICONS.star}</span><h2 class="card-title">Bucketlist</h2></div>
+      </a>
 
       <p class="section-label">Na tomto telefonu</p>
       <section class="card">
