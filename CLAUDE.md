@@ -195,8 +195,13 @@ Hotovo (0.6.0):
   „+ Krok“ rovnou rozbalí (název i ostatní jde vyplnit hned, prázdný se při zavření zahodí).
   Pořadí: změna termínu krok zařadí podle data, jinak se krok podrží a přetáhne.
   Rozbalený krok se sbalí dalším ťuknutím na něj, název se přepisuje přes tužku bokem.
-  Úkol jde přesunout do jiného úkolu jako krok (dole na stránce úkolu, `moveTaskIntoTask`):
-  vezme s sebou název, popis, pro koho, důležitost, termín i své kroky, komentáře ne.
+  Úkol jde přesunout do jiného úkolu jako krok (`moveTaskIntoTask`): vezme s sebou název,
+  popis, pro koho, důležitost, termín i své kroky, komentáře ne. Spouští se v seznamu úkolů
+  přes tři tečky v řádku. Seznam se přepne do režimu přesouvání na téže obrazovce (zmizí
+  horní tlačítka, kolečka a tečky, přesouvaný úkol se lehce třese), ťuknutí na cílový úkol
+  přesune hned bez potvrzení (toast se Zpět), ťuknutí na přesouvaný úkol režim zruší.
+- Akce, která potřebuje vybrat cíl, se dělá přímo na stávající obrazovce (režim), ne novým
+  seznamem, panelem ani stránkou, a neptá se „opravdu?“ (stačí toast se Zpět).
   Seznam kroků je ve výchozím stavu rozbalený; když ho člověk zabalí nebo nechá rozbalený
   konkrétní krok, telefon si to u úkolu pamatuje (meta `taskView`, přes `store.setLocal`).
 - Nabídka termínu: Dnes, Zítra, Za týden, Bez termínu a řádek Vybrat (přes něj leží

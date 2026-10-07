@@ -6,6 +6,9 @@
 // V řádku je vidět pro koho úkol je (barva), termín a důležitost (1-3).
 // Úkol pro oba musí odškrtnout každý za sebe. Soukromý úkol (zámek) vidí jen
 // ten, kdo ho založil.
+// Tři tečky v řádku: přesun úkolu do jiného úkolu jako krok. Seznam se při tom
+// přepne do režimu přesouvání (bez horních tlačítek a koleček, přesouvaný úkol
+// se lehce třese) a ťuknutí na cílový úkol ho tam rovnou přesune.
 
 import * as store from '../store.js';
 import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, whoBadge } from '../ui.js';
@@ -107,6 +110,14 @@ export async function render(el, { params, subEl, extraEl }) {
   let comments = {};
   let unread = {};
   let renderToken = 0;
+  let moveId = null; // id úkolu, který se právě přesouvá do jiného
+
+  function setMoving(taskId) {
+    moveId = taskId;
+    sortBtn.hidden = Boolean(moveId);
+    addBtn.hidden = Boolean(moveId);
+    renderList();
+  }
 
   // Řazení si pamatuje každý telefon zvlášť
   sortBtn.addEventListener('click', () => {
@@ -155,15 +166,18 @@ export async function render(el, { params, subEl, extraEl }) {
     else if (comments[task.id]) meta.push(`komentáře: ${comments[task.id]}`);
     const note = task.note ? `<span class="item-sub item-note">${escapeHtml(task.note)}</span>` : '';
     const priority = task.priority ?? 2;
-    return `<li class="item ${whoClass(task.assignee, members)}${checked ? ' is-done' : ''}${mine ? ' is-mine' : ''}${unread[task.id] ? ' has-unread' : ''}" data-id="${escapeHtml(task.id)}">
+    return `<li class="item ${whoClass(task.assignee, members)}${checked ? ' is-done' : ''}${mine ? ' is-mine' : ''}${unread[task.id] ? ' has-unread' : ''}${task.id === moveId ? ' is-moving' : ''}" data-id="${escapeHtml(task.id)}">
       <div class="item-bg" aria-hidden="true">Smazat</div>
-      <button type="button" class="item-main has-stripe" aria-pressed="${checked}">
-        <span class="check-tap"><span class="check">${ICONS.check}</span></span>
-        <span class="item-text"><span class="item-name">${escapeHtml(task.title)}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}${note}</span>
-        ${task.privateTo ? `<span class="item-lock" title="Soukromý">${ICONS.lock}</span>` : ''}
-        ${checked ? '' : `<span class="prio prio-${priority}" title="Důležitost ${priority} ze 3">${priority}</span>`}
-        ${whoBadge(task.assignee, members)}
-      </button>
+      <div class="item-slide">
+        <button type="button" class="item-main has-stripe" aria-pressed="${checked}">
+          <span class="check-tap"><span class="check">${ICONS.check}</span></span>
+          <span class="item-text"><span class="item-name">${escapeHtml(task.title)}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}${note}</span>
+          ${task.privateTo ? `<span class="item-lock" title="Soukromý">${ICONS.lock}</span>` : ''}
+          ${checked ? '' : `<span class="prio prio-${priority}" title="Důležitost ${priority} ze 3">${priority}</span>`}
+          ${whoBadge(task.assignee, members)}
+        </button>
+        ${checked ? '' : `<button type="button" class="item-more" data-more aria-label="Další možnosti">${ICONS.more}</button>`}
+      </div>
     </li>`;
   }
 
@@ -187,7 +201,13 @@ export async function render(el, { params, subEl, extraEl }) {
     const rows = groups
       .map((group) => `${group.label ? `<li class="cat-head">${escapeHtml(group.label)}</li>` : ''}${group.tasks.map((t) => row(t)).join('')}`)
       .join('');
-    const done = tasks.filter((t) => t.done).sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0));
+    // Při přesouvání jsou vidět jen úkoly, do kterých se dá přesunout
+    if (moveId && !tasks.some((t) => t.id === moveId && !t.done)) {
+      setMoving(null);
+      return;
+    }
+    listRoot.classList.toggle('is-moving-mode', Boolean(moveId));
+    const done = moveId ? [] : tasks.filter((t) => t.done).sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0));
 
     let out = rows
       ? `<ul class="item-list group">${rows}</ul>`
@@ -206,8 +226,22 @@ export async function render(el, { params, subEl, extraEl }) {
 
   // Kolečko úkol splní, zbytek řádku ho otevře jako stránku
   function tap(li, target) {
+    if (moveId) {
+      moveInto(li.dataset.id);
+      return;
+    }
     if (target?.closest?.('.check-tap')) toggle(li);
     else navigate(`ukoly/${li.dataset.id}`);
+  }
+
+  // Režim přesouvání: ťuknutí na jiný úkol do něj přesune hned, bez ptaní.
+  // Ťuknutí na přesouvaný úkol režim zruší.
+  async function moveInto(targetId) {
+    const sourceId = moveId;
+    setMoving(null);
+    if (targetId === sourceId) return;
+    const moved = await store.moveTaskIntoTask(sourceId, targetId);
+    if (moved) undoToast(`${moved.source.title}: přesunuto`, () => store.undoMoveTask(moved));
   }
 
   async function toggle(li) {
@@ -232,11 +266,30 @@ export async function render(el, { params, subEl, extraEl }) {
 
   // ---------- Gesta ----------
 
-  const endGesture = rowGestures(listRoot, { onTap: tap, onPress: (id) => navigate(`ukoly/${id}`), onSwipe: deleteTask });
+  const endGesture = rowGestures(listRoot, {
+    onTap: tap,
+    onPress: (id) => { if (!moveId) navigate(`ukoly/${id}`); },
+    onSwipe: (id) => { if (!moveId) deleteTask(id); else renderList(); },
+  });
 
   listRoot.addEventListener('click', (e) => {
     if (e.target.closest('[data-action="clear"]')) clearDone();
+    // Tři tečky: nabídka přímo u tlačítka
+    const more = e.target.closest('[data-more]');
+    if (!more) return;
+    const taskId = more.closest('.item').dataset.id;
+    openMenu(more, (menu, close) => {
+      menu.innerHTML = '<button type="button" class="menu-item" data-value="move">Přesunout do úkolu</button>';
+      menu.addEventListener('click', (ev) => {
+        if (!ev.target.closest('[data-value="move"]')) return;
+        close();
+        setMoving(taskId);
+      });
+    });
   });
+
+  const onKey = (e) => { if (e.key === 'Escape' && moveId) setMoving(null); };
+  document.addEventListener('keydown', onKey);
 
   // ---------- Start ----------
 
@@ -246,6 +299,7 @@ export async function render(el, { params, subEl, extraEl }) {
   return () => {
     unsubscribe();
     endGesture();
+    document.removeEventListener('keydown', onKey);
     renderToken += 1;
   };
 }

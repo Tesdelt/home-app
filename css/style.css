@@ -970,3 +970,23 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .menu-pick { position: relative; justify-content: space-between; cursor: pointer; }
 .menu-pick-value { color: var(--text-2); font-weight: 400; }
 .menu-pick input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: 16px; -webkit-appearance: none; appearance: none; }
+
+/* ---------- Úkoly: tři tečky v řádku a režim přesouvání ---------- */
+.item-more { flex: none; align-self: stretch; display: grid; place-items: center; width: 36px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text-3); }
+.item-more:active { color: var(--text); }
+.item-more svg { width: 20px; height: 20px; fill: currentColor; stroke: none; }
+.item-slide .item-main.has-stripe { padding-right: 4px; }
+
+/* Přesouvání: bez koleček a teček, přesouvaný úkol se lehce třese */
+.is-moving-mode .check-tap, .is-moving-mode .item-more { display: none; }
+.is-moving-mode .item-main.has-stripe { padding-left: 20px; padding-right: 14px; }
+.is-moving-mode .item:not(.is-moving) .item-slide { transition: background 0.2s ease; }
+.item.is-moving { z-index: 1; }
+.item.is-moving .item-slide { animation: wiggle 0.32s ease-in-out infinite; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); border-radius: var(--radius-sm); }
+.item.is-moving .item-slide, .item.is-moving .item-main { background: var(--accent-soft); }
+.is-moving-mode.list-root .group { overflow: visible; }
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-0.5deg) translateX(-0.5px); }
+  50% { transform: rotate(0.5deg) translateX(0.5px); }
+}
+@media (prefers-reduced-motion: reduce) { .item.is-moving .item-slide { animation: none; } }
