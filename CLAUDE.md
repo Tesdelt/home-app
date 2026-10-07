@@ -188,9 +188,10 @@ Hotovo (0.8.0):
   tlačítkem Přidat (nebo Enterem v názvu). Rychlé pole v seznamu už není.
 
 Hotovo (0.7.0):
-- Zvonek u přidání úkolu (výchozí vypnuto, platí pro jeden úkol): po odeslání úkolu na
-  server dostanou ostatní členové push „Nový úkol od: …“. Fronta v meta `notifyQueue`
-  (`sync.js`), posílá funkce `send-reminders` s tělem `{ task, title }` a přihlášením člena.
+- Zvonek u přidání úkolu a u psaní komentáře (výchozí vypnuto, platí pro jedno odeslání):
+  po odeslání řádku na server dostanou ostatní členové push „Nový úkol od: …“ nebo
+  „Komentář od: …“. Fronta v meta `notifyQueue` (`sync.js`), posílá funkce `send-reminders`
+  s tělem `{ task, title }` nebo `{ task, title, kind: 'comment', text }` a přihlášením člena.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

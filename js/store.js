@@ -376,7 +376,7 @@ export async function addTask({ title, due = null, assignee = null, repeat = nul
     createdAt: now,
     updatedAt: now,
   };
-  if (notify) await sync.queueNotification(task.id, task.title);
+  if (notify) await sync.queueNotification('tasks', task.id, { task: task.id, title: task.title });
   await save('tasks', [task]);
   emit();
   return task;
@@ -519,11 +519,16 @@ export async function markCommentsRead(taskId) {
   await setMeta('commentsSeen', { ...seen, [taskId]: Date.now() });
 }
 
-export async function addComment(taskId, body) {
+// notify = true pošle ostatním členům push upozornění s textem komentáře
+export async function addComment(taskId, body, { notify = false } = {}) {
   const clean = String(body).trim();
   if (!clean) return null;
   const now = Date.now();
   const comment = { id: db.newId(), taskId, author: await getMe(), body: clean, createdAt: now, updatedAt: now };
+  if (notify) {
+    const task = await getTask(taskId);
+    await sync.queueNotification('comments', comment.id, { task: taskId, title: task?.title ?? '', kind: 'comment', text: clean });
+  }
   await save('comments', [comment]);
   emit();
   return comment;

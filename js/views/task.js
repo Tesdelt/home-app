@@ -67,6 +67,7 @@ export async function renderTask(el, id, { subEl }) {
     <ul class="comments"></ul>
     <form class="add-form comment-form" autocomplete="off">
       <input class="input" name="body" placeholder="Napsat komentář…" aria-label="Napsat komentář" enterkeyhint="send" autocapitalize="sentences">
+      <button class="notify-btn" type="button" aria-pressed="false" aria-label="Upozornit druhého">${ICONS.bell}</button>
       <button class="add-btn" type="submit" aria-label="Odeslat">${ICONS.send}</button>
     </form>
 
@@ -470,7 +471,18 @@ export async function renderTask(el, id, { subEl }) {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    await store.addComment(id, text);
+    // Zvonek platí jen pro jeden komentář, pak se zase vypne
+    const bell = e.target.querySelector('.notify-btn');
+    const notifyOther = bell.getAttribute('aria-pressed') === 'true';
+    bell.setAttribute('aria-pressed', 'false');
+    await store.addComment(id, text, { notify: notifyOther });
+  });
+
+  // Zvonek nesmí vzít fokus poli, jinak by se na iPhonu zavřela klávesnice
+  const commentBell = root.querySelector('.comment-form .notify-btn');
+  commentBell?.addEventListener('pointerdown', (e) => e.preventDefault());
+  commentBell?.addEventListener('click', () => {
+    commentBell.setAttribute('aria-pressed', commentBell.getAttribute('aria-pressed') !== 'true');
   });
 
   // ---------- Start ----------

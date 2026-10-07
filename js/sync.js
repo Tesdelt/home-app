@@ -484,33 +484,36 @@ async function applyRemote(store, row) {
   fire(dataListeners);
 }
 
-// ---------- Upozornění druhému na nový úkol ----------
-// Úkoly čekající na rozeslání upozornění jsou v meta "notifyQueue" jako
-// [{ id, title }]. Upozornění jde ven až poté, co je úkol na serveru, aby ho
+// ---------- Upozornění druhému (nový úkol, komentář) ----------
+// Čekající upozornění jsou v meta "notifyQueue" jako [{ store, key, body }]:
+// store a key říkají, na který řádek se čeká, body se pošle funkci
+// send-reminders. Upozornění jde ven až poté, co je řádek na serveru, aby ho
 // druhý telefon po ťuknutí na upozornění opravdu našel. Funguje tak i offline.
 
-export async function queueNotification(id, title) {
+export async function queueNotification(store, key, body) {
   const queue = (await db.get('meta', 'notifyQueue'))?.value ?? [];
-  await db.put('meta', { key: 'notifyQueue', value: [...queue, { id, title }] });
+  await db.put('meta', { key: 'notifyQueue', value: [...queue, { store, key, body }] });
 }
 
 async function sendNotifications() {
   const queue = (await db.get('meta', 'notifyQueue'))?.value ?? [];
   if (!queue.length) return;
   const left = [];
-  for (const entry of queue) {
-    // Úkol ještě není odeslaný
-    if (await db.get('outbox', outboxKey('tasks', entry.id))) {
+  for (const raw of queue) {
+    // Starší zápis fronty (jen úkoly): { id, title }
+    const entry = raw.store ? raw : { store: 'tasks', key: raw.id, body: { task: raw.id, title: raw.title } };
+    // Řádek ještě není odeslaný
+    if (await db.get('outbox', outboxKey(entry.store, entry.key))) {
       left.push(entry);
       continue;
     }
-    // Úkol mezitím někdo smazal: upozornění už nedává smysl
-    const task = await db.get('tasks', entry.id);
-    if (!task || task.deleted) continue;
-    const { error } = await supabase.functions.invoke('send-reminders', { body: { task: entry.id, title: entry.title } });
+    // Řádek mezitím někdo smazal: upozornění už nedává smysl
+    const row = await db.get(entry.store, entry.key);
+    if (!row || row.deleted) continue;
+    const { error } = await supabase.functions.invoke('send-reminders', { body: entry.body });
     // Při chybě sítě to zkusíme příště, jinou chybu už neopakujeme
     if (error && error.name === 'FunctionsFetchError') left.push(entry);
-    else if (error) console.warn('Upozornění na úkol se neodeslalo', error);
+    else if (error) console.warn('Upozornění se neodeslalo', error);
   }
   await db.put('meta', { key: 'notifyQueue', value: left });
 }

@@ -4,8 +4,9 @@
 //    GitHub Actions (.github/workflows/denni-kontrola.yml). Najde nezaplacené
 //    platby se splatností dnes nebo dřív a upozorní toho, kdo je má platit
 //    (platbu napůl oba).
-// 2. Upozornění na nový úkol. Volá ji appka přihlášeného člena s tělem
-//    { task, title } a funkce pošle upozornění ostatním členům domácnosti.
+// 2. Upozornění na nový úkol nebo komentář. Volá ji appka přihlášeného člena
+//    s tělem { task, title } (úkol) nebo { task, title, kind: 'comment', text }
+//    a funkce pošle upozornění ostatním členům domácnosti.
 //
 // Bezpečnost:
 //   * Bez přihlášení jde spustit jen ranní rozeslání, proto nic nevrací (jen
@@ -62,9 +63,9 @@ async function sendAll(db: any, subs: Sub[], payload: string) {
   return sent;
 }
 
-// Upozornění na nový úkol od přihlášeného člena ostatním v domácnosti
+// Upozornění na nový úkol nebo komentář od přihlášeného člena ostatním v domácnosti
 // deno-lint-ignore no-explicit-any
-async function notifyTask(db: any, req: Request, body: { task?: string; title?: string }) {
+async function notifyTask(db: any, req: Request, body: { task?: string; title?: string; kind?: string; text?: string }) {
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
   const { data: auth } = await db.auth.getUser(token);
   const userId = auth?.user?.id;
@@ -81,9 +82,11 @@ async function notifyTask(db: any, req: Request, body: { task?: string; title?: 
   if (subsError) throw subsError;
 
   const taskId = String(body.task ?? '').replace(/[^0-9a-f-]/gi, '');
+  const comment = body.kind === 'comment';
+  const taskTitle = String(body.title ?? '').slice(0, 120);
   const payload = JSON.stringify({
-    title: `Nový úkol od: ${mine[0].display_name}`,
-    body: String(body.title ?? '').slice(0, 200),
+    title: `${comment ? 'Komentář' : 'Nový úkol'} od: ${mine[0].display_name}`,
+    body: comment ? `${taskTitle}: ${String(body.text ?? '').slice(0, 300)}` : taskTitle,
     url: `#/ukoly/${taskId}`,
     tag: `ukol-${taskId}`,
   });
