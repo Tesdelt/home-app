@@ -9,7 +9,7 @@
 import * as store from '../store.js';
 import { parseEntry, normalize } from '../categories.js';
 import { findProduct, searchProducts } from '../catalog.js';
-import { escapeHtml, ICONS, toast, undoToast, rowGestures, openMenu, openSheet, dragSort } from '../ui.js';
+import { escapeHtml, ICONS, toast, undoToast, rowGestures, openMenu, openSheet, dragSort, holdKeyboard } from '../ui.js';
 import { navigate } from '../router.js';
 
 export const title = 'Recepty';
@@ -58,6 +58,8 @@ async function renderList(el, extraEl) {
   addBtn.href = `#/recepty/${NEW}`;
   addBtn.setAttribute('aria-label', 'Přidat recept');
   addBtn.innerHTML = ICONS.plus;
+  // Na stránce nového receptu se rovnou píše název
+  addBtn.addEventListener('click', () => holdKeyboard());
   extraEl.append(pantryBtn, addBtn);
 
   async function draw() {

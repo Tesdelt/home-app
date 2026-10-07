@@ -3,7 +3,7 @@
 // určitou. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, money, whoClass, whoBadge, wireSegmented } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, holdKeyboard, money, whoClass, whoBadge, wireSegmented } from '../ui.js';
 import { today, dueLabel } from '../dates.js';
 
 export const title = 'Peníze';
@@ -43,7 +43,11 @@ export async function render(el, { extraEl }) {
   addBtn.className = 'add-btn';
   addBtn.setAttribute('aria-label', 'Přidat platbu');
   addBtn.innerHTML = ICONS.plus;
-  addBtn.addEventListener('click', () => openEdit(null));
+  // V panelu nové platby se rovnou píše název
+  addBtn.addEventListener('click', () => {
+    holdKeyboard();
+    openEdit(null);
+  });
   extraEl.append(addBtn);
 
   let renderToken = 0;

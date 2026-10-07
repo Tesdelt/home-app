@@ -7,7 +7,7 @@
 // předem a úkol vznikne až tlačítkem Přidat. Do té doby je jen v paměti (draft).
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openMenu, dragSort, whoClass } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openMenu, dragSort, holdKeyboard, whoClass } from '../ui.js';
 import { navigate } from '../router.js';
 import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
 import { REPEATS, repeatValue, repeatLabel } from './tasks.js';
@@ -512,6 +512,7 @@ export async function renderTask(el, id, { subEl }) {
     if (action === 'step-add') {
       // Nový krok se rovnou rozbalí, název i podrobnosti jdou vyplnit hned
       document.activeElement?.blur();
+      holdKeyboard();
       await closeStep();
       const stepId = store.newId();
       openStep = stepId;

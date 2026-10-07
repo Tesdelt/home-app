@@ -957,3 +957,6 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .order-grip { flex: none; color: var(--text-3); font-size: 20px; line-height: 1; }
 .order-row.is-held { position: relative; z-index: 2; background: var(--surface-2); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
 .order-list.is-sorting { overflow: visible; }
+
+/* Neviditelné pole, které drží klávesnici, než se objeví to skutečné */
+.kb-ghost { position: fixed; top: 0; left: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; pointer-events: none; }

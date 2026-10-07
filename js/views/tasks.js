@@ -8,7 +8,7 @@
 // ten, kdo ho založil.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, whoClass, whoBadge } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, whoBadge } from '../ui.js';
 import { navigate } from '../router.js';
 import { renderTask, NEW } from './task.js';
 import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
@@ -94,7 +94,11 @@ export async function render(el, { params, subEl, extraEl }) {
   addBtn.className = 'add-btn';
   addBtn.setAttribute('aria-label', 'Přidat úkol');
   addBtn.innerHTML = ICONS.plus;
-  addBtn.addEventListener('click', () => navigate(`ukoly/${NEW}`));
+  // Na nové stránce se rovnou píše název, klávesnice musí vyjet už teď
+  addBtn.addEventListener('click', () => {
+    holdKeyboard();
+    navigate(`ukoly/${NEW}`);
+  });
   extraEl.append(sortBtn, addBtn);
 
   let me = await store.getMe();

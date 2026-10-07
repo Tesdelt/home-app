@@ -118,6 +118,9 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
 - Žádné vysvětlující texty v appce: žádné nápovědy pod poli, popisy ovládání („ťuknutím
   odškrtnete“), vysvětlivky barev ani druhé řádky v prázdných stavech. Zůstávají jen stavové
   údaje, popisky polí, chyby a varování před ztrátou dat.
+- Když ťuknutí otevře něco, kde se má hned psát (nový úkol, krok, recept, platba), musí
+  rovnou vyjet klávesnice: na začátku obsluhy ťuknutí zavolat `holdKeyboard()` z `ui.js`
+  a po vykreslení dát poli fokus. Na iPhonu jinak klávesnice nevyjede.
 - Ruční řazení je vždy podržet a přetáhnout (`dragSort` v `ui.js`), nikdy šipky
   nahoru/dolů. Pohyb musí být plynulý s lehkou animací (položka jede s prstem, ostatní
   uhýbají), nic nesmí skákat po blocích. Totéž platí pro další pohyby v rozhraní. Rozbalené věci se zavírají dalším ťuknutím na ně, ne tlačítkem Hotovo.

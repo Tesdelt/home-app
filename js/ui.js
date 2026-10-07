@@ -217,6 +217,33 @@ export function money(amount) {
   return `${Math.round(amount).toLocaleString('cs-CZ')} Kč`;
 }
 
+// ---------- Klávesnice hned po ťuknutí ----------
+// iPhone vysune klávesnici jen tehdy, když pole dostane fokus přímo při
+// ťuknutí. Když se pole objeví až o chvíli později (nová stránka, panel po
+// načtení dat), klávesnice by nevyjela a muselo by se do pole ťuknout zvlášť.
+// Proto se hned při ťuknutí zaměří neviditelné pole, klávesnice vyjede a
+// skutečné pole si fokus převezme, až bude na obrazovce.
+// Volat na začátku obsluhy ťuknutí, před jakýmkoli čekáním.
+
+export function holdKeyboard() {
+  const ghost = document.createElement('input');
+  ghost.className = 'kb-ghost';
+  ghost.tabIndex = -1;
+  ghost.setAttribute('aria-hidden', 'true');
+  ghost.setAttribute('autocapitalize', 'sentences');
+  document.body.append(ghost);
+  ghost.focus({ preventScroll: true });
+  // Zmizí, jakmile fokus převezme skutečné pole (nebo po chvíli samo)
+  const onFocus = (e) => { if (e.target !== ghost) drop(); };
+  function drop() {
+    document.removeEventListener('focusin', onFocus);
+    ghost.remove();
+  }
+  document.addEventListener('focusin', onFocus);
+  ghost.addEventListener('blur', drop);
+  setTimeout(drop, 4000);
+}
+
 // ---------- Ruční řazení: podržet a přetáhnout ----------
 // Položky seznamu se řadí podržením a přetažením, nikdy šipkami nahoru/dolů.
 // Pohyb je plynulý: držená položka jede s prstem a ostatní jí s krátkou
