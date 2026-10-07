@@ -106,7 +106,11 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   platbě posílá nejvýš jedno upozornění denně (tabulka `payment_reminders`). Nasazuje se
   ručně v Supabase dashboardu (vypnuté „Verify JWT“), po změně `index.ts` ji tam znovu vložit.
   Text notifikace obsahuje názvy a částky plateb a jde přes servery Applu / Googlu.
-- Odhlášení zruší na telefonu odběr notifikací.
+- Odhlášení zruší na telefonu odběr notifikací (po dalším přihlášení se zapnou sama).
+- Jednou zapnutá upozornění zůstávají zapnutá, dokud je uživatel sám nevypne (meta
+  `pushWanted`). Telefon odběr občas zahodí sám, proto ho `push.ensure()` po přihlášení
+  a při každém návratu do appky potichu obnoví a znovu zapíše na server. Obecně: co si
+  uživatel jednou nastavil, appka drží sama a neptá se na to znovu.
 - Změny schématu jen přidávat do `supabase/schema.sql` tak, aby šel pustit opakovaně
   a nemazal data.
 

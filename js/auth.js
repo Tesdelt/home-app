@@ -56,6 +56,8 @@ async function enter(cache) {
   await store.upgradeData();
   sync.start(cache.householdId);
   set({ ...info, status: 'ready' });
+  // Zapnutá upozornění se drží sama, i když telefon odběr mezitím zahodil
+  push.ensure(cache.householdId);
 }
 
 function onSignedOut() {
@@ -64,6 +66,9 @@ function onSignedOut() {
 }
 
 export async function start() {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.status === 'ready') push.ensure(state.householdId);
+  });
   supabase.auth.onAuthStateChange((event) => {
     // Uvnitř posluchače se nesmí čekat na další volání Supabase
     if (event === 'SIGNED_OUT') setTimeout(onSignedOut, 0);
@@ -163,7 +168,7 @@ export async function signOut({ force = false } = {}) {
     if (sync.getStatus().pending > 0 && !force) return false;
   }
   // Odhlášený telefon už nesmí dostávat upozornění
-  await push.disable();
+  await push.disable({ forget: false });
   await forget();
   // scope local: druhé zařízení téhož účtu zůstane přihlášené
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
