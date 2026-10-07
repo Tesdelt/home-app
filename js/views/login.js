@@ -36,8 +36,7 @@ function login(root) {
       </label>
       <p class="form-error" role="alert" hidden></p>
       <button type="submit" class="btn btn-primary btn-block">Přihlásit</button>
-    </form>
-    <p class="hint">Přihlášení na tomto telefonu vydrží, dokud se sami neodhlásíte.</p>`;
+    </form>`;
 
   const form = root.querySelector('form');
   const errorEl = root.querySelector('.form-error');

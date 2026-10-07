@@ -108,8 +108,7 @@ export async function render(el, { subEl, extraEl }) {
               <button type="button" data-step="1" aria-label="Přidat">+</button>
             </span>
           </li>`;
-        }).join('')}</ul>
-        <p class="hint">Nahoře je to, co kupujete nejčastěji. Co tu chybí, napište do pole nahoře.</p>`;
+        }).join('')}</ul>`;
       };
 
       body.addEventListener('click', async (e) => {
@@ -140,7 +139,6 @@ export async function render(el, { subEl, extraEl }) {
     const shops = await store.listShops();
     openSheet('Obchod', (body, close) => {
       body.innerHTML = `
-        <p class="card-meta" style="margin: 0 0 10px">Seznam se seřadí podle toho, jak vybraný obchod procházíte.</p>
         <ul class="item-list group">${shops.map((s) => `<li class="catalog-row${s.key === shop.key ? ' is-on' : ''}">
           <button type="button" class="shop-pick" data-pick="${escapeHtml(s.key)}">
             <span class="check">${ICONS.check}</span><span class="item-name">${escapeHtml(s.name)}</span>
@@ -177,7 +175,6 @@ export async function render(el, { subEl, extraEl }) {
       body.innerHTML = `<form class="edit-form" autocomplete="off">
         <label class="field"><span>Název obchodu</span>
           <input class="input" name="name" value="${escapeHtml(target.name)}" placeholder="Lidl Blackfield" required></label>
-        <p class="card-meta" style="margin: 0 0 8px">Seřaďte oddělení tak, jak jimi v obchodě procházíte.</p>
         <ul class="item-list group order-list"></ul>
         <div class="btn-row" style="margin-top: 14px">
           ${target.key && !target.builtin ? '<button type="button" class="btn btn-danger" data-action="delete">Smazat</button>' : ''}
@@ -269,7 +266,6 @@ export async function render(el, { subEl, extraEl }) {
       listRoot.innerHTML = `<div class="empty">
         <div class="empty-icon">${ICONS.cart}</div>
         <p class="empty-title">Seznam je prázdný</p>
-        <p>Napište, co chybí, nebo vyberte z kategorií nahoře.</p>
       </div>`;
       return;
     }
@@ -297,7 +293,6 @@ export async function render(el, { subEl, extraEl }) {
         <ul class="item-list group">${done.map(row).join('')}</ul>`;
     }
 
-    out += '<p class="hint">Ťuknutím odškrtnete, podržením upravíte, potažením doleva smažete.</p>';
     listRoot.innerHTML = out;
   }
 

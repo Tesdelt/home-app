@@ -4,7 +4,7 @@
 // Změny se ukládají samy. Kroky jsou schválně schované, většina úkolů je nemá.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, whoClass } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openMenu, whoClass } from '../ui.js';
 import { navigate } from '../router.js';
 import { today, dayStr, addDays, dueLabel, timeLabel, isSameDay } from '../dates.js';
 import { REPEATS, repeatValue, repeatLabel } from './tasks.js';
@@ -20,7 +20,7 @@ export async function renderTask(el, id, { subEl }) {
   let task = await store.getTask(id);
   if (!task) {
     root.innerHTML = `<a class="back-link" href="#/ukoly">${ICONS.back} Úkoly</a>
-      <div class="empty"><p class="empty-title">Úkol už neexistuje</p><p>Někdo ho nejspíš smazal.</p></div>`;
+      <div class="empty"><p class="empty-title">Úkol už neexistuje</p></div>`;
     return undefined;
   }
 
@@ -46,7 +46,6 @@ export async function renderTask(el, id, { subEl }) {
         <input class="input" name="title" placeholder="Přidat krok…" aria-label="Přidat krok" enterkeyhint="done">
         <button class="add-btn" type="submit" aria-label="Přidat krok">${ICONS.plus}</button>
       </form>
-      <p class="field-hint">Kroky jdou po sobě, každý může mít svůj termín. V seznamu je vidět ten, který je na řadě.</p>
     </div>
 
     <div class="note-box"></div>
@@ -230,60 +229,58 @@ export async function renderTask(el, id, { subEl }) {
 
   // ---------- Malá tlačítka s nastavením ----------
 
-  // Seznam voleb ve spodním panelu, ťuknutí vybere a zavře
-  function pick(titleText, options, current, onPick) {
-    openSheet(titleText, (body, close) => {
-      body.innerHTML = `<div class="pick-list">${options.map(([value, name, cls = '']) => `<button type="button" class="btn pick ${cls}" data-value="${escapeHtml(value)}" aria-pressed="${value === current}">${name}</button>`).join('')}</div>`;
-      body.addEventListener('click', (e) => {
+  // Seznam voleb v nabídce u tlačítka, ťuknutí vybere a zavře
+  const items = (options, current) => options
+    .map(([value, name, cls = '']) => `<button type="button" class="menu-item ${cls}" data-value="${escapeHtml(value)}" aria-pressed="${value === current}">${escapeHtml(name)}</button>`)
+    .join('');
+
+  function openWho(anchor) {
+    const options = [['', 'Kdokoliv', 'who-any'], ...members.map((m) => [m, m, whoClass(m, members)]), [store.BOTH, 'Oba', 'who-both']];
+    openMenu(anchor, (menu, close) => {
+      menu.innerHTML = items(options, task.assignee ?? '');
+      menu.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-value]');
         if (!btn) return;
         close();
-        onPick(btn.dataset.value);
+        const assignee = btn.dataset.value || null;
+        // Rozdělané odškrtnutí "za oba" nedává smysl, když už úkol pro oba není
+        save(assignee === store.BOTH ? { assignee } : { assignee, doneParts: [] });
       });
     });
   }
 
-  function openDue() {
-    openSheet('Termín', (body, close) => {
-      body.innerHTML = `
-        <div class="pick-list">
-          <button type="button" class="btn pick" data-due="${today()}">Dnes</button>
-          <button type="button" class="btn pick" data-due="${addDays(today(), 1)}">Zítra</button>
-          <button type="button" class="btn pick" data-due="${addDays(today(), 7)}">Za týden</button>
-          <button type="button" class="btn pick" data-due="">Bez termínu</button>
-        </div>
-        <label class="field" style="margin-top: 12px"><span>Jiný den</span>
-          <input class="input" type="date" name="due" value="${escapeHtml(task.due ?? '')}"></label>`;
+  function openDue(anchor) {
+    const quick = [[today(), 'Dnes'], [addDays(today(), 1), 'Zítra'], [addDays(today(), 7), 'Za týden'], ['', 'Bez termínu']];
+    openMenu(anchor, (menu, close) => {
+      menu.innerHTML = `${items(quick, task.due ?? '')}
+        <input class="input menu-date" type="date" aria-label="Jiný den" value="${escapeHtml(task.due ?? '')}">`;
       // Opakovaný úkol potřebuje termín, od kterého se počítá
       const set = (value) => {
         close();
         save({ due: value || (task.repeat ? today() : null) });
       };
-      body.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-due]');
-        if (btn) set(btn.dataset.due);
+      menu.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-value]');
+        if (btn) set(btn.dataset.value);
       });
-      body.querySelector('input').addEventListener('change', (e) => set(e.target.value));
+      menu.querySelector('input').addEventListener('change', (e) => set(e.target.value));
     });
   }
 
-  function openRepeat() {
+  function openRepeat(anchor) {
     const current = repeatValue(task.repeat);
     const repeats = REPEATS.some((r) => r.value === current) ? REPEATS : [...REPEATS, { value: current, name: repeatLabel(task.repeat) }];
-    openSheet('Opakování', (body, close) => {
-      body.innerHTML = `
-        <div class="pick-list">${repeats.map((r) => `<button type="button" class="btn pick" data-value="${r.value}" aria-pressed="${r.value === current}">${escapeHtml(r.name)}</button>`).join('')}</div>
-        <div class="field" style="margin-top: 14px"><span>Další termín počítat</span>
-          <div class="segmented" data-name="mode">
-            <button type="button" data-value="fixed" aria-pressed="${task.repeat?.mode !== 'after'}">Od termínu</button>
-            <button type="button" data-value="after" aria-pressed="${task.repeat?.mode === 'after'}">Od splnění</button>
-          </div>
-          <p class="field-hint">Od termínu: pořád stejný den (popelnice). Od splnění: znovu až za danou dobu po odškrtnutí (výměna filtru).</p></div>`;
+    openMenu(anchor, (menu, close) => {
       let mode = task.repeat?.mode === 'after' ? 'after' : 'fixed';
-      body.addEventListener('click', (e) => {
-        const seg = e.target.closest('.segmented button');
+      menu.innerHTML = `${items(repeats.map((r) => [r.value, r.name]), current)}
+        <div class="segmented menu-seg">
+          <button type="button" data-mode="fixed" aria-pressed="${mode === 'fixed'}">Od termínu</button>
+          <button type="button" data-mode="after" aria-pressed="${mode === 'after'}">Od splnění</button>
+        </div>`;
+      menu.addEventListener('click', (e) => {
+        const seg = e.target.closest('[data-mode]');
         if (seg) {
-          mode = seg.dataset.value;
+          mode = seg.dataset.mode;
           seg.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b === seg));
           if (task.repeat) save({ repeat: { ...task.repeat, mode } });
           return;
@@ -299,19 +296,13 @@ export async function renderTask(el, id, { subEl }) {
   }
 
   optsEl.addEventListener('click', (e) => {
-    const opt = e.target.closest('[data-opt]')?.dataset.opt;
-    if (opt === 'who') {
-      const options = [['', 'Kdokoliv'], ...members.map((m) => [m, escapeHtml(m), whoClass(m, members)]), [store.BOTH, 'Oba (odškrtne každý za sebe)', 'who-both']];
-      pick('Pro koho', options, task.assignee ?? '', (value) => {
-        const assignee = value || null;
-        // Rozdělané odškrtnutí "za oba" nedává smysl, když už úkol pro oba není
-        save(assignee === store.BOTH ? { assignee } : { assignee, doneParts: [] });
-      });
-    }
+    const btn = e.target.closest('[data-opt]');
+    const opt = btn?.dataset.opt;
+    if (opt === 'who') openWho(btn);
     // Důležitost se ťukáním přepíná dokola 1 - 2 - 3
     if (opt === 'priority') save({ priority: ((task.priority ?? 2) % 3) + 1 });
-    if (opt === 'due') openDue();
-    if (opt === 'repeat') openRepeat();
+    if (opt === 'due') openDue(btn);
+    if (opt === 'repeat') openRepeat(btn);
     if (opt === 'steps') {
       stepsOpen = !stepsOpen;
       drawHead();

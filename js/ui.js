@@ -214,6 +214,40 @@ export function money(amount) {
   return `${Math.round(amount).toLocaleString('cs-CZ')} Kč`;
 }
 
+// ---------- Rozbalovací nabídka u tlačítka ----------
+// Otevře se hned pod tlačítkem (když se nevejde, tak nad ním) a zavře se
+// ťuknutím mimo. build(menuEl, close) ji naplní obsahem.
+
+export function openMenu(anchor, build) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'menu-backdrop';
+  const menu = document.createElement('div');
+  menu.className = 'menu';
+  menu.setAttribute('role', 'menu');
+  backdrop.append(menu);
+
+  const close = () => {
+    backdrop.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+  document.addEventListener('keydown', onKey);
+  document.body.append(backdrop);
+  build(menu, close);
+
+  const gap = 6;
+  const edge = 12;
+  const rect = anchor.getBoundingClientRect();
+  const left = Math.max(edge, Math.min(rect.left, innerWidth - menu.offsetWidth - edge));
+  const below = rect.bottom + gap;
+  const fits = below + menu.offsetHeight <= innerHeight - edge;
+  const top = fits ? below : Math.max(edge, rect.top - gap - menu.offsetHeight);
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  return close;
+}
+
 // ---------- Datum ----------
 
 export function todayLabel(date = new Date()) {

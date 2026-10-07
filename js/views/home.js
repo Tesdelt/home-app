@@ -46,7 +46,7 @@ export async function render(el, { subEl }) {
         <h2 class="card-title">Nákup</h2>
         <span class="card-meta">${open.length ? itemsCount(open.length) : ''}</span>
       </div>
-      <p class="card-meta" style="margin: 0">${open.length ? `${preview}${rest}` : 'Seznam je prázdný. Ťukněte a přidejte, co chybí.'}</p>
+      <p class="card-meta" style="margin: 0">${open.length ? `${preview}${rest}` : 'Seznam je prázdný.'}</p>
     </a>`;
 
     // Platby splatné do 7 dní nebo už po termínu
@@ -59,7 +59,7 @@ export async function render(el, { subEl }) {
         <h2 class="card-title">Peníze</h2>
         <span class="card-meta">${soon.length ? `zaplatit ${soon.length}` : (payments.length ? `${money(summary.total)} měsíčně` : '')}</span>
       </div>
-      <p class="card-meta${late ? ' is-late' : ''}" style="margin: 0">${payments.length ? (soon.length ? `Zaplatit: ${soonText}` : 'V příštích 7 dnech nic k zaplacení.') : 'Pravidelné platby, jednorázové i splátky.'}</p>
+      <p class="card-meta${late ? ' is-late' : ''}" style="margin: 0">${payments.length ? (soon.length ? `Zaplatit: ${soonText}` : 'V příštích 7 dnech nic k zaplacení.') : 'Žádné platby.'}</p>
     </a>`;
 
     root.innerHTML = out;

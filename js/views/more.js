@@ -31,7 +31,7 @@ export async function render(el) {
 
       <section class="card">
         <div class="card-head"><span class="card-icon">${ICONS.bell}</span><h2 class="card-title">Upozornění</h2><span class="card-meta">${pushState === 'on' ? 'zapnuto' : ''}</span></div>
-        <p class="card-meta" style="margin: 0 0 10px">${escapeHtml(PUSH_TEXT[pushState])}</p>
+        ${PUSH_TEXT[pushState] ? `<p class="card-meta" style="margin: 0 0 10px">${escapeHtml(PUSH_TEXT[pushState])}</p>` : ''}
         ${pushState === 'off' ? '<button type="button" class="btn btn-primary" data-action="push-on">Zapnout upozornění</button>' : ''}
         ${pushState === 'on' ? `<div class="btn-row">
           <button type="button" class="btn" data-action="push-test">Zkusit</button>
@@ -41,7 +41,6 @@ export async function render(el) {
 
       <p class="section-label">Záloha</p>
       <section class="card">
-        <p class="card-meta" style="margin: 0 0 10px">Uloží nákupní seznam a historii do souboru. Obnovení položky ze zálohy přidá do společného seznamu.</p>
         <div class="btn-row">
           <button type="button" class="btn" data-action="export">${ICONS.download} Stáhnout zálohu</button>
           <button type="button" class="btn" data-action="import">Obnovit ze zálohy</button>
@@ -93,8 +92,8 @@ export async function render(el) {
 }
 
 const PUSH_TEXT = {
-  on: 'Ráno přijde upozornění, když je potřeba něco zaplatit. Týká se jen plateb, které platíte vy nebo napůl.',
-  off: 'Appka umí ráno upozornit na platby k zaplacení. Zapíná se na každém telefonu zvlášť.',
+  on: '',
+  off: '',
   denied: 'Upozornění jsou pro appku zakázaná. Povolíte je v Nastavení telefonu - Oznámení - Domácnost.',
   install: 'Na iPhonu fungují upozornění jen v appce přidané na plochu (Safari - Sdílet - Přidat na plochu).',
   unsupported: 'Tento prohlížeč upozornění neumí.',

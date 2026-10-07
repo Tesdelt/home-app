@@ -143,18 +143,10 @@ export async function render(el, { params, subEl, extraEl }) {
     ? `${label ? `<p class="section-label">${escapeHtml(label)}</p>` : ''}<ul class="item-list group">${tasks.map((t) => row(t, opts)).join('')}</ul>`
     : '');
 
-  const empty = (titleText, text) => `<div class="empty">
+  const empty = (titleText) => `<div class="empty">
       <div class="empty-icon">${ICONS.tasks}</div>
       <p class="empty-title">${titleText}</p>
-      <p>${text}</p>
     </div>`;
-
-  // Vysvětlivka barev, ať je jasné, čí úkol je
-  function legend() {
-    const who = [...members.map((m) => [m, m]), [store.BOTH, 'Oba']];
-    return `<p class="legend">${who.map(([value, name]) => `<span class="legend-dot ${whoClass(value, members)}"></span>${escapeHtml(name)}`).join('')}
-      <span class="legend-gap"></span><span class="prio prio-1">1</span><span class="prio prio-2">2</span><span class="prio prio-3">3</span>důležitost</p>`;
-  }
 
   async function renderList() {
     const token = ++renderToken;
@@ -175,17 +167,17 @@ export async function render(el, { params, subEl, extraEl }) {
       if (!s.today.length) {
         out += s.doneToday.length
           ? `<div class="empty" style="padding: 28px 24px 12px"><div class="empty-icon">${ICONS.check}</div><p class="empty-title">Na dnes hotovo</p></div>`
-          : empty('Na dnes nic', 'Napište nahoře, co je potřeba udělat.');
+          : empty('Na dnes nic');
       }
       out += group(`Hotovo dnes (${s.doneToday.length})`, s.doneToday, { checked: true });
     } else if (tab === 'week') {
       const days = [...new Set(s.week.map((t) => t.due))];
       out += days.map((day) => group(dayHeading(day), s.week.filter((t) => t.due === day))).join('');
-      if (!s.week.length) out += empty('Tento týden nic', 'Úkoly s termínem v příštích 7 dnech se objeví tady.');
+      if (!s.week.length) out += empty('Tento týden nic');
     } else {
       out += group(s.later.length ? 'Bez termínu' : '', s.noDue);
       out += group('Později', s.later);
-      if (!s.noDue.length && !s.later.length) out += empty('Nic odloženého', 'Úkoly bez termínu, na které dojde někdy.');
+      if (!s.noDue.length && !s.later.length) out += empty('Nic odloženého');
       if (s.done.length) {
         out += `<div class="done-head">
             <p class="section-label">Hotové (${s.done.length})</p>
@@ -195,7 +187,6 @@ export async function render(el, { params, subEl, extraEl }) {
       }
     }
 
-    if (tasks.length) out += `${legend()}<p class="hint">Kolečkem odškrtnete, ťuknutím na úkol ho otevřete, potažením doleva smažete.</p>`;
     listRoot.innerHTML = out;
   }
 

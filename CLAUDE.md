@@ -112,6 +112,11 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
 - Mazání bez potvrzovacích dialogů, místo toho toast s tlačítkem Zpět.
 - Málo notifikací, jen to, co vyžaduje akci.
 - Žádná gamifikace ani body mezi partnery.
+- Žádné vysvětlující texty v appce: žádné nápovědy pod poli, popisy ovládání („ťuknutím
+  odškrtnete“), vysvětlivky barev ani druhé řádky v prázdných stavech. Zůstávají jen stavové
+  údaje, popisky polí, chyby a varování před ztrátou dat.
+- Volby u malého tlačítka se otevírají jako nabídka přímo u něj (`openMenu` v `ui.js`),
+  spodní panel (`openSheet`) je jen pro větší formuláře.
 - Spodní lišta max. 5 položek. Co se otevírá jen občas, patří do „Více“.
 
 ## Stav a plán

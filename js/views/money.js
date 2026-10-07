@@ -88,7 +88,6 @@ export async function render(el, { extraEl }) {
       listRoot.innerHTML = `<div class="empty">
         <div class="empty-icon">${ICONS.wallet}</div>
         <p class="empty-title">Zatím žádné platby</p>
-        <p>Přidejte tlačítkem + nahoře: nájem a energie, jednorázové věci k zaplacení, nebo splátky na určitou dobu.</p>
       </div>`;
       return;
     }
@@ -119,18 +118,13 @@ export async function render(el, { extraEl }) {
       out = due.length
         ? list(due)
         : `<div class="empty" style="padding: 28px 24px 12px"><div class="empty-icon">${ICONS.check}</div>
-            <p class="empty-title">Nic k zaplacení</p><p>V příštích 7 dnech není nic splatné.</p></div>`;
+            <p class="empty-title">Nic k zaplacení</p></div>`;
     } else {
       const inKind = byKind(section);
       const open = inKind.filter((p) => !p.done).sort((a, b) => (a.nextDue ?? '9').localeCompare(b.nextDue ?? '9') || b.amount - a.amount);
       const done = inKind.filter((p) => p.done).sort((a, b) => (b.paidAt ?? 0) - (a.paidAt ?? 0));
-      const hints = {
-        recurring: 'Nájem, energie, pojištění, předplatné. Když platbě nastavíte splatnost, objeví se včas v sekci Zaplatit.',
-        once: 'Co je potřeba zaplatit jednou: faktura, doplatek, dárek.',
-        term: 'Pravidelně, ale jen po určitou dobu: splátky, kroužek na pololetí.',
-      };
       if (open.length) out += list(open);
-      else if (!done.length) out += `<p class="hint">${hints[section]}</p>`;
+      else if (!done.length) out += '<p class="hint">Nic tu není.</p>';
       if (done.length) {
         out += `<div class="done-head">
             <p class="section-label">${section === 'term' ? 'Doplacené' : 'Zaplacené'} (${done.length})</p>
@@ -138,7 +132,6 @@ export async function render(el, { extraEl }) {
           </div>${list(done)}`;
       }
     }
-    out += '<p class="hint">Ťuknutím odškrtnete zaplacení, podržením upravíte, potažením doleva smažete.</p>';
     listRoot.innerHTML = out;
   }
 
@@ -220,7 +213,6 @@ export async function render(el, { extraEl }) {
           <input class="input" name="remaining" inputmode="numeric" value="${escapeHtml(p.remaining ?? '')}"></label>
         <label class="field"><span data-due-label>Splatnost</span>
           <input class="input" type="date" name="nextDue" value="${escapeHtml(p.nextDue ?? '')}"></label>
-        <p class="field-hint" style="margin-top: -6px; margin-bottom: 12px">Platba se splatností se včas objeví v sekci Zaplatit a jde odškrtnout.</p>
         <div class="btn-row">
           ${existing ? '<button type="button" class="btn btn-danger" data-action="delete">Smazat</button>' : ''}
           <button type="submit" class="btn btn-primary">${existing ? 'Uložit' : 'Přidat'}</button>
