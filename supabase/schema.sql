@@ -264,6 +264,12 @@ grant select, insert, update, delete on public.shops            to authenticated
 grant select, insert, update, delete on public.task_comments    to authenticated;
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 
+-- Servisní role (funkce send-reminders) dostane jen to, co k rozeslání
+-- upozornění potřebuje. Nic dalšího číst ani měnit nesmí.
+grant select on public.payments, public.household_members to service_role;
+grant select, delete on public.push_subscriptions to service_role;
+grant select, insert, update on public.payment_reminders to service_role;
+
 -- ---------- RLS ----------
 
 alter table public.households        enable row level security;
