@@ -179,6 +179,11 @@ Hotovo (0.6.0):
   krokem, který je na řadě, po posledním je úkol hotový. Schválně schované pod
   „Rozdělit na kroky“, většina úkolů je nemá. Úkol s kroky se neopakuje a naopak.
 
+Hotovo (0.7.0):
+- Zvonek u přidání úkolu (výchozí vypnuto, platí pro jeden úkol): po odeslání úkolu na
+  server dostanou ostatní členové push „Nový úkol od: …“. Fronta v meta `notifyQueue`
+  (`sync.js`), posílá funkce `send-reminders` s tělem `{ task, title }` a přihlášením člena.
+
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
 2. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).

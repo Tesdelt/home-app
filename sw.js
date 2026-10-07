@@ -1,6 +1,6 @@
 // Service worker: offline cache. Při každém nasazení zvýšit VERSION
 // (a APP_VERSION v js/config.js) a nové soubory doplnit do ASSETS.
-const VERSION = '0.6.2';
+const VERSION = '0.7.0';
 const CACHE = `home-app-v${VERSION}`;
 
 const ASSETS = [
@@ -72,7 +72,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ---------- Push notifikace ----------
-// Zprávu posílá supabase/functions/send-reminders: { title, body, url }.
+// Zprávu posílá supabase/functions/send-reminders: { title, body, url, tag }.
 // iPhone vyžaduje, aby každá doručená zpráva ukázala upozornění.
 
 self.addEventListener('push', (event) => {
@@ -81,7 +81,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title || 'Domácnost', {
     body: data.body || '',
     icon: 'icons/icon-192.png',
-    tag: 'platby',
+    tag: data.tag || 'platby',
     data: { url: data.url || '' },
   }));
 });

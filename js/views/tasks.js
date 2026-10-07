@@ -62,6 +62,7 @@ export async function render(el, { params, subEl, extraEl }) {
       <form class="add-form" autocomplete="off">
         <input class="input" name="entry" type="text" placeholder="Přidat úkol…" aria-label="Přidat úkol"
           enterkeyhint="done" autocapitalize="sentences" autocorrect="on">
+        <button class="notify-btn" type="button" aria-pressed="false" aria-label="Upozornit druhého">${ICONS.bell}</button>
         <button class="add-btn" type="submit" aria-label="Přidat">${ICONS.plus}</button>
       </form>
       <div class="segmented seg-bar" role="tablist"></div>
@@ -70,6 +71,7 @@ export async function render(el, { params, subEl, extraEl }) {
 
   const form = el.querySelector('.add-form');
   const input = form.elements.entry;
+  const notifyBtn = form.querySelector('.notify-btn');
   const tabsEl = el.querySelector('.seg-bar');
   const listRoot = el.querySelector('.list-root');
 
@@ -88,7 +90,15 @@ export async function render(el, { params, subEl, extraEl }) {
     input.value = '';
     input.focus();
     const due = { today: today(), week: addDays(today(), 7), someday: null }[tab];
-    await store.addTask({ title: text.charAt(0).toLocaleUpperCase('cs') + text.slice(1), due });
+    // Zvonek platí jen pro jeden úkol, pak se zase vypne
+    const notify = notifyBtn.getAttribute('aria-pressed') === 'true';
+    notifyBtn.setAttribute('aria-pressed', 'false');
+    await store.addTask({ title: text.charAt(0).toLocaleUpperCase('cs') + text.slice(1), due, notify });
+  });
+
+  notifyBtn.addEventListener('pointerdown', (e) => e.preventDefault());
+  notifyBtn.addEventListener('click', () => {
+    notifyBtn.setAttribute('aria-pressed', notifyBtn.getAttribute('aria-pressed') !== 'true');
   });
 
   tabsEl.addEventListener('click', (e) => {

@@ -734,3 +734,19 @@ button.opt:active { background: var(--surface-2); }
 .menu-date { margin-top: 6px; min-height: 44px; }
 .menu-seg { margin-top: 6px; }
 .menu-seg button { font-size: 15px; white-space: nowrap; padding: 0 8px; }
+
+/* Zvonek u přidání úkolu: upozornit druhého */
+.notify-btn {
+  flex: none;
+  width: 46px;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-3);
+  display: grid;
+  place-items: center;
+}
+.notify-btn svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.notify-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.notify-btn[aria-pressed="true"] svg { fill: currentColor; }

@@ -350,7 +350,8 @@ export async function listTasks() {
 
 export const BOTH = 'both';
 
-export async function addTask({ title, due = null, assignee = null, repeat = null, priority = 2, note = null }) {
+// notify = true pošle ostatním členům push upozornění, že úkol přibyl
+export async function addTask({ title, due = null, assignee = null, repeat = null, priority = 2, note = null, notify = false }) {
   const clean = String(title).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
@@ -372,6 +373,7 @@ export async function addTask({ title, due = null, assignee = null, repeat = nul
     createdAt: now,
     updatedAt: now,
   };
+  if (notify) await sync.queueNotification(task.id, task.title);
   await save('tasks', [task]);
   emit();
   return task;
