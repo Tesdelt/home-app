@@ -896,3 +896,14 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .item-lock svg, .opt-lock svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .item-lock svg { width: 100%; height: 100%; }
 .opt-lock.is-set { background: var(--accent-soft); }
+
+/* Kroky: přidání tlačítkem, posouvání šipkami */
+.step-add { margin: 2px 0 0 -6px; }
+.step-add svg { width: 16px; height: 16px; }
+.step-row .item-name.is-blank { color: var(--text-3); }
+.step-meta .stepper { padding: 0; }
+.step-meta .stepper button { width: 40px; height: 36px; font-size: 18px; }
+
+/* Jméno "Kdokoliv" se musí vejít celé */
+.opt-who { width: 98px; }
+.opts-small .opt-who { width: 90px; }

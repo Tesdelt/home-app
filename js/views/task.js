@@ -55,10 +55,7 @@ export async function renderTask(el, id, { subEl }) {
 
     <div class="steps-box" hidden>
       <ul class="steps-list"></ul>
-      <form class="add-form step-form" autocomplete="off">
-        <input class="input" name="title" placeholder="Přidat krok…" aria-label="Přidat krok" enterkeyhint="done">
-        <button class="add-btn" type="submit" aria-label="Přidat krok">${ICONS.plus}</button>
-      </form>
+      <button type="button" class="btn btn-ghost btn-small step-add" data-action="step-add">${ICONS.plus} Krok</button>
     </div>
 
     <div class="note-box"></div>
@@ -95,17 +92,23 @@ export async function renderTask(el, id, { subEl }) {
 
   // Kroky (podúkoly): u nového úkolu v paměti, u existujícího přes datovou
   // vrstvu. Na hlavní úkol nemají vliv, ten se odškrtává sám.
+  // Změna termínu krok zařadí podle data, jinak pořadí určuje ruční posouvání.
   const draftSteps = (steps) => save({ steps });
   const stepsApi = draft ? {
-    add: (title) => draftSteps([...task.steps, { id: store.newId(), title, note: null, assignee: null, priority: 2, due: null, time: null, done: false, doneAt: null, doneBy: null }]),
-    update: (stepId, patch) => draftSteps(task.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s))),
+    add: (stepId) => draftSteps([...task.steps, { id: stepId, title: '', note: null, assignee: null, priority: 2, due: null, time: null, done: false, doneAt: null, doneBy: null }]),
+    update: (stepId, patch) => {
+      const steps = task.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s));
+      return draftSteps('due' in patch || 'time' in patch ? store.sortStepsByDue(steps) : steps);
+    },
     setDone: (stepId, done) => draftSteps(task.steps.map((s) => (s.id === stepId ? { ...s, done } : s))),
     remove: (stepId) => draftSteps(task.steps.filter((s) => s.id !== stepId)),
+    move: (stepId, direction) => draftSteps(store.moveStepIn(task.steps, stepId, direction)),
   } : {
-    add: (title) => store.addStep(id, { title }),
+    add: (stepId) => store.addStep(id, { id: stepId }),
     update: (stepId, patch) => store.updateStep(id, stepId, patch),
     setDone: (stepId, done) => store.setStepDone(id, stepId, done),
     remove: (stepId) => store.removeStep(id, stepId),
+    move: (stepId, direction) => store.moveStep(id, stepId, direction),
   };
 
   async function create() {
@@ -209,7 +212,7 @@ export async function renderTask(el, id, { subEl }) {
     stepsBox.hidden = !stepsOpen;
     // Rozepsaný krok se nepřekresluje
     if (stepsList.contains(document.activeElement)) return;
-    stepsList.innerHTML = steps.map((step) => {
+    stepsList.innerHTML = steps.map((step, index) => {
       const priority = step.priority ?? 2;
       const late = step.due && step.due < today() && !step.done;
       const head = `<button type="button" class="check-tap" data-action="step-done" aria-label="Krok hotov"><span class="check">${ICONS.check}</span></button>`;
@@ -219,7 +222,7 @@ export async function renderTask(el, id, { subEl }) {
         else if (step.due) meta.push(late ? `<span class="is-late">${escapeHtml(dueTimeLabel(step.due, step.time))}</span>` : escapeHtml(dueTimeLabel(step.due, step.time)));
         return `<li class="step ${whoClass(step.assignee, members)}${step.done ? ' is-done' : ''}" data-step="${escapeHtml(step.id)}">${head}
           <button type="button" class="step-row" data-action="step-open">
-            <span class="item-text"><span class="item-name">${escapeHtml(step.title)}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}</span>
+            <span class="item-text"><span class="item-name${step.title ? '' : ' is-blank'}">${escapeHtml(step.title || 'Krok')}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}</span>
             ${priority !== 2 && !step.done ? `<span class="prio prio-${priority}">${priority}</span>` : ''}
             ${step.assignee ? `<span class="legend-dot" title="${escapeHtml(whoName(step.assignee))}"></span>` : ''}
           </button>
@@ -227,7 +230,7 @@ export async function renderTask(el, id, { subEl }) {
       }
       return `<li class="step is-open ${whoClass(step.assignee, members)}${step.done ? ' is-done' : ''}" data-step="${escapeHtml(step.id)}">${head}
         <div class="step-body">
-          <input class="input step-title" name="title" value="${escapeHtml(step.title)}" aria-label="Název kroku">
+          <input class="input step-title" name="title" value="${escapeHtml(step.title)}" placeholder="Krok" aria-label="Název kroku" enterkeyhint="done">
           <div class="opts opts-small">
             <button type="button" class="opt opt-who ${whoClass(step.assignee, members)}" data-step-opt="who"><span class="legend-dot"></span><span class="opt-text">${escapeHtml(whoName(step.assignee))}</span></button>
             <button type="button" class="opt opt-prio" data-step-opt="priority" aria-label="Důležitost ${priority} ze 3"><span class="prio prio-${priority}">${priority}</span></button>
@@ -236,6 +239,10 @@ export async function renderTask(el, id, { subEl }) {
           <textarea class="input step-note" name="note" rows="1" placeholder="Popis" aria-label="Popis kroku">${escapeHtml(step.note ?? '')}</textarea>
           <div class="step-meta">
             <button type="button" class="btn btn-ghost btn-danger btn-small" data-action="step-remove">Odebrat</button>
+            <span class="stepper">
+              <button type="button" data-action="step-up" aria-label="Posunout výš"${index === 0 ? ' disabled' : ''}>↑</button>
+              <button type="button" data-action="step-down" aria-label="Posunout níž"${index === steps.length - 1 ? ' disabled' : ''}>↓</button>
+            </span>
             <button type="button" class="btn btn-ghost btn-small" data-action="step-close">Hotovo</button>
           </div>
         </div>
@@ -368,8 +375,15 @@ export async function renderTask(el, id, { subEl }) {
         const btn = e.target.closest('[data-value]');
         if (btn) set(btn.dataset.value);
       });
-      menu.querySelector('[name="due"]').addEventListener('change', (e) => set(e.target.value));
-      // Čas se uloží hned a nabídka zůstane, ať jde ještě vybrat den.
+      // Den z kalendáře i čas se ukládají hned a nabídka zůstává otevřená:
+      // iPhone hlásí změnu už při otevření kalendáře, takže zavření na první
+      // změnu by ho zavřelo dřív, než jde den vybrat. Zavře se ťuknutím vedle.
+      menu.querySelector('[name="due"]').addEventListener('change', (e) => {
+        due = e.target.value || (needsDue ? today() : null);
+        if (!due) time = null;
+        menu.querySelectorAll('[data-value]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.value === (due ?? '')));
+        onChange({ due, time });
+      });
       // Čas bez dne znamená dnes.
       menu.querySelector('[name="time"]').addEventListener('change', (e) => {
         time = e.target.value || null;
@@ -430,7 +444,6 @@ export async function renderTask(el, id, { subEl }) {
       stepsOpen = !stepsOpen;
       drawHead();
       drawSteps();
-      if (stepsOpen && !(task.steps ?? []).length) root.querySelector('.step-form input').focus();
     }
   });
 
@@ -467,10 +480,23 @@ export async function renderTask(el, id, { subEl }) {
       document.activeElement?.blur();
       if (action === 'step-done') await stepsApi.setDone(stepId, !stepEl.classList.contains('is-done'));
       if (action === 'step-remove') await stepsApi.remove(stepId);
+      if (action === 'step-up') await stepsApi.move(stepId, -1);
+      if (action === 'step-down') await stepsApi.move(stepId, 1);
       if (action === 'step-open' || action === 'step-close') {
+        await closeStep();
         openStep = action === 'step-open' ? stepId : null;
         drawSteps();
       }
+    }
+    if (action === 'step-add') {
+      // Nový krok se rovnou rozbalí, název i podrobnosti jdou vyplnit hned
+      document.activeElement?.blur();
+      await closeStep();
+      const stepId = store.newId();
+      openStep = stepId;
+      await stepsApi.add(stepId);
+      drawSteps();
+      stepsList.querySelector('.step.is-open .step-title')?.focus();
     }
 
     const commentEl = e.target.closest('[data-comment]');
@@ -493,15 +519,27 @@ export async function renderTask(el, id, { subEl }) {
     }
   });
 
+  // Zavírá rozbalený krok. Krok, který zůstal bez názvu i čehokoliv dalšího,
+  // se zahodí (ťuknutí na + Krok omylem).
+  async function closeStep() {
+    const step = (task.steps ?? []).find((s) => s.id === openStep);
+    const typed = stepsList.querySelector('.step.is-open .step-title')?.value.trim();
+    openStep = null;
+    if (step && !step.title && !typed && !step.note && !step.due && !step.assignee) await stepsApi.remove(step.id);
+  }
+
   // Název a popis kroku se ukládají po opuštění pole
   stepsList.addEventListener('change', (e) => {
     const stepId = e.target.closest('[data-step]')?.dataset.step;
     if (!stepId) return;
-    if (e.target.name === 'title') {
-      const text = e.target.value.trim();
-      if (text) stepsApi.update(stepId, { title: text });
-    }
+    if (e.target.name === 'title') stepsApi.update(stepId, { title: e.target.value.trim() });
     if (e.target.name === 'note') stepsApi.update(stepId, { note: e.target.value.trim() || null });
+  });
+  stepsList.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.name === 'title') {
+      e.preventDefault();
+      e.target.blur();
+    }
   });
   stepsList.addEventListener('input', (e) => {
     if (e.target.name === 'note') grow(e.target);
@@ -521,18 +559,6 @@ export async function renderTask(el, id, { subEl }) {
     if (opt === 'due') openDue(btn, step, false, (patch) => stepsApi.update(stepId, patch));
   });
   stepsList.addEventListener('focusout', () => setTimeout(drawSteps, 0));
-
-  root.querySelector('.step-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const input = e.target.elements.title;
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = '';
-    // Nový krok zůstane sbalený, další jde psát hned
-    document.activeElement?.blur();
-    await stepsApi.add(text);
-    input.focus();
-  });
 
   root.querySelector('.comment-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();

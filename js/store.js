@@ -540,18 +540,47 @@ export async function getTask(id) {
 // ten se odškrtává sám.
 const saveSteps = (task, steps) => updateTask(task.id, { steps });
 
-export async function addStep(taskId, { title }) {
+// Seřadí kroky podle termínu (a času), kroky bez termínu nechá za nimi
+// v pořadí, v jakém byly. Volá se, když se kroku změní termín. Jinak pořadí
+// určuje uživatel ručním posouváním.
+export function sortStepsByDue(steps) {
+  const key = (s) => `${s.due ?? '9999-99-99'} ${s.due ? s.time ?? '99:99' : ''}`;
+  return steps
+    .map((step, index) => ({ step, index }))
+    .sort((a, b) => key(a.step).localeCompare(key(b.step)) || a.index - b.index)
+    .map(({ step }) => step);
+}
+
+// Posune krok o jedno místo nahoru (-1) nebo dolů (1)
+export function moveStepIn(steps, stepId, direction) {
+  const from = steps.findIndex((s) => s.id === stepId);
+  const to = from + direction;
+  if (from < 0 || to < 0 || to >= steps.length) return steps;
+  const next = [...steps];
+  [next[from], next[to]] = [next[to], next[from]];
+  return next;
+}
+
+// Krok může vzniknout i bez názvu, doplní se při úpravě
+export async function addStep(taskId, { title = '', id = null } = {}) {
   const task = await getTask(taskId);
-  const clean = String(title).trim();
-  if (!task || !clean) return null;
-  const step = { id: db.newId(), title: clean, note: null, assignee: null, priority: 2, due: null, time: null, done: false, doneAt: null, doneBy: null };
+  if (!task) return null;
+  const step = { id: id ?? db.newId(), title: String(title).trim(), note: null, assignee: null, priority: 2, due: null, time: null, done: false, doneAt: null, doneBy: null };
   return saveSteps(task, [...(task.steps ?? []), step]);
+}
+
+export async function moveStep(taskId, stepId, direction) {
+  const task = await getTask(taskId);
+  if (!task) return null;
+  return saveSteps(task, moveStepIn(task.steps ?? [], stepId, direction));
 }
 
 export async function updateStep(taskId, stepId, patch) {
   const task = await getTask(taskId);
   if (!task) return null;
-  return saveSteps(task, (task.steps ?? []).map((s) => (s.id === stepId ? { ...s, ...patch } : s)));
+  const steps = (task.steps ?? []).map((s) => (s.id === stepId ? { ...s, ...patch } : s));
+  // Změna termínu krok zařadí na správné místo podle data
+  return saveSteps(task, 'due' in patch || 'time' in patch ? sortStepsByDue(steps) : steps);
 }
 
 export async function setStepDone(taskId, stepId, done) {

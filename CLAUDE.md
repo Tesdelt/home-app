@@ -185,7 +185,11 @@ Hotovo (0.6.0):
   důležitost a termín s časem a odškrtává se zvlášť. Hlavní úkol neovlivňují: jeho termín
   i opakování jdou měnit vždy a splnit ho musí člověk sám. V seznamu kroků je vidět jen
   to nezbytné, ťuknutím se krok rozbalí k úpravě (stejné nabídky jako hlavní úkol, menší).
-  U opakovaného úkolu se kroky s každým kolem vrátí na neodškrtnuté.
+  U opakovaného úkolu se kroky s každým kolem vrátí na neodškrtnuté. Nový krok se tlačítkem
+  „+ Krok“ rovnou rozbalí (název i ostatní jde vyplnit hned, prázdný se při zavření zahodí).
+  Pořadí: změna termínu krok zařadí podle data, jinak se posouvá ručně šipkami.
+- V nabídce termínu se výběr dne z kalendáře i čas ukládají hned a nabídka zůstává otevřená
+  (iPhone hlásí změnu už při otevření kalendáře, zavření na první změnu by výběr znemožnilo).
 
 Hotovo (0.10.0):
 - Úkoly jsou jeden seznam všech nehotových úkolů bez ohledu na termín (žádné záložky
