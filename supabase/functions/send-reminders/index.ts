@@ -18,8 +18,11 @@ import webpush from 'npm:web-push@3.6.7';
 
 const APP_URL = 'https://tesdelt.github.io/home-app/';
 
-const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-webpush.setVapidDetails(APP_URL, Deno.env.get('VAPID_PUBLIC_KEY')!, Deno.env.get('VAPID_PRIVATE_KEY')!);
+// Nastavení se čte až při zavolání, aby chybějící nebo špatně vložený klíč
+// funkci neshodil hned při startu a šlo poznat, co chybí. Odpověď prozradí
+// jen NÁZEV chybějícího nastavení, nikdy jeho hodnotu.
+const NEEDED = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY'];
+const env = (name: string) => (Deno.env.get(name) ?? '').trim();
 
 // Dnešní datum v Česku jako RRRR-MM-DD
 const today = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague' }).format(new Date());
@@ -27,6 +30,16 @@ const today = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague'
 const money = (amount: number) => `${Math.round(amount).toLocaleString('cs-CZ')} Kč`;
 
 Deno.serve(async () => {
+  const missing = NEEDED.filter((name) => !env(name));
+  if (missing.length) return Response.json({ error: 'chybi_nastaveni', missing }, { status: 500 });
+  try {
+    webpush.setVapidDetails(APP_URL, env('VAPID_PUBLIC_KEY'), env('VAPID_PRIVATE_KEY'));
+  } catch (err) {
+    // Zpráva knihovny říká jen, co je na klíči špatně (délka, znaky)
+    return Response.json({ error: 'spatny_vapid_klic', detail: String((err as Error).message) }, { status: 500 });
+  }
+  const db = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'));
+
   try {
     const day = today();
     const { data: payments, error } = await db
@@ -85,6 +98,6 @@ Deno.serve(async () => {
     return Response.json({ sent });
   } catch (err) {
     console.error(err);
-    return Response.json({ error: 'failed' }, { status: 500 });
+    return Response.json({ error: 'chyba_databaze_nebo_odeslani' }, { status: 500 });
   }
 });
