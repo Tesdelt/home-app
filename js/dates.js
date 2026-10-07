@@ -56,6 +56,9 @@ export function dueLabel(day) {
   return shortDate(day);
 }
 
+// Termín i s časem, když ho úkol má: "dnes 20:00"
+export const dueTimeLabel = (day, time) => `${dueLabel(day)}${time ? ` ${time}` : ''}`;
+
 export function shortDate(day) {
   const date = toDate(day);
   const text = date.toLocaleDateString('cs-CZ', { weekday: 'short', day: 'numeric', month: 'numeric' });

@@ -9,7 +9,7 @@
 import * as store from '../store.js';
 import { escapeHtml, ICONS, undoToast, openMenu, whoClass } from '../ui.js';
 import { navigate } from '../router.js';
-import { today, dayStr, addDays, dueLabel, timeLabel, isSameDay } from '../dates.js';
+import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
 import { REPEATS, repeatValue, repeatLabel, defaultDue } from './tasks.js';
 
 export const NEW = 'novy';
@@ -24,7 +24,7 @@ export async function renderTask(el, id, { subEl }) {
 
   const draft = id === NEW;
   let task = draft
-    ? { title: '', note: null, assignee: null, priority: 2, due: defaultDue(), repeat: null, steps: [], doneParts: [], done: false }
+    ? { title: '', note: null, assignee: null, priority: 2, due: defaultDue(), time: null, repeat: null, steps: [], doneParts: [], done: false }
     : await store.getTask(id);
   let notify = false; // nový úkol: poslat druhému upozornění
   if (!task) {
@@ -113,8 +113,8 @@ export async function renderTask(el, id, { subEl }) {
       titleEl.focus();
       return;
     }
-    const { note, assignee, priority, due, repeat, steps } = task;
-    await store.addTask({ title: title.charAt(0).toLocaleUpperCase('cs') + title.slice(1), note, assignee, priority, due, repeat, steps, notify });
+    const { note, assignee, priority, due, time, repeat, steps } = task;
+    await store.addTask({ title: title.charAt(0).toLocaleUpperCase('cs') + title.slice(1), note, assignee, priority, due, time, repeat, steps, notify });
     navigate('ukoly');
   }
   const whoName = (value) => (!value ? 'Kdokoliv' : value === store.BOTH ? 'Oba' : value);
@@ -128,26 +128,22 @@ export async function renderTask(el, id, { subEl }) {
     root.classList.toggle('is-done', Boolean(task.done));
     root.querySelector('.detail-head').className = `detail-head ${whoClass(task.assignee, members)}`;
 
-    // Malá tlačítka s nastavením. Úkol s kroky má termín z kroků a neopakuje
-    // se, opakovaný zase nemá kroky.
+    // Malá tlačítka s nastavením: vždy všechna, ve stejném pořadí a se stejnou
+    // šířkou, aby se po výběru nic neposunulo. Co zrovna nejde, je jen zašedlé:
+    // úkol s kroky má termín z kroků a neopakuje se, opakovaný zase nemá kroky.
     const priority = task.priority ?? 2;
     const late = task.due && task.due < today() && !task.done;
+    const hasSteps = steps.length > 0;
+    const done = steps.filter((s) => s.done).length;
     const opts = [
-      `<button type="button" class="opt ${whoClass(task.assignee, members)}" data-opt="who"><span class="legend-dot"></span>${escapeHtml(whoName(task.assignee))}</button>`,
-      `<button type="button" class="opt" data-opt="priority" aria-label="Důležitost ${priority} ze 3"><span class="prio prio-${priority}">${priority}</span></button>`,
+      `<button type="button" class="opt opt-who ${whoClass(task.assignee, members)}" data-opt="who"><span class="legend-dot"></span><span class="opt-text">${escapeHtml(whoName(task.assignee))}</span></button>`,
+      `<button type="button" class="opt opt-prio" data-opt="priority" aria-label="Důležitost ${priority} ze 3"><span class="prio prio-${priority}">${priority}</span></button>`,
+      `<button type="button" class="opt opt-due${late ? ' is-late' : ''}" data-opt="due"${hasSteps ? ' disabled' : ''}><span class="opt-text">${task.due ? escapeHtml(dueTimeLabel(task.due, task.time)) : 'Bez termínu'}</span></button>`,
+      `<button type="button" class="opt opt-icon${task.repeat ? ' is-set' : ''}" data-opt="repeat" aria-label="Opakování"${hasSteps ? ' disabled' : ''}>${ICONS.repeat}</button>`,
+      `<button type="button" class="opt opt-steps${stepsOpen && !task.repeat ? ' is-set' : ''}" data-opt="steps"${task.repeat ? ' disabled' : ''}><span class="opt-text">${hasSteps ? `Kroky ${done}/${steps.length}` : '+ Kroky'}</span></button>`,
     ];
-    if (!steps.length) {
-      opts.push(`<button type="button" class="opt${late ? ' is-late' : ''}" data-opt="due">${task.due ? escapeHtml(dueLabel(task.due)) : 'Bez termínu'}</button>`);
-      opts.push(`<button type="button" class="opt${task.repeat ? ' is-set' : ''}" data-opt="repeat">${ICONS.repeat}${task.repeat ? escapeHtml(repeatLabel(task.repeat)) : ''}</button>`);
-    } else if (task.due) {
-      opts.push(`<span class="opt is-static${late ? ' is-late' : ''}">${escapeHtml(dueLabel(task.due))}</span>`);
-    }
-    if (!task.repeat) {
-      const done = steps.filter((s) => s.done).length;
-      opts.push(`<button type="button" class="opt${stepsOpen ? ' is-set' : ''}" data-opt="steps">${steps.length ? `Kroky ${done}/${steps.length}` : '+ Kroky'}</button>`);
-    }
     // Zvonek: dát druhému vědět, že úkol přibyl. Výchozí vypnuto.
-    if (draft) opts.push(`<button type="button" class="opt opt-bell${notify ? ' is-set' : ''}" data-opt="notify" aria-pressed="${notify}" aria-label="Upozornit druhého">${ICONS.bell}</button>`);
+    if (draft) opts.push(`<button type="button" class="opt opt-icon opt-bell${notify ? ' is-set' : ''}" data-opt="notify" aria-pressed="${notify}" aria-label="Upozornit druhého">${ICONS.bell}</button>`);
     optsEl.innerHTML = opts.join('');
 
     const parts = task.doneParts ?? [];
@@ -328,17 +324,26 @@ export async function renderTask(el, id, { subEl }) {
     const quick = [[today(), 'Dnes'], [addDays(today(), 1), 'Zítra'], [addDays(today(), 7), 'Za týden'], ['', 'Bez termínu']];
     openMenu(anchor, (menu, close) => {
       menu.innerHTML = `${items(quick, task.due ?? '')}
-        <input class="input menu-date" type="date" aria-label="Jiný den" value="${escapeHtml(task.due ?? '')}">`;
-      // Opakovaný úkol potřebuje termín, od kterého se počítá
+        <input class="input menu-date" type="date" name="due" aria-label="Jiný den" value="${escapeHtml(task.due ?? '')}">
+        <input class="input menu-date" type="time" name="time" aria-label="Čas" value="${escapeHtml(task.time ?? '')}">`;
+      // Opakovaný úkol potřebuje termín, od kterého se počítá.
+      // Bez termínu nemá čas smysl, zmizí s ním.
       const set = (value) => {
         close();
-        save({ due: value || (task.repeat ? today() : null) });
+        const due = value || (task.repeat ? today() : null);
+        save({ due, time: due ? task.time ?? null : null });
       };
       menu.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-value]');
         if (btn) set(btn.dataset.value);
       });
-      menu.querySelector('input').addEventListener('change', (e) => set(e.target.value));
+      menu.querySelector('[name="due"]').addEventListener('change', (e) => set(e.target.value));
+      // Čas se uloží hned a nabídka zůstane, ať jde ještě vybrat den.
+      // Čas bez dne znamená dnes.
+      menu.querySelector('[name="time"]').addEventListener('change', (e) => {
+        const time = e.target.value || null;
+        save({ time, due: task.due ?? (time ? today() : null) });
+      });
     });
   }
 

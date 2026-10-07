@@ -183,6 +183,19 @@ Hotovo (0.6.0):
   krokem, který je na řadě, po posledním je úkol hotový. Schválně schované pod
   „Rozdělit na kroky“, většina úkolů je nemá. Úkol s kroky se neopakuje a naopak.
 
+Hotovo (0.9.1), úpravy po testování:
+- Nákup: hustý seznam (jeden souvislý blok, kategorie jako malý šedý nadpis, cíl aspoň
+  10 položek na obrazovku iPhonu), bez tlačítek -/+ v řádku (množství je vidět jen když
+  je víc než 1 a mění se v úpravě položky), pod polem jediný vodorovný řádek: nejdřív často
+  kupované (při psaní našeptávač), za nimi kategorie. Druhý řádek tam nesmí nikdy přibýt,
+  aby seznam neposkakoval. Katalog kategorie má tlačítko Hotovo.
+- Stránka úkolu: tlačítka s nastavením jsou vždy všechna, v pevném pořadí a šířkách
+  (třídy `opt-who`, `opt-prio`, `opt-due`, `opt-icon`, `opt-steps`); co nejde, je zašedlé.
+  Opakování je jen ikona, žádné textové popisky k ikonám nepřidávat.
+- Úkol může mít volitelný čas (`time` „HH:MM“, sloupec `due_time`), nastavuje se v nabídce
+  termínu, je vidět v seznamu i na Domů a řadí úkoly v rámci dne.
+- V Úkolech není podtitulek „Na dnes: X“, počet je v záložce.
+
 Hotovo (0.9.0):
 - Recepty (`#/recepty`, otevírají se z Více, tabulka `recipes`): název, ingredience
   (každá na řádek, „mouka 500 g“ se rozdělí na název a množství) a postup.

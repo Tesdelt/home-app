@@ -93,6 +93,9 @@ alter table public.tasks add column if not exists done_parts text[] not null def
 -- Termín úkolu (due) se řídí prvním nesplněným krokem.
 alter table public.tasks add column if not exists steps jsonb not null default '[]';
 
+-- 0.9.1: volitelný čas úkolu "HH:MM" (např. 20:00), jen k zobrazení a řazení
+alter table public.tasks add column if not exists due_time text;
+
 -- Komentáře k úkolům. Vlastní tabulka, aby se komentáře obou lidí
 -- napsané ve stejnou chvíli navzájem nepřepsaly.
 create table if not exists public.task_comments (

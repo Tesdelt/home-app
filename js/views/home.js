@@ -24,7 +24,7 @@ export async function render(el, { subEl }) {
 
     // Úkoly na dnes jsou nahoře, ty jediné chtějí akci
     const { today: due, doneToday } = splitTasks(tasks);
-    const names = due.slice(0, 4).map((t) => escapeHtml(t.title)).join(', ');
+    const names = due.slice(0, 4).map((t) => escapeHtml(t.title) + (t.time ? ` ${escapeHtml(t.time)}` : '')).join(', ');
     const more = due.length > 4 ? ` a ${due.length - 4} další` : '';
     const tasksText = due.length
       ? `${names}${more}`

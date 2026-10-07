@@ -407,6 +407,7 @@ export async function frequent(limit = 10) {
 //             Většina úkolů žádné nemá. Když je má, termín úkolu (due) je
 //             termín prvního nesplněného kroku a po posledním je úkol hotový.
 //   due       "RRRR-MM-DD", nebo null = někdy
+//   time      volitelný čas "HH:MM" k termínu, nebo null
 //   repeat    null, nebo { every, unit: 'day'|'week'|'month'|'year', mode }
 //             mode 'fixed' = další termín se počítá od termínu,
 //                  'after' = ode dne, kdy se úkol opravdu splnil
@@ -425,7 +426,7 @@ export const BOTH = 'both';
 export const newId = () => db.newId();
 
 // notify = true pošle ostatním členům push upozornění, že úkol přibyl
-export async function addTask({ title, due = null, assignee = null, repeat = null, priority = 2, note = null, notify = false, steps = [] }) {
+export async function addTask({ title, due = null, time = null, assignee = null, repeat = null, priority = 2, note = null, notify = false, steps = [] }) {
   const clean = String(title).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
@@ -434,6 +435,7 @@ export async function addTask({ title, due = null, assignee = null, repeat = nul
     title: clean,
     assignee,
     due,
+    time: due ? time : null,
     repeat,
     priority,
     note,

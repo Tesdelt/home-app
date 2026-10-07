@@ -9,7 +9,7 @@ import * as store from '../store.js';
 import { escapeHtml, ICONS, undoToast, rowGestures, whoClass, whoBadge } from '../ui.js';
 import { navigate } from '../router.js';
 import { renderTask, NEW } from './task.js';
-import { today, dayStr, addDays, dueLabel, dayHeading, timeLabel, isSameDay } from '../dates.js';
+import { today, dayStr, addDays, dueLabel, dueTimeLabel, dayHeading, timeLabel, isSameDay } from '../dates.js';
 
 export const title = 'Úkoly';
 
@@ -50,7 +50,10 @@ export const defaultDue = () => ({ today: today(), week: addDays(today(), 7), so
 // Rozdělí úkoly do záložek. Používá i Domů. Důležitější jsou výš.
 export function splitTasks(tasks, day = today()) {
   const weekEnd = addDays(day, 7);
-  const byDue = (a, b) => (a.due ?? '').localeCompare(b.due ?? '') || (b.priority ?? 2) - (a.priority ?? 2) || a.createdAt - b.createdAt;
+  // Úkol s časem je v rámci dne před úkoly bez času, dřívější čas dřív
+  const clock = (t) => t.time ?? '99:99';
+  const byDue = (a, b) => (a.due ?? '').localeCompare(b.due ?? '') || clock(a).localeCompare(clock(b))
+    || (b.priority ?? 2) - (a.priority ?? 2) || a.createdAt - b.createdAt;
   const byPriority = (a, b) => (b.priority ?? 2) - (a.priority ?? 2) || byDue(a, b);
   const open = tasks.filter((t) => !t.done);
   return {
@@ -110,7 +113,7 @@ export async function render(el, { params, subEl, extraEl }) {
       if (task.repeat && task.due) meta.push(`další ${dueLabel(task.due)}`);
     } else {
       // Termín je vidět vždy, zpožděný červeně
-      if (task.due) meta.push(task.due < today() ? `<span class="is-late">${dueLabel(task.due)}</span>` : dueLabel(task.due));
+      if (task.due) meta.push(task.due < today() ? `<span class="is-late">${dueTimeLabel(task.due, task.time)}</span>` : dueTimeLabel(task.due, task.time));
       if (task.repeat) meta.push(repeatLabel(task.repeat));
       if (task.assignee === store.BOTH && parts.length) {
         const waiting = members.filter((m) => !parts.includes(m));
@@ -159,8 +162,6 @@ export async function render(el, { params, subEl, extraEl }) {
     const counts = { today: s.today.length, week: s.week.length, someday: s.noDue.length + s.later.length };
 
     tabsEl.innerHTML = TABS.map((t) => `<button type="button" role="tab" data-tab="${t.id}" aria-pressed="${t.id === tab}">${t.name}${counts[t.id] ? ` <span class="seg-count">${counts[t.id]}</span>` : ''}</button>`).join('');
-    subEl.hidden = !s.today.length;
-    subEl.textContent = s.today.length ? `Na dnes: ${s.today.length}` : '';
 
     let out = '';
     if (tab === 'today') {

@@ -1,7 +1,8 @@
-// Nákupní seznam: rychlé přidání nahoře (s našeptávačem), katalog podle
-// kategorií, seznam seřazený tak, jak se prochází vybraný obchod.
-// Ťuknutí = koupeno, podržení = úprava, potažení doleva = smazat (se Zpět),
-// množství se mění tlačítky - a + přímo v řádku.
+// Nákupní seznam: rychlé přidání nahoře, pod ním jeden vodorovný řádek
+// (často kupované nebo našeptávač a za nimi kategorie s katalogem), seznam
+// seřazený tak, jak se prochází vybraný obchod.
+// Ťuknutí = koupeno, podržení = úprava (i množství), potažení doleva = smazat.
+// Seznam je schválně hustý: jeden souvislý blok, kategorie jen jako malý nadpis.
 
 import * as store from '../store.js';
 import { CATEGORIES, categoryName, parseEntry, stepQty, qtyNumber } from '../categories.js';
@@ -17,15 +18,13 @@ export async function render(el, { subEl, extraEl }) {
           enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="false">
         <button class="add-btn" type="submit" aria-label="Přidat">${ICONS.plus}</button>
       </form>
-      <div class="chips" hidden></div>
-      <div class="chips cat-chips"></div>
+      <div class="chips"></div>
     </div>
     <div class="list-root"></div>`;
 
   const form = el.querySelector('.add-form');
   const input = form.elements.entry;
   const chipsEl = el.querySelector('.chips');
-  const catsEl = el.querySelector('.cat-chips');
   const listRoot = el.querySelector('.list-root');
 
   // Výběr obchodu v horní liště
@@ -63,39 +62,43 @@ export async function render(el, { subEl, extraEl }) {
     if (e.target.closest('.chip')) e.preventDefault();
   });
   chipsEl.addEventListener('click', async (e) => {
-    const chip = e.target.closest('.chip');
+    const cat = e.target.closest('[data-cat]');
+    if (cat) {
+      openCatalog(cat.dataset.cat);
+      return;
+    }
+    const chip = e.target.closest('[data-name]');
     if (!chip) return;
     const typed = input.value.trim() ? parseEntry(input.value) : { qty: '' };
     input.value = '';
     await add(chip.dataset.name, typed.qty);
   });
 
-  // Při psaní našeptává z historie i z katalogu, jinak nabízí často kupované
+  // Jeden řádek, který nikdy nepřidá další: na začátku často kupované (při
+  // psaní našeptávač z historie a katalogu), za nimi kategorie s katalogem.
+  let chipsToken = 0;
   async function refreshChips() {
+    const token = ++chipsToken;
     const typed = input.value.trim();
-    const entries = typed ? await store.suggestions(parseEntry(typed).name, 8) : await store.frequent(12);
-    chipsEl.hidden = entries.length === 0;
-    chipsEl.innerHTML = entries
+    const [entries, current] = await Promise.all([
+      typed ? store.suggestions(parseEntry(typed).name, 8) : store.frequent(6),
+      store.currentShop(),
+    ]);
+    if (token !== chipsToken) return;
+    const quick = entries
       .map((h) => `<button type="button" class="chip" data-name="${escapeHtml(h.name)}">${escapeHtml(h.name)}</button>`)
       .join('');
+    const cats = current.order.filter((id) => id !== 'ostatni')
+      .map((id) => `<button type="button" class="chip cat-chip" data-cat="${id}">${escapeHtml(categoryName(id))}</button>`)
+      .join('');
+    chipsEl.innerHTML = quick + cats;
+    if (typed) chipsEl.scrollLeft = 0;
   }
 
   // ---------- Katalog podle kategorií ----------
 
-  function drawCategories() {
-    const order = shop.order.filter((id) => id !== 'ostatni');
-    catsEl.innerHTML = order
-      .map((id) => `<button type="button" class="chip cat-chip" data-cat="${id}">${escapeHtml(categoryName(id))}</button>`)
-      .join('');
-  }
-
-  catsEl.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-cat]');
-    if (chip) openCatalog(chip.dataset.cat);
-  });
-
   function openCatalog(category) {
-    openSheet(categoryName(category), (body) => {
+    openSheet(categoryName(category), (body, close) => {
       const draw = async () => {
         const entries = await store.catalog(category);
         body.innerHTML = `<ul class="item-list group catalog">${entries.map((entry) => {
@@ -108,10 +111,15 @@ export async function render(el, { subEl, extraEl }) {
               <button type="button" data-step="1" aria-label="Přidat">+</button>
             </span>
           </li>`;
-        }).join('')}</ul>`;
+        }).join('')}</ul>
+        <div class="sheet-done"><button type="button" class="btn btn-primary btn-block" data-action="done">Hotovo</button></div>`;
       };
 
       body.addEventListener('click', async (e) => {
+        if (e.target.closest('[data-action="done"]')) {
+          close();
+          return;
+        }
         const btn = e.target.closest('[data-step]');
         if (!btn) return;
         const rowEl = btn.closest('.catalog-row');
@@ -228,22 +236,15 @@ export async function render(el, { subEl, extraEl }) {
     const who = item.addedBy && item.addedBy !== me
       ? `<span class="item-who" title="Přidal(a) ${escapeHtml(item.addedBy)}">${escapeHtml(item.addedBy.charAt(0))}</span>`
       : '';
-    // Počítadlo je mimo tlačítko řádku, aby ťuknutí na něj položku neodškrtlo
-    const stepper = item.done ? '' : `<span class="stepper">
-        <button type="button" data-step="-1" aria-label="Ubrat"${stepQty(item.qty, -1) === (item.qty ?? '') ? ' disabled' : ''}>−</button>
-        <span class="stepper-value">${escapeHtml(item.qty || '1')}</span>
-        <button type="button" data-step="1" aria-label="Přidat">+</button>
-      </span>`;
+    // Množství je vidět, jen když je víc než jeden kus. Mění se v úpravě (podržení).
+    const qty = item.qty && item.qty !== '1' ? `<span class="item-qty">${escapeHtml(item.qty)}</span>` : '';
     return `<li class="item${item.done ? ' is-done' : ''}" data-id="${escapeHtml(item.id)}">
       <div class="item-bg" aria-hidden="true">Smazat</div>
-      <div class="item-slide">
-        <button type="button" class="item-main" aria-pressed="${item.done}">
-          <span class="check">${ICONS.check}</span>
-          <span class="item-text"><span class="item-name">${escapeHtml(item.name)}</span>${item.done && item.qty ? `<span class="item-qty">${escapeHtml(item.qty)}</span>` : ''}</span>
-          ${who}
-        </button>
-        ${stepper}
-      </div>
+      <button type="button" class="item-main" aria-pressed="${item.done}">
+        <span class="check">${ICONS.check}</span>
+        <span class="item-text"><span class="item-name">${escapeHtml(item.name)}</span>${qty}</span>
+        ${who}
+      </button>
     </li>`;
   }
 
@@ -254,7 +255,6 @@ export async function render(el, { subEl, extraEl }) {
     if (token !== renderToken) return;
 
     shopBtn.textContent = shop.name;
-    drawCategories();
 
     const open = items.filter((i) => !i.done);
     const done = items.filter((i) => i.done).sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0));
@@ -270,13 +270,16 @@ export async function render(el, { subEl, extraEl }) {
       return;
     }
 
-    // Sekce jdou za sebou tak, jak se prochází vybraný obchod
+    // Jeden souvislý seznam v pořadí, jak se prochází vybraný obchod.
+    // Kategorie je jen malý nadpis uvnitř, ať se na obrazovku vejde co nejvíc.
     let out = '';
+    let rows = '';
     for (const id of shop.order) {
       const inCat = open.filter((i) => (CATEGORIES.some((c) => c.id === i.category) ? i.category : 'ostatni') === id);
       if (!inCat.length) continue;
-      out += `<p class="section-label">${escapeHtml(categoryName(id))}</p><ul class="item-list group">${inCat.map(row).join('')}</ul>`;
+      rows += `<li class="cat-head">${escapeHtml(categoryName(id))}</li>${inCat.map(row).join('')}`;
     }
+    if (rows) out += `<ul class="item-list group is-dense">${rows}</ul>`;
 
     if (!open.length) {
       out += `<div class="empty" style="padding-bottom: 16px">
@@ -290,7 +293,7 @@ export async function render(el, { subEl, extraEl }) {
           <p class="section-label">Koupeno (${done.length})</p>
           <button type="button" class="btn btn-ghost btn-small" data-action="clear">Vyčistit</button>
         </div>
-        <ul class="item-list group">${done.map(row).join('')}</ul>`;
+        <ul class="item-list group is-dense">${done.map(row).join('')}</ul>`;
     }
 
     listRoot.innerHTML = out;
@@ -354,17 +357,8 @@ export async function render(el, { subEl, extraEl }) {
 
   const endGesture = rowGestures(listRoot, { onTap: toggle, onPress: openEdit, onSwipe: deleteItem });
 
-  listRoot.addEventListener('click', async (e) => {
-    if (e.target.closest('[data-action="clear"]')) {
-      clearDone();
-      return;
-    }
-    const step = e.target.closest('[data-step]');
-    if (step) {
-      const id = step.closest('.item').dataset.id;
-      const item = (await store.listItems()).find((i) => i.id === id);
-      if (item) await store.updateItem(id, { qty: stepQty(item.qty, Number(step.dataset.step)) });
-    }
+  listRoot.addEventListener('click', (e) => {
+    if (e.target.closest('[data-action="clear"]')) clearDone();
   });
 
   // ---------- Start ----------
@@ -379,5 +373,7 @@ export async function render(el, { subEl, extraEl }) {
   return () => {
     unsubscribe();
     endGesture();
+    // Rozběhnuté vykreslení už nesmí přepsat podtitulek jiné obrazovky
+    renderToken += 1;
   };
 }
