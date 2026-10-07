@@ -376,11 +376,18 @@ export async function renderTask(el, id, { subEl }) {
   // current = { due, time }, needsDue = bez termínu nejde být (opakovaný úkol)
   function openDue(anchor, current, needsDue, onChange) {
     const quick = [[today(), 'Dnes'], [addDays(today(), 1), 'Zítra'], [addDays(today(), 7), 'Za týden'], ['', 'Bez termínu']];
-    let { due = null, time = null } = current;
+    let { due = null } = current;
+    const { time = null } = current;
+    // Jiný den než z rychlých voleb se ukáže přímo v řádku Vybrat
+    const custom = () => (due && !quick.some(([value]) => value === due) ? dueLabel(due) : '');
     openMenu(anchor, (menu, close) => {
+      // Řádek Vybrat má přes sebe neviditelné pole s datem, takže ťuknutí
+      // na něj otevře kalendář telefonu
       menu.innerHTML = `${items(quick, due ?? '')}
-        <input class="input menu-date" type="date" name="due" aria-label="Jiný den" value="${escapeHtml(due ?? '')}">
-        <input class="input menu-date" type="time" name="time" aria-label="Čas" value="${escapeHtml(time ?? '')}">`;
+        <label class="menu-item menu-pick" aria-pressed="${Boolean(custom())}">
+          <span>Vybrat</span><span class="menu-pick-value">${escapeHtml(custom())}</span>
+          <input type="date" name="due" aria-label="Vybrat den" value="${escapeHtml(due ?? '')}">
+        </label>`;
       // Bez termínu nemá čas smysl, zmizí s ním
       const set = (value) => {
         close();
@@ -391,20 +398,15 @@ export async function renderTask(el, id, { subEl }) {
         const btn = e.target.closest('[data-value]');
         if (btn) set(btn.dataset.value);
       });
-      // Den z kalendáře i čas se ukládají hned a nabídka zůstává otevřená:
-      // iPhone hlásí změnu už při otevření kalendáře, takže zavření na první
-      // změnu by ho zavřelo dřív, než jde den vybrat. Zavře se ťuknutím vedle.
+      // Den z kalendáře se uloží hned a nabídka zůstává otevřená: iPhone hlásí
+      // změnu už při otevření kalendáře, takže zavření na první změnu by ho
+      // zavřelo dřív, než jde den vybrat. Zavře se ťuknutím vedle.
       menu.querySelector('[name="due"]').addEventListener('change', (e) => {
         due = e.target.value || (needsDue ? today() : null);
-        if (!due) time = null;
-        menu.querySelectorAll('[data-value]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.value === (due ?? '')));
-        onChange({ due, time });
-      });
-      // Čas bez dne znamená dnes.
-      menu.querySelector('[name="time"]').addEventListener('change', (e) => {
-        time = e.target.value || null;
-        due = due ?? (time ? today() : null);
-        onChange({ due, time });
+        menu.querySelectorAll('[data-value]').forEach((item) => item.setAttribute('aria-pressed', item.dataset.value === (due ?? '')));
+        menu.querySelector('.menu-pick').setAttribute('aria-pressed', Boolean(custom()));
+        menu.querySelector('.menu-pick-value').textContent = custom();
+        onChange({ due, time: due ? time : null });
       });
     });
   }

@@ -199,8 +199,11 @@ Hotovo (0.6.0):
   vezme s sebou název, popis, pro koho, důležitost, termín i své kroky, komentáře ne.
   Seznam kroků je ve výchozím stavu rozbalený; když ho člověk zabalí nebo nechá rozbalený
   konkrétní krok, telefon si to u úkolu pamatuje (meta `taskView`, přes `store.setLocal`).
-- V nabídce termínu se výběr dne z kalendáře i čas ukládají hned a nabídka zůstává otevřená
-  (iPhone hlásí změnu už při otevření kalendáře, zavření na první změnu by výběr znemožnilo).
+- Nabídka termínu: Dnes, Zítra, Za týden, Bez termínu a řádek Vybrat (přes něj leží
+  neviditelné pole s datem, ťuknutí otevře kalendář telefonu). Výběr z kalendáře se uloží hned
+  a nabídka zůstává otevřená (iPhone hlásí změnu už při otevření kalendáře). Prázdná pole
+  bez popisku do nabídek nepatří. Čas úkolu (`time`) se zatím v appce nenastavuje, uložené
+  časy se dál zobrazují a řadí.
 
 Hotovo (0.10.0):
 - Úkoly jsou jeden seznam všech nehotových úkolů bez ohledu na termín (žádné záložky
@@ -221,8 +224,8 @@ Hotovo (0.9.1), úpravy po testování:
 - Stránka úkolu: tlačítka s nastavením jsou vždy všechna, v pevném pořadí a šířkách
   (třídy `opt-who`, `opt-prio`, `opt-due`, `opt-icon`, `opt-steps`).
   Opakování je jen ikona, žádné textové popisky k ikonám nepřidávat.
-- Úkol může mít volitelný čas (`time` „HH:MM“, sloupec `due_time`), nastavuje se v nabídce
-  termínu, je vidět v seznamu i na Domů a řadí úkoly v rámci dne.
+- Úkol může mít volitelný čas (`time` „HH:MM“, sloupec `due_time`), je vidět v seznamu
+  i na Domů a řadí úkoly v rámci dne. Nastavování z nabídky termínu bylo v 0.11.4 odebráno.
 - V Úkolech není podtitulek „Na dnes: X“, počet je v záložce.
 
 Hotovo (0.9.0):
