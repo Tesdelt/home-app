@@ -345,6 +345,28 @@ export async function saveRecipe({ id = null, name, ingredients = [], method = n
   return recipe;
 }
 
+// Všechny vysvětlivky z receptů na jednom místě ("skills"). Stejný výraz
+// z více receptů je jedna položka; když se u něj vysvětlení liší, je jich víc.
+// Vrací [{ term, notes: [{ note, recipes: [{ id, name }] }] }] podle abecedy.
+export async function listSkills() {
+  const skills = new Map();
+  for (const recipe of await listRecipes()) {
+    for (const hint of recipe.hints ?? []) {
+      if (!hint?.term || !hint?.note) continue;
+      const key = normalize(hint.term);
+      if (!skills.has(key)) skills.set(key, { term: hint.term, notes: [] });
+      const skill = skills.get(key);
+      let entry = skill.notes.find((n) => n.note === hint.note);
+      if (!entry) {
+        entry = { note: hint.note, recipes: [] };
+        skill.notes.push(entry);
+      }
+      if (!entry.recipes.some((r) => r.id === recipe.id)) entry.recipes.push({ id: recipe.id, name: recipe.name });
+    }
+  }
+  return [...skills.values()].sort((a, b) => a.term.localeCompare(b.term, 'cs'));
+}
+
 export const removeRecipes = (ids) => removeByIds('recipes', ids);
 export const restoreRecipes = (recipes) => restore('recipes', recipes);
 

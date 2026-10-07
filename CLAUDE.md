@@ -251,6 +251,8 @@ Hotovo (0.9.0):
 - Recepty (`#/recepty`, otevírají se z Více, tabulka `recipes`): název, ingredience a postup.
   Ingredience se v úpravě přidávají po jedné (pole s našeptávačem), každá má řádek s
   množstvím a jednotkou (ks, g, ml…; výchozí podle druhu věci) a řadí se přetažením.
+  V seznamu receptů je záložka Skills: všechny vysvětlivky na jednom místě, u každé
+  recepty, kde se používá (`listSkills` ve `store.js`, upravují se dál v receptu).
   K postupu jdou přidat vysvětlivky (`hints`: výraz + vysvětlení): v úpravě se označí text
   a ťukne na „+ Vysvětlení“; v receptu je výraz podtržený a po ťuknutí ukáže vysvětlení.
 - Recept -> nákup: u receptu se odškrtnou ingredience, které už doma jsou, zbytek jde

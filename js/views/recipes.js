@@ -46,9 +46,20 @@ function page(el, backTo) {
 
 // ---------- Seznam receptů ----------
 
+// Záložka seznamu vydrží, dokud je appka otevřená
+let listTab = 'recipes';
+
 async function renderList(el, extraEl) {
   const root = document.createElement('div');
   el.append(root);
+  root.innerHTML = `
+    <div class="segmented seg-bar tabs-only recipe-tabs" role="tablist">
+      <button type="button" role="tab" data-tab="recipes">Recepty</button>
+      <button type="button" role="tab" data-tab="skills">Skills</button>
+    </div>
+    <div class="list-root"></div>`;
+  const tabsEl = root.querySelector('.recipe-tabs');
+  const listRoot = root.querySelector('.list-root');
 
   const pantryBtn = document.createElement('a');
   pantryBtn.className = 'btn btn-small';
@@ -63,9 +74,9 @@ async function renderList(el, extraEl) {
   addBtn.addEventListener('click', () => holdKeyboard());
   extraEl.append(pantryBtn, addBtn);
 
-  async function draw() {
+  async function drawRecipes() {
     const recipes = await store.listRecipes();
-    root.innerHTML = recipes.length
+    listRoot.innerHTML = recipes.length
       ? `<ul class="item-list group">${recipes.map((r) => `<li class="item" data-id="${escapeHtml(r.id)}">
           <div class="item-bg" aria-hidden="true">Smazat</div>
           <button type="button" class="item-main">
@@ -75,13 +86,39 @@ async function renderList(el, extraEl) {
       : `<div class="empty"><div class="empty-icon">${ICONS.recipe}</div><p class="empty-title">Zatím žádné recepty</p></div>`;
   }
 
+  // Skills: vysvětlivky ze všech receptů na jednom místě, u každé recepty,
+  // ve kterých se používá
+  async function drawSkills() {
+    const skills = await store.listSkills();
+    listRoot.innerHTML = skills.length
+      ? `<ul class="skills">${skills.map((skill) => `<li class="skill">
+          <p class="skill-term">${escapeHtml(skill.term)}</p>
+          ${skill.notes.map((entry) => `<p class="skill-note">${escapeHtml(entry.note)}</p>
+            <p class="skill-recipes">${entry.recipes.map((r) => `<a class="chip skill-recipe" href="#/recepty/${escapeHtml(r.id)}">${escapeHtml(r.name)}</a>`).join('')}</p>`).join('')}
+        </li>`).join('')}</ul>`
+      : `<div class="empty"><div class="empty-icon">${ICONS.recipe}</div><p class="empty-title">Zatím žádné skills</p></div>`;
+  }
+
+  function draw() {
+    tabsEl.querySelectorAll('[data-tab]').forEach((btn) => btn.setAttribute('aria-pressed', btn.dataset.tab === listTab));
+    return listTab === 'skills' ? drawSkills() : drawRecipes();
+  }
+
+  tabsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-tab]');
+    if (!btn) return;
+    listTab = btn.dataset.tab;
+    el.scrollTop = 0;
+    draw();
+  });
+
   async function remove(id) {
     const removed = await store.removeRecipes([id]);
     if (removed.length) undoToast(`${removed[0].name}: smazáno`, () => store.restoreRecipes(removed));
   }
 
   const open = (id) => navigate(`recepty/${id}`);
-  const endGesture = rowGestures(root, { onTap: (li) => open(li.dataset.id), onPress: open, onSwipe: remove });
+  const endGesture = rowGestures(listRoot, { onTap: (li) => open(li.dataset.id), onPress: open, onSwipe: remove });
 
   await draw();
   const unsubscribe = store.subscribe(draw);
