@@ -200,6 +200,8 @@ Hotovo (0.6.0):
   přes tři tečky v řádku. Seznam se přepne do režimu přesouvání na téže obrazovce (zmizí
   horní tlačítka, kolečka a tečky, přesouvaný úkol se lehce třese), ťuknutí na cílový úkol
   přesune hned bez potvrzení (toast se Zpět), ťuknutí na přesouvaný úkol režim zruší.
+- Změny stavu obrazovky nejsou skokové: co mizí, odjede během zhruba 200 ms ke kraji
+  obrazovky a stejně se vrací (viz režim přesouvání v `tasks.js` + CSS). Animace decentní.
 - Akce, která potřebuje vybrat cíl, se dělá přímo na stávající obrazovce (režim), ne novým
   seznamem, panelem ani stránkou, a neptá se „opravdu?“ (stačí toast se Zpět).
   Seznam kroků je ve výchozím stavu rozbalený; když ho člověk zabalí nebo nechá rozbalený

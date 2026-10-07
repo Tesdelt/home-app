@@ -977,16 +977,32 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .item-more svg { width: 20px; height: 20px; fill: currentColor; stroke: none; }
 .item-slide .item-main.has-stripe { padding-right: 4px; }
 
-/* Přesouvání: bez koleček a teček, přesouvaný úkol se lehce třese */
-.is-moving-mode .check-tap, .is-moving-mode .item-more { display: none; }
-.is-moving-mode .item-main.has-stripe { padding-left: 20px; padding-right: 14px; }
-.is-moving-mode .item:not(.is-moving) .item-slide { transition: background 0.2s ease; }
+/* Přesouvání: ovládání během 200 ms odjede ke kraji obrazovky (kolečka
+   doleva, tečky a horní tlačítka doprava, hotové úkoly dolů) a po skončení se
+   stejně vrátí. Přesouvaný úkol se jen decentně pohupuje. */
+.list-root .check-tap, .item-more, .item-main.has-stripe {
+  transition: width 200ms ease, margin 200ms ease, padding 200ms ease, opacity 160ms ease, transform 200ms ease;
+}
+.list-root .check-tap { overflow: hidden; }
+.is-moving-mode .check-tap { width: 0; margin-right: -12px; opacity: 0; transform: translateX(-28px); pointer-events: none; }
+.is-moving-mode .item-more { width: 0; opacity: 0; transform: translateX(28px); pointer-events: none; }
+.is-moving-mode .item-main.has-stripe { padding-right: 14px; }
+
+.topbar-extra > * { transition: transform 200ms ease, opacity 160ms ease; }
+.topbar-extra > .is-away { transform: translateX(70px); opacity: 0; pointer-events: none; }
+
+.done-wrap { transition: transform 200ms ease, opacity 160ms ease; }
+.is-moving-mode .done-wrap { transform: translateY(40px); opacity: 0; pointer-events: none; }
+
+.item .item-slide { transition: transform 0.2s ease, background 200ms ease, box-shadow 200ms ease; }
 .item.is-moving { z-index: 1; }
-.item.is-moving .item-slide { animation: wiggle 0.32s ease-in-out infinite; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); border-radius: var(--radius-sm); }
+.item.is-moving .item-slide { animation: wiggle 0.9s ease-in-out infinite; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18); border-radius: var(--radius-sm); }
 .item.is-moving .item-slide, .item.is-moving .item-main { background: var(--accent-soft); }
 .is-moving-mode.list-root .group { overflow: visible; }
 @keyframes wiggle {
-  0%, 100% { transform: rotate(-0.5deg) translateX(-0.5px); }
-  50% { transform: rotate(0.5deg) translateX(0.5px); }
+  0%, 100% { transform: rotate(-0.22deg); }
+  50% { transform: rotate(0.22deg); }
 }
 @media (prefers-reduced-motion: reduce) { .item.is-moving .item-slide { animation: none; } }
+
+.item .item-slide.is-dragging { transition: none; }

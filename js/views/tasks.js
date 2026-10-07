@@ -112,11 +112,19 @@ export async function render(el, { params, subEl, extraEl }) {
   let renderToken = 0;
   let moveId = null; // id úkolu, který se právě přesouvá do jiného
 
+  // Přepnutí do režimu přesouvání a zpět jen mění třídy, seznam se
+  // nepřekresluje, aby mohlo ovládání plynule odjet a zase přijet (viz CSS).
+  function applyMoving() {
+    const on = Boolean(moveId);
+    listRoot.classList.toggle('is-moving-mode', on);
+    sortBtn.classList.toggle('is-away', on);
+    addBtn.classList.toggle('is-away', on);
+    listRoot.querySelectorAll('.item').forEach((li) => li.classList.toggle('is-moving', li.dataset.id === moveId));
+  }
+
   function setMoving(taskId) {
     moveId = taskId;
-    sortBtn.hidden = Boolean(moveId);
-    addBtn.hidden = Boolean(moveId);
-    renderList();
+    applyMoving();
   }
 
   // Řazení si pamatuje každý telefon zvlášť
@@ -201,25 +209,22 @@ export async function render(el, { params, subEl, extraEl }) {
     const rows = groups
       .map((group) => `${group.label ? `<li class="cat-head">${escapeHtml(group.label)}</li>` : ''}${group.tasks.map((t) => row(t)).join('')}`)
       .join('');
-    // Při přesouvání jsou vidět jen úkoly, do kterých se dá přesunout
-    if (moveId && !tasks.some((t) => t.id === moveId && !t.done)) {
-      setMoving(null);
-      return;
-    }
-    listRoot.classList.toggle('is-moving-mode', Boolean(moveId));
-    const done = moveId ? [] : tasks.filter((t) => t.done).sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0));
+    // Přesouvaný úkol mezitím zmizel (smazal ho druhý telefon): konec režimu
+    if (moveId && !tasks.some((t) => t.id === moveId && !t.done)) moveId = null;
+    const done = tasks.filter((t) => t.done).sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0));
 
     let out = rows
       ? `<ul class="item-list group">${rows}</ul>`
       : `<div class="empty" style="padding: 28px 24px 12px"><div class="empty-icon">${ICONS.check}</div><p class="empty-title">Všechno hotovo</p></div>`;
     if (done.length) {
-      out += `<div class="done-head">
+      out += `<div class="done-wrap"><div class="done-head">
           <p class="section-label">Hotové (${done.length})</p>
           <button type="button" class="btn btn-ghost btn-small" data-action="clear">Vyčistit</button>
         </div>
-        <ul class="item-list group">${done.map((t) => row(t, { checked: true })).join('')}</ul>`;
+        <ul class="item-list group">${done.map((t) => row(t, { checked: true })).join('')}</ul></div>`;
     }
     listRoot.innerHTML = out;
+    applyMoving();
   }
 
   // ---------- Akce ----------
