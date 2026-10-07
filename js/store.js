@@ -290,6 +290,77 @@ export async function removeShop(key) {
   emit();
 }
 
+// ---------- Recepty ----------
+// Recept: { id, name, ingredients: [{ name, qty }], method, createdAt, updatedAt }
+
+export async function listRecipes() {
+  const recipes = await live('recipes');
+  return recipes.sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+}
+
+export async function getRecipe(id) {
+  const recipe = await db.get('recipes', id);
+  return recipe && !recipe.deleted ? recipe : null;
+}
+
+// Uloží recept (nový dostane id sám). Vrací ho.
+export async function saveRecipe({ id = null, name, ingredients = [], method = null }) {
+  const clean = String(name).trim();
+  if (!clean) throw new Error('Prázdný název');
+  const now = Date.now();
+  const before = id ? await db.get('recipes', id) : null;
+  const recipe = {
+    id: id ?? db.newId(),
+    name: clean,
+    ingredients: ingredients.filter((i) => i?.name).map((i) => ({ name: i.name, qty: i.qty ?? '' })),
+    method: String(method ?? '').trim() || null,
+    createdAt: before?.createdAt ?? now,
+    updatedAt: now,
+  };
+  await save('recipes', [recipe]);
+  emit();
+  return recipe;
+}
+
+export const removeRecipes = (ids) => removeByIds('recipes', ids);
+export const restoreRecipes = (recipes) => restore('recipes', recipes);
+
+// Přidá vybrané ingredience do nákupu. Co už na seznamu je, se nezdvojí.
+// Vrací počet nově přidaných nebo vrácených položek.
+export async function addIngredientsToShopping(ingredients) {
+  let added = 0;
+  for (const ing of ingredients) {
+    const { status } = await addItem({ name: ing.name, qty: ing.qty ?? '' });
+    if (status !== 'exists') added += 1;
+  }
+  return added;
+}
+
+// Je to stejná věc? Podle katalogu ("mlíko" = "mléko") a podle začátku slova,
+// aby sedělo i skloňování ("cibule" a "cibuli").
+function sameThing(a, b) {
+  const x = itemKey(a);
+  const y = itemKey(b);
+  if (x === y) return true;
+  const stem = (word) => word.slice(0, Math.max(4, word.length - 2));
+  return x.startsWith(stem(y)) || y.startsWith(stem(x));
+}
+
+export const hasIngredient = (have, name) => have.some((h) => sameThing(h, name));
+
+// Co se dá uvařit z toho, co je doma. have = seznam názvů. Vrací recepty
+// seřazené od těch, kterým chybí nejméně: [{ recipe, missing: [ingredience] }].
+export async function matchRecipes(have) {
+  const recipes = await live('recipes');
+  return recipes
+    .map((recipe) => ({ recipe, missing: (recipe.ingredients ?? []).filter((ing) => !hasIngredient(have, ing.name)) }))
+    .sort((a, b) => a.missing.length - b.missing.length || a.recipe.name.localeCompare(b.recipe.name, 'cs'));
+}
+
+// Co máme doma: seznam názvů, pamatuje si ho každý telefon zvlášť
+export const getPantry = () => getMeta('pantry', []);
+export const setPantry = (list) => db.put('meta', { key: 'pantry', value: list });
+
 // ---------- Jednorázové úpravy dat po aktualizaci appky ----------
 
 // 0.4.0: "Ovoce a zelenina" se rozdělilo, přibyly Uzeniny, Sladké a Slané.
@@ -692,7 +763,7 @@ export async function exportAll() {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Sklady s řádky podle id, které se synchronizují stejným způsobem
-const ID_STORES = ['items', 'tasks', 'payments', 'comments'];
+const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes'];
 
 export async function importAll(backup) {
   if (backup?.app !== 'home-app' || !backup.data) throw new Error('Tohle není záloha této aplikace.');

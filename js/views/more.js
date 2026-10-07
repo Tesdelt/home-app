@@ -17,6 +17,10 @@ export async function render(el) {
     const { email } = auth.getState();
     const pushState = await push.status();
     root.innerHTML = `
+      <a class="card" href="#/recepty">
+        <div class="card-head" style="margin: 0"><span class="card-icon">${ICONS.recipe}</span><h2 class="card-title">Recepty</h2></div>
+      </a>
+
       <p class="section-label">Na tomto telefonu</p>
       <section class="card">
         <div class="card-head"><span class="card-icon">${ICONS.user}</span><h2 class="card-title">Kdo jsem</h2><span class="card-meta">${escapeHtml(me ?? '')}</span></div>

@@ -149,6 +149,20 @@ create table if not exists public.shops (
   primary key (household_id, key)
 );
 
+-- Recepty. ingredients je pole objektů { name, qty }, method je postup.
+create table if not exists public.recipes (
+  id           uuid primary key,
+  household_id uuid not null references public.households (id) on delete cascade,
+  name         text not null,
+  ingredients  jsonb not null default '[]',
+  method       text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+
+create index if not exists recipes_household_idx on public.recipes (household_id);
+
 -- Push notifikace: adresy, na které se telefonům posílají upozornění.
 -- Každý vidí a mění jen své vlastní odběry.
 create table if not exists public.push_subscriptions (
@@ -235,6 +249,11 @@ create trigger shops_keep_newer
   before update on public.shops
   for each row execute function private.keep_newer();
 
+drop trigger if exists recipes_keep_newer on public.recipes;
+create trigger recipes_keep_newer
+  before update on public.recipes
+  for each row execute function private.keep_newer();
+
 drop trigger if exists task_comments_keep_newer on public.task_comments;
 create trigger task_comments_keep_newer
   before update on public.task_comments
@@ -251,6 +270,7 @@ revoke all on public.tasks             from public, anon, authenticated;
 revoke all on public.payments          from public, anon, authenticated;
 revoke all on public.shops             from public, anon, authenticated;
 revoke all on public.task_comments     from public, anon, authenticated;
+revoke all on public.recipes           from public, anon, authenticated;
 revoke all on public.push_subscriptions from public, anon, authenticated;
 revoke all on public.payment_reminders  from public, anon, authenticated;
 
@@ -262,6 +282,7 @@ grant select, insert, update, delete on public.tasks            to authenticated
 grant select, insert, update, delete on public.payments         to authenticated;
 grant select, insert, update, delete on public.shops            to authenticated;
 grant select, insert, update, delete on public.task_comments    to authenticated;
+grant select, insert, update, delete on public.recipes          to authenticated;
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 
 -- Servisní role (funkce send-reminders) dostane jen to, co k rozeslání
@@ -280,6 +301,7 @@ alter table public.tasks             enable row level security;
 alter table public.payments          enable row level security;
 alter table public.shops             enable row level security;
 alter table public.task_comments     enable row level security;
+alter table public.recipes           enable row level security;
 alter table public.push_subscriptions enable row level security;
 alter table public.payment_reminders  enable row level security;
 
@@ -329,6 +351,12 @@ create policy "clen cte a zapisuje komentare" on public.task_comments
   using (household_id in (select private.my_household_ids()))
   with check (household_id in (select private.my_household_ids()));
 
+drop policy if exists "clen cte a zapisuje recepty" on public.recipes;
+create policy "clen cte a zapisuje recepty" on public.recipes
+  for all to authenticated
+  using (household_id in (select private.my_household_ids()))
+  with check (household_id in (select private.my_household_ids()));
+
 drop policy if exists "kazdy jen sve odbery" on public.push_subscriptions;
 create policy "kazdy jen sve odbery" on public.push_subscriptions
   for all to authenticated
@@ -342,7 +370,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops', 'task_comments'] loop
+  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops', 'task_comments', 'recipes'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

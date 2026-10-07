@@ -19,7 +19,7 @@ Používá se hlavně na iPhonu jako appka přidaná na plochu (Safari → Sdíl
 index.html            kostra: horní lišta, #view, toast, spodní lišta (5 záložek)
 css/style.css         všechny styly, barvy v CSS proměnných (světlý + tmavý režim)
 js/app.js             start, brána přihlášení, routy, přepínání pohledů, service worker
-js/router.js          hash router (#/domu, #/nakup, #/ukoly, #/penize, #/vice)
+js/router.js          hash router (#/domu, #/nakup, #/ukoly, #/penize, #/vice, #/recepty)
 js/db.js              IndexedDB: migrace a základní operace (jen pro datovou vrstvu)
 js/store.js           DATOVÁ VRSTVA: jediné API pro data + subscribe() na změny
 js/sync.js            synchronizace se Supabase: fronta změn (outbox), push, pull, Realtime
@@ -33,6 +33,7 @@ js/config.js          adresa a veřejný klíč Supabase, zobrazovaná verze
 js/ui.js              escapeHtml, ikony, toast se Zpět, spodní panel, gesta na řádcích, formátování
 js/views/*.js         jednotlivé obrazovky
 js/views/task.js      stránka jednoho úkolu (#/ukoly/<id>): pole, kroky, komentáře
+js/views/recipes.js   recepty (#/recepty, z Více): seznam, recept, úprava, „co uvařit“
 js/views/login.js     přihlášení, „Nemáte přístup“, nabídka nahrát stará lokální data
 sw.js                 offline cache
 supabase/schema.sql   tabulky, RLS politiky, oprávnění rolí, Realtime
@@ -181,6 +182,15 @@ Hotovo (0.6.0):
 - Kroky úkolu (`steps` v úkolu): jdou po sobě, každý má vlastní termín, termín úkolu se řídí
   krokem, který je na řadě, po posledním je úkol hotový. Schválně schované pod
   „Rozdělit na kroky“, většina úkolů je nemá. Úkol s kroky se neopakuje a naopak.
+
+Hotovo (0.9.0):
+- Recepty (`#/recepty`, otevírají se z Více, tabulka `recipes`): název, ingredience
+  (každá na řádek, „mouka 500 g“ se rozdělí na název a množství) a postup.
+- Recept -> nákup: u receptu se odškrtnou ingredience, které už doma jsou, zbytek jde
+  jedním tlačítkem do nákupního seznamu (bez zdvojení, ve správné kategorii).
+- Co uvařit (`#/recepty/zasoby`): vypíše se, co je doma, a appka seřadí recepty podle toho,
+  kolik jim chybí. Shoda je podle katalogu a začátku slova (`sameThing` ve `store.js`).
+  Seznam zásob si pamatuje každý telefon zvlášť (meta `pantry`).
 
 Hotovo (0.8.0):
 - Nový úkol se zakládá tlačítkem + v horní liště: otevře stránku úkolu v režimu konceptu

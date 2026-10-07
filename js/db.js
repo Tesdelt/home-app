@@ -33,11 +33,15 @@ const MIGRATIONS = [
   (db) => {
     db.createObjectStore('comments', { keyPath: 'id' });
   },
+  // v6: recepty
+  (db) => {
+    db.createObjectStore('recipes', { keyPath: 'id' });
+  },
 ];
 
 export const DB_VERSION = MIGRATIONS.length;
 // Sklady, které jdou do zálohy. Fronta outbox mezi ně nepatří.
-export const STORES = ['meta', 'items', 'history', 'tasks', 'payments', 'shops', 'comments'];
+export const STORES = ['meta', 'items', 'history', 'tasks', 'payments', 'shops', 'comments', 'recipes'];
 
 let dbPromise = null;
 
