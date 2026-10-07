@@ -2,12 +2,17 @@
 // s nastavením (pro koho, důležitost, termín, opakování, kroky), podrobnosti
 // (dlouhé se sbalí) a hlavně komentáře.
 // Změny se ukládají samy. Kroky jsou schválně schované, většina úkolů je nemá.
+//
+// Stejná stránka slouží i k založení úkolu (#/ukoly/novy): všechno se nastaví
+// předem a úkol vznikne až tlačítkem Přidat. Do té doby je jen v paměti (draft).
 
 import * as store from '../store.js';
 import { escapeHtml, ICONS, undoToast, openMenu, whoClass } from '../ui.js';
 import { navigate } from '../router.js';
 import { today, dayStr, addDays, dueLabel, timeLabel, isSameDay } from '../dates.js';
-import { REPEATS, repeatValue, repeatLabel } from './tasks.js';
+import { REPEATS, repeatValue, repeatLabel, defaultDue } from './tasks.js';
+
+export const NEW = 'novy';
 
 // "dnes 14:02", "včera 9:10", "po 5. 10. 14:02"
 const when = (timestamp) => `${dueLabel(dayStr(new Date(timestamp)))} ${timeLabel(timestamp)}`;
@@ -17,7 +22,11 @@ export async function renderTask(el, id, { subEl }) {
   root.className = 'detail';
   el.append(root);
 
-  let task = await store.getTask(id);
+  const draft = id === NEW;
+  let task = draft
+    ? { title: '', note: null, assignee: null, priority: 2, due: defaultDue(), repeat: null, steps: [], doneParts: [], done: false }
+    : await store.getTask(id);
+  let notify = false; // nový úkol: poslat druhému upozornění
   if (!task) {
     root.innerHTML = `<a class="back-link" href="#/ukoly">${ICONS.back} Úkoly</a>
       <div class="empty"><p class="empty-title">Úkol už neexistuje</p></div>`;
@@ -34,8 +43,8 @@ export async function renderTask(el, id, { subEl }) {
   root.innerHTML = `
     <a class="back-link" href="#/ukoly">${ICONS.back} Úkoly</a>
     <div class="detail-head">
-      <button type="button" class="check-tap" data-action="done" aria-label="Hotovo"><span class="check">${ICONS.check}</span></button>
-      <textarea class="input detail-title" name="title" rows="1" aria-label="Název"></textarea>
+      ${draft ? '' : `<button type="button" class="check-tap" data-action="done" aria-label="Hotovo"><span class="check">${ICONS.check}</span></button>`}
+      <textarea class="input detail-title" name="title" rows="1" aria-label="Název" placeholder="Nový úkol" enterkeyhint="done"></textarea>
     </div>
     <div class="opts"></div>
     <p class="detail-state card-meta" hidden></p>
@@ -50,6 +59,7 @@ export async function renderTask(el, id, { subEl }) {
 
     <div class="note-box"></div>
 
+    ${draft ? '<button type="button" class="btn btn-primary btn-block detail-create" data-action="create">Přidat</button>' : `
     <p class="section-label">Komentáře</p>
     <ul class="comments"></ul>
     <form class="add-form comment-form" autocomplete="off">
@@ -57,7 +67,7 @@ export async function renderTask(el, id, { subEl }) {
       <button class="add-btn" type="submit" aria-label="Odeslat">${ICONS.send}</button>
     </form>
 
-    <button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat úkol</button>`;
+    <button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat úkol</button>`}`;
 
   const titleEl = root.querySelector('.detail-title');
   const optsEl = root.querySelector('.opts');
@@ -68,7 +78,41 @@ export async function renderTask(el, id, { subEl }) {
   const commentsEl = root.querySelector('.comments');
 
   const grow = (area) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
-  const save = (patch) => store.updateTask(id, patch);
+  // Rozpracovaný nový úkol se mění jen v paměti, existující se hned ukládá
+  const save = async (patch) => {
+    if (!draft) return store.updateTask(id, patch);
+    task = { ...task, ...patch };
+    drawHead();
+    drawSteps();
+    drawNote();
+    return task;
+  };
+
+  // Kroky: u nového úkolu v paměti, u existujícího přes datovou vrstvu.
+  // Termín úkolu se řídí prvním nesplněným krokem.
+  const draftSteps = (steps) => save({ steps, ...(steps.length ? { due: steps.find((s) => !s.done)?.due ?? null } : {}) });
+  const stepsApi = draft ? {
+    add: (title) => draftSteps([...task.steps, { id: store.newId(), title, due: task.steps.length ? null : task.due ?? null, done: false, doneAt: null, doneBy: null }]),
+    update: (stepId, patch) => draftSteps(task.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s))),
+    setDone: (stepId, done) => draftSteps(task.steps.map((s) => (s.id === stepId ? { ...s, done } : s))),
+    remove: (stepId) => draftSteps(task.steps.filter((s) => s.id !== stepId)),
+  } : {
+    add: (title) => store.addStep(id, { title }),
+    update: (stepId, patch) => store.updateStep(id, stepId, patch),
+    setDone: (stepId, done) => store.setStepDone(id, stepId, done),
+    remove: (stepId) => store.removeStep(id, stepId),
+  };
+
+  async function create() {
+    const title = titleEl.value.replace(/\s+/g, ' ').trim();
+    if (!title) {
+      titleEl.focus();
+      return;
+    }
+    const { note, assignee, priority, due, repeat, steps } = task;
+    await store.addTask({ title: title.charAt(0).toLocaleUpperCase('cs') + title.slice(1), note, assignee, priority, due, repeat, steps, notify });
+    navigate('ukoly');
+  }
   const whoName = (value) => (!value ? 'Kdokoliv' : value === store.BOTH ? 'Oba' : value);
 
   // ---------- Vykreslení ----------
@@ -98,6 +142,8 @@ export async function renderTask(el, id, { subEl }) {
       const done = steps.filter((s) => s.done).length;
       opts.push(`<button type="button" class="opt${stepsOpen ? ' is-set' : ''}" data-opt="steps">${steps.length ? `Kroky ${done}/${steps.length}` : '+ Kroky'}</button>`);
     }
+    // Zvonek: dát druhému vědět, že úkol přibyl. Výchozí vypnuto.
+    if (draft) opts.push(`<button type="button" class="opt opt-bell${notify ? ' is-set' : ''}" data-opt="notify" aria-pressed="${notify}" aria-label="Upozornit druhého">${ICONS.bell}</button>`);
     optsEl.innerHTML = opts.join('');
 
     const parts = task.doneParts ?? [];
@@ -198,6 +244,12 @@ export async function renderTask(el, id, { subEl }) {
   }
 
   async function draw() {
+    if (draft) {
+      drawHead();
+      drawSteps();
+      drawNote();
+      return;
+    }
     const fresh = await store.getTask(id);
     // Úkol mezitím smazal druhý telefon (nebo já): zpět na seznam
     if (!fresh) {
@@ -216,14 +268,16 @@ export async function renderTask(el, id, { subEl }) {
 
   titleEl.addEventListener('input', () => grow(titleEl));
   titleEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      titleEl.blur();
-    }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    // U nového úkolu Enter rovnou přidá, ať jde úkol zapsat i jen názvem
+    if (draft) create();
+    else titleEl.blur();
   });
   titleEl.addEventListener('change', () => {
     const text = titleEl.value.replace(/\s+/g, ' ').trim();
-    if (text) save({ title: text });
+    if (draft) task = { ...task, title: text };
+    else if (text) save({ title: text });
     else titleEl.value = task.title;
   });
 
@@ -317,6 +371,10 @@ export async function renderTask(el, id, { subEl }) {
     if (opt === 'priority') openPriority(btn);
     if (opt === 'due') openDue(btn);
     if (opt === 'repeat') openRepeat(btn);
+    if (opt === 'notify') {
+      notify = !notify;
+      drawHead();
+    }
     if (opt === 'steps') {
       stepsOpen = !stepsOpen;
       drawHead();
@@ -331,6 +389,10 @@ export async function renderTask(el, id, { subEl }) {
     const action = e.target.closest('[data-action]')?.dataset.action;
     if (!action) return;
 
+    if (action === 'create') {
+      await create();
+      return;
+    }
     if (action === 'done') {
       // Stejně jako kolečko v seznamu: splní celý úkol, nebo splnění vrátí
       const undo = task.done || (task.doneParts ?? []).includes(me) || (task.repeat && isSameDay(task.doneAt));
@@ -352,8 +414,8 @@ export async function renderTask(el, id, { subEl }) {
       const stepId = stepEl.dataset.step;
       // Bez fokusu v seznamu kroků, jinak by se po změně nepřekreslil
       document.activeElement?.blur();
-      if (action === 'step-done') await store.setStepDone(id, stepId, !stepEl.classList.contains('is-done'));
-      if (action === 'step-remove') await store.removeStep(id, stepId);
+      if (action === 'step-done') await stepsApi.setDone(stepId, !stepEl.classList.contains('is-done'));
+      if (action === 'step-remove') await stepsApi.remove(stepId);
     }
 
     const commentEl = e.target.closest('[data-comment]');
@@ -382,9 +444,9 @@ export async function renderTask(el, id, { subEl }) {
     if (!stepId) return;
     if (e.target.name === 'title') {
       const text = e.target.value.trim();
-      if (text) store.updateStep(id, stepId, { title: text });
+      if (text) stepsApi.update(stepId, { title: text });
     }
-    if (e.target.name === 'due') store.updateStep(id, stepId, { due: e.target.value || null });
+    if (e.target.name === 'due') stepsApi.update(stepId, { due: e.target.value || null });
   });
   stepsList.addEventListener('focusout', () => setTimeout(drawSteps, 0));
 
@@ -394,10 +456,10 @@ export async function renderTask(el, id, { subEl }) {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    await store.addStep(id, { title: text });
+    await stepsApi.add(text);
   });
 
-  root.querySelector('.comment-form').addEventListener('submit', async (e) => {
+  root.querySelector('.comment-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = e.target.elements.body;
     const text = input.value.trim();
@@ -409,5 +471,9 @@ export async function renderTask(el, id, { subEl }) {
   // ---------- Start ----------
 
   await draw();
+  if (draft) {
+    titleEl.focus();
+    return undefined;
+  }
   return store.subscribe(draw);
 }

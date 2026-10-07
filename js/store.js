@@ -350,8 +350,11 @@ export async function listTasks() {
 
 export const BOTH = 'both';
 
+// Nové id (pro kroky úkolu, který se teprve zakládá)
+export const newId = () => db.newId();
+
 // notify = true pošle ostatním členům push upozornění, že úkol přibyl
-export async function addTask({ title, due = null, assignee = null, repeat = null, priority = 2, note = null, notify = false }) {
+export async function addTask({ title, due = null, assignee = null, repeat = null, priority = 2, note = null, notify = false, steps = [] }) {
   const clean = String(title).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
@@ -367,7 +370,7 @@ export async function addTask({ title, due = null, assignee = null, repeat = nul
     doneAt: null,
     doneBy: null,
     doneParts: [],
-    steps: [],
+    steps,
     prevDue: null,
     createdBy: await getMe(),
     createdAt: now,

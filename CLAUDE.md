@@ -179,6 +179,11 @@ Hotovo (0.6.0):
   krokem, který je na řadě, po posledním je úkol hotový. Schválně schované pod
   „Rozdělit na kroky“, většina úkolů je nemá. Úkol s kroky se neopakuje a naopak.
 
+Hotovo (0.8.0):
+- Nový úkol se zakládá tlačítkem + v horní liště: otevře stránku úkolu v režimu konceptu
+  (`#/ukoly/novy`), kde se předem nastaví všechno včetně kroků a zvonku, a úkol vznikne až
+  tlačítkem Přidat (nebo Enterem v názvu). Rychlé pole v seznamu už není.
+
 Hotovo (0.7.0):
 - Zvonek u přidání úkolu (výchozí vypnuto, platí pro jeden úkol): po odeslání úkolu na
   server dostanou ostatní členové push „Nový úkol od: …“. Fronta v meta `notifyQueue`

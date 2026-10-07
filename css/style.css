@@ -752,3 +752,10 @@ button.opt:active { background: var(--surface-2); }
 .notify-btn svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .notify-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .notify-btn[aria-pressed="true"] svg { fill: currentColor; }
+
+/* Úkoly: lišta jen se záložkami, nový úkol je tlačítko + nahoře */
+.seg-bar.tabs-only { margin-top: 0; }
+.detail-create { margin-top: 16px; }
+.opt-bell { padding: 0 10px; }
+.opt-bell.is-set { background: var(--accent-soft); }
+.opt-bell.is-set svg { fill: currentColor; }

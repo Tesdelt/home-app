@@ -1,4 +1,5 @@
-// Úkoly: rychlé přidání nahoře, pohledy Dnes / Týden / Někdy.
+// Úkoly: pohledy Dnes / Týden / Někdy, nový úkol tlačítkem + v horní liště
+// (otevře stránku úkolu, kde se všechno nastaví před přidáním).
 // Ťuknutí na kolečko = hotovo, ťuknutí na řádek = stránka úkolu (podrobnosti,
 // kroky, komentáře, viz task.js), potažení doleva = smazat.
 // V řádku je vidět pro koho úkol je (barva), termín a důležitost (1-3).
@@ -7,7 +8,7 @@
 import * as store from '../store.js';
 import { escapeHtml, ICONS, undoToast, rowGestures, whoClass, whoBadge } from '../ui.js';
 import { navigate } from '../router.js';
-import { renderTask } from './task.js';
+import { renderTask, NEW } from './task.js';
 import { today, dayStr, addDays, dueLabel, dayHeading, timeLabel, isSameDay } from '../dates.js';
 
 export const title = 'Úkoly';
@@ -37,6 +38,9 @@ export const repeatLabel = (repeat) => REPEAT_SHORT[repeatValue(repeat)] ?? `co 
 // Zvolená záložka vydrží, dokud je appka otevřená
 let tab = 'today';
 
+// Nový úkol dostane termín podle záložky, ze které se zakládá
+export const defaultDue = () => ({ today: today(), week: addDays(today(), 7), someday: null }[tab]);
+
 // Rozdělí úkoly do záložek. Používá i Domů. Důležitější jsou výš.
 export function splitTasks(tasks, day = today()) {
   const weekEnd = addDays(day, 7);
@@ -59,19 +63,18 @@ export async function render(el, { params, subEl, extraEl }) {
 
   el.innerHTML = `
     <div class="add-bar">
-      <form class="add-form" autocomplete="off">
-        <input class="input" name="entry" type="text" placeholder="Přidat úkol…" aria-label="Přidat úkol"
-          enterkeyhint="done" autocapitalize="sentences" autocorrect="on">
-        <button class="notify-btn" type="button" aria-pressed="false" aria-label="Upozornit druhého">${ICONS.bell}</button>
-        <button class="add-btn" type="submit" aria-label="Přidat">${ICONS.plus}</button>
-      </form>
-      <div class="segmented seg-bar" role="tablist"></div>
+      <div class="segmented seg-bar tabs-only" role="tablist"></div>
     </div>
     <div class="list-root"></div>`;
 
-  const form = el.querySelector('.add-form');
-  const input = form.elements.entry;
-  const notifyBtn = form.querySelector('.notify-btn');
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'add-btn';
+  addBtn.setAttribute('aria-label', 'Přidat úkol');
+  addBtn.innerHTML = ICONS.plus;
+  addBtn.addEventListener('click', () => navigate(`ukoly/${NEW}`));
+  extraEl.append(addBtn);
+
   const tabsEl = el.querySelector('.seg-bar');
   const listRoot = el.querySelector('.list-root');
 
@@ -79,27 +82,6 @@ export async function render(el, { params, subEl, extraEl }) {
   let members = await store.listMembers();
   let comments = {};
   let renderToken = 0;
-
-  // ---------- Přidávání ----------
-  // Nový úkol dostane termín podle záložky, na které zrovna jsme.
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = '';
-    input.focus();
-    const due = { today: today(), week: addDays(today(), 7), someday: null }[tab];
-    // Zvonek platí jen pro jeden úkol, pak se zase vypne
-    const notify = notifyBtn.getAttribute('aria-pressed') === 'true';
-    notifyBtn.setAttribute('aria-pressed', 'false');
-    await store.addTask({ title: text.charAt(0).toLocaleUpperCase('cs') + text.slice(1), due, notify });
-  });
-
-  notifyBtn.addEventListener('pointerdown', (e) => e.preventDefault());
-  notifyBtn.addEventListener('click', () => {
-    notifyBtn.setAttribute('aria-pressed', notifyBtn.getAttribute('aria-pressed') !== 'true');
-  });
 
   tabsEl.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-tab]');
@@ -239,7 +221,6 @@ export async function render(el, { params, subEl, extraEl }) {
   // ---------- Start ----------
 
   await renderList();
-  if (matchMedia('(hover: hover)').matches) input.focus();
 
   const unsubscribe = store.subscribe(renderList);
   return () => {
