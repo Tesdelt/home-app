@@ -89,6 +89,25 @@ alter table public.tasks add column if not exists note text;
 alter table public.tasks add column if not exists priority integer not null default 2;
 alter table public.tasks add column if not exists done_parts text[] not null default '{}';
 
+-- 0.6.0: kroky úkolu, pole objektů { id, title, due, done, doneAt, doneBy }.
+-- Termín úkolu (due) se řídí prvním nesplněným krokem.
+alter table public.tasks add column if not exists steps jsonb not null default '[]';
+
+-- Komentáře k úkolům. Vlastní tabulka, aby se komentáře obou lidí
+-- napsané ve stejnou chvíli navzájem nepřepsaly.
+create table if not exists public.task_comments (
+  id           uuid primary key,
+  household_id uuid not null references public.households (id) on delete cascade,
+  task_id      uuid not null,
+  author       text,
+  body         text not null,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+
+create index if not exists task_comments_household_idx on public.task_comments (household_id);
+
 -- Pravidelné platby. payer je jméno člena, nebo 'split' (napůl).
 create table if not exists public.payments (
   id           uuid primary key,
@@ -216,6 +235,11 @@ create trigger shops_keep_newer
   before update on public.shops
   for each row execute function private.keep_newer();
 
+drop trigger if exists task_comments_keep_newer on public.task_comments;
+create trigger task_comments_keep_newer
+  before update on public.task_comments
+  for each row execute function private.keep_newer();
+
 -- ---------- Oprávnění rolí ----------
 -- Nepřihlášený nesmí nic. Přihlášený jen to, co mu navíc dovolí RLS níže.
 
@@ -226,6 +250,7 @@ revoke all on public.shopping_history  from public, anon, authenticated;
 revoke all on public.tasks             from public, anon, authenticated;
 revoke all on public.payments          from public, anon, authenticated;
 revoke all on public.shops             from public, anon, authenticated;
+revoke all on public.task_comments     from public, anon, authenticated;
 revoke all on public.push_subscriptions from public, anon, authenticated;
 revoke all on public.payment_reminders  from public, anon, authenticated;
 
@@ -236,6 +261,7 @@ grant select, insert, update, delete on public.shopping_history to authenticated
 grant select, insert, update, delete on public.tasks            to authenticated;
 grant select, insert, update, delete on public.payments         to authenticated;
 grant select, insert, update, delete on public.shops            to authenticated;
+grant select, insert, update, delete on public.task_comments    to authenticated;
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 
 -- ---------- RLS ----------
@@ -247,6 +273,7 @@ alter table public.shopping_history  enable row level security;
 alter table public.tasks             enable row level security;
 alter table public.payments          enable row level security;
 alter table public.shops             enable row level security;
+alter table public.task_comments     enable row level security;
 alter table public.push_subscriptions enable row level security;
 alter table public.payment_reminders  enable row level security;
 
@@ -290,6 +317,12 @@ create policy "clen cte a zapisuje obchody" on public.shops
   using (household_id in (select private.my_household_ids()))
   with check (household_id in (select private.my_household_ids()));
 
+drop policy if exists "clen cte a zapisuje komentare" on public.task_comments;
+create policy "clen cte a zapisuje komentare" on public.task_comments
+  for all to authenticated
+  using (household_id in (select private.my_household_ids()))
+  with check (household_id in (select private.my_household_ids()));
+
 drop policy if exists "kazdy jen sve odbery" on public.push_subscriptions;
 create policy "kazdy jen sve odbery" on public.push_subscriptions
   for all to authenticated
@@ -303,7 +336,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops'] loop
+  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops', 'task_comments'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

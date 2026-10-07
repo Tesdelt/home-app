@@ -32,6 +32,7 @@ js/dates.js           termíny jako text RRRR-MM-DD, posun o interval, popisky �
 js/config.js          adresa a veřejný klíč Supabase, zobrazovaná verze
 js/ui.js              escapeHtml, ikony, toast se Zpět, spodní panel, gesta na řádcích, formátování
 js/views/*.js         jednotlivé obrazovky
+js/views/task.js      stránka jednoho úkolu (#/ukoly/<id>): pole, kroky, komentáře
 js/views/login.js     přihlášení, „Nemáte přístup“, nabídka nahrát stará lokální data
 sw.js                 offline cache
 supabase/schema.sql   tabulky, RLS politiky, oprávnění rolí, Realtime
@@ -161,6 +162,15 @@ Hotovo (0.5.0):
   tabulka `push_subscriptions`). Ráno GitHub Actions zavolá funkci `send-reminders`, ta
   pošle plátci (u platby napůl oběma) upozornění na platby splatné dnes nebo po termínu.
   Na iPhonu funguje jen u appky přidané na plochu.
+
+Hotovo (0.6.0):
+- Úkol se otevírá jako samostatná stránka (`#/ukoly/<id>`, `js/views/task.js`), změny se
+  ukládají samy. V seznamu splní úkol jen ťuknutí na kolečko, ťuknutí na řádek ho otevře.
+- Komentáře k úkolům (tabulka `task_comments`, sklad `comments`): řazené podle přidání,
+  s autorem, vlastní jdou upravit i smazat.
+- Kroky úkolu (`steps` v úkolu): jdou po sobě, každý má vlastní termín, termín úkolu se řídí
+  krokem, který je na řadě, po posledním je úkol hotový. Schválně schované pod
+  „Rozdělit na kroky“, většina úkolů je nemá. Úkol s kroky se neopakuje a naopak.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

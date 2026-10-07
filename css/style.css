@@ -556,3 +556,92 @@ textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize
 }
 .tab svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tab.is-active { color: var(--accent); }
+
+/* ---------- Kolečko s větší plochou na ťuknutí ---------- */
+.check-tap {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* ---------- Stránka úkolu ---------- */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  margin: -6px 0 4px -6px;
+  padding-right: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+.back-link svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 10px 10px 18px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: inset 5px 0 0 var(--who, transparent);
+}
+.detail-head .check-tap { margin: 1px -4px 0 -8px; }
+textarea.detail-title {
+  flex: 1;
+  min-height: 0;
+  padding: 9px 6px;
+  border-color: transparent;
+  background: transparent;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  resize: none;
+  overflow: hidden;
+}
+.detail.is-done .detail-head .check { background: var(--accent); border-color: var(--accent); }
+.detail.is-done .detail-head .check svg { opacity: 1; }
+.detail.is-done .detail-title { color: var(--text-3); text-decoration: line-through; }
+.detail.is-mine .detail-head .check { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
+.detail-state { margin: 0 4px 12px; }
+.detail-delete { margin-top: 28px; }
+
+/* Kroky: schované, dokud je někdo nerozbalí */
+.steps-box { margin: 4px 0 8px; }
+.steps-box summary { min-height: 44px; display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 15px; cursor: pointer; list-style: none; }
+.steps-box summary::-webkit-details-marker { display: none; }
+.steps-box summary::before { content: "+"; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-2); color: var(--text-2); font-weight: 600; }
+.steps-box[open] summary::before { content: "−"; }
+.steps-list { list-style: none; margin: 0 0 8px; padding: 0; }
+.step { display: flex; align-items: flex-start; gap: 6px; padding: 6px 0; }
+.step .check-tap { margin: 1px -4px 0 -10px; }
+.step-body { flex: 1; min-width: 0; }
+.step-title { min-height: 42px; font-size: 16px; }
+.step-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.step-due { display: inline-block; width: auto; min-height: 36px; padding: 0 8px; font-size: 16px; margin-left: 4px; }
+.step.is-done .check { background: var(--accent); border-color: var(--accent); }
+.step.is-done .check svg { opacity: 1; }
+.step.is-done .step-title { color: var(--text-3); text-decoration: line-through; }
+.step.is-current .step-title { border-color: var(--accent); }
+
+/* Komentáře */
+.comments { list-style: none; margin: 0 0 10px; padding: 0; }
+.comment { padding: 10px 14px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.comment.is-empty { background: transparent; border-style: dashed; color: var(--text-3); font-size: 15px; }
+.comment-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.comment-author { font-weight: 600; font-size: 15px; color: var(--who, var(--text)); }
+.comment-time { flex: 1; font-size: 13px; color: var(--text-3); }
+.comment-head .btn { min-height: 28px; }
+.comment-body { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment .comment-input { margin: 6px 0 8px; }
+.comment .btn-row .btn { flex: 1 1 0; }
+.comment-form { margin-bottom: 4px; }

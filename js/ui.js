@@ -17,6 +17,8 @@ export const ICONS = {
   check: '<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
   download: '<svg viewBox="0 0 24 24"><path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 20h14"/></svg>',
   repeat: '<svg viewBox="0 0 24 24"><path d="M17 3l3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4"/></svg>',
+  back: '<svg viewBox="0 0 24 24"><path d="m14.5 5-7 7 7 7"/></svg>',
+  send: '<svg viewBox="0 0 24 24"><path d="M5 12h13M12.5 6l6 6-6 6"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>',
   sync: '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4"/></svg>',
 };
@@ -84,7 +86,7 @@ export function openSheet(title, build) {
 
 // ---------- Gesta na řádcích seznamu ----------
 // Řádek je <li class="item" data-id> s tlačítkem .item-main uvnitř.
-// Ťuknutí = onTap(li), podržení = onPress(id), potažení doleva = onSwipe(id).
+// Ťuknutí = onTap(li, kam se ťuklo), podržení = onPress(id), potažení doleva = onSwipe(id).
 // Vrací funkci na úklid, kterou má pohled zavolat při odchodu.
 
 const LONG_PRESS_MS = 500;
@@ -172,7 +174,7 @@ export function rowGestures(listEl, { onTap, onPress, onSwipe }) {
   listEl.addEventListener('click', (e) => {
     const main = e.target.closest('.item-main');
     if (!main || Date.now() < ignoreClicksUntil) return;
-    onTap(main.closest('.item'));
+    onTap(main.closest('.item'), e.target);
   });
 
   return endGesture;

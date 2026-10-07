@@ -1,10 +1,13 @@
-// Úkoly: rychlé přidání nahoře, pohledy Dnes / Týden / Někdy,
-// ťuknutí = hotovo, podržení = podrobnosti a úprava, potažení doleva = smazat.
+// Úkoly: rychlé přidání nahoře, pohledy Dnes / Týden / Někdy.
+// Ťuknutí na kolečko = hotovo, ťuknutí na řádek = stránka úkolu (podrobnosti,
+// kroky, komentáře, viz task.js), potažení doleva = smazat.
 // V řádku je vidět pro koho úkol je (barva), termín a důležitost (1-3).
 // Úkol pro oba musí odškrtnout každý za sebe.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, whoClass, whoBadge, wireSegmented } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, rowGestures, whoClass, whoBadge } from '../ui.js';
+import { navigate } from '../router.js';
+import { renderTask } from './task.js';
 import { today, dayStr, addDays, dueLabel, dayHeading, timeLabel, isSameDay } from '../dates.js';
 
 export const title = 'Úkoly';
@@ -15,7 +18,7 @@ const TABS = [
   { id: 'someday', name: 'Někdy' },
 ];
 
-const REPEATS = [
+export const REPEATS = [
   { value: '', name: 'Neopakovat' },
   { value: '1:day', name: 'Každý den' },
   { value: '1:week', name: 'Každý týden' },
@@ -28,8 +31,8 @@ const REPEATS = [
 const REPEAT_SHORT = { '1:day': 'denně', '1:week': 'týdně', '2:week': 'co 2 týdny', '1:month': 'měsíčně', '3:month': 'co 3 měsíce', '1:year': 'ročně' };
 const UNIT_NAMES = { day: 'dní', week: 'týdnů', month: 'měsíců', year: 'let' };
 
-const repeatValue = (repeat) => (repeat ? `${repeat.every}:${repeat.unit}` : '');
-const repeatLabel = (repeat) => REPEAT_SHORT[repeatValue(repeat)] ?? `co ${repeat.every} ${UNIT_NAMES[repeat.unit] ?? ''}`.trim();
+export const repeatValue = (repeat) => (repeat ? `${repeat.every}:${repeat.unit}` : '');
+export const repeatLabel = (repeat) => REPEAT_SHORT[repeatValue(repeat)] ?? `co ${repeat.every} ${UNIT_NAMES[repeat.unit] ?? ''}`.trim();
 
 // Zvolená záložka vydrží, dokud je appka otevřená
 let tab = 'today';
@@ -50,7 +53,10 @@ export function splitTasks(tasks, day = today()) {
   };
 }
 
-export async function render(el, { subEl }) {
+export async function render(el, { params, subEl, extraEl }) {
+  // #/ukoly/<id> je stránka jednoho úkolu
+  if (params?.[0]) return renderTask(el, params[0], { subEl, extraEl });
+
   el.innerHTML = `
     <div class="add-bar">
       <form class="add-form" autocomplete="off">
@@ -69,6 +75,7 @@ export async function render(el, { subEl }) {
 
   let me = await store.getMe();
   let members = await store.listMembers();
+  let comments = {};
   let renderToken = 0;
 
   // ---------- Přidávání ----------
@@ -114,12 +121,17 @@ export async function render(el, { subEl }) {
         meta.push(`naposledy ${escapeHtml(task.doneBy ?? '')}`.trim());
       }
     }
+    // Úkol s kroky ukazuje, u kterého zrovna je
+    const steps = task.steps ?? [];
+    const current = steps.find((step) => !step.done);
+    if (steps.length && current && !checked) meta.push(`krok ${steps.indexOf(current) + 1}/${steps.length}: ${escapeHtml(current.title)}`);
+    if (comments[task.id]) meta.push(`komentáře: ${comments[task.id]}`);
     const note = task.note ? `<span class="item-sub item-note">${escapeHtml(task.note)}</span>` : '';
     const priority = task.priority ?? 2;
     return `<li class="item ${whoClass(task.assignee, members)}${checked ? ' is-done' : ''}${mine ? ' is-mine' : ''}" data-id="${escapeHtml(task.id)}">
       <div class="item-bg" aria-hidden="true">Smazat</div>
       <button type="button" class="item-main has-stripe" aria-pressed="${checked}">
-        <span class="check">${ICONS.check}</span>
+        <span class="check-tap"><span class="check">${ICONS.check}</span></span>
         <span class="item-text"><span class="item-name">${escapeHtml(task.title)}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}${note}</span>
         ${checked ? '' : `<span class="prio prio-${priority}" title="Důležitost ${priority} ze 3">${priority}</span>`}
         ${whoBadge(task.assignee, members)}
@@ -147,7 +159,7 @@ export async function render(el, { subEl }) {
   async function renderList() {
     const token = ++renderToken;
     const tasks = await store.listTasks();
-    [me, members] = await Promise.all([store.getMe(), store.listMembers()]);
+    [me, members, comments] = await Promise.all([store.getMe(), store.listMembers(), store.commentCounts()]);
     if (token !== renderToken) return;
 
     const s = splitTasks(tasks);
@@ -183,11 +195,17 @@ export async function render(el, { subEl }) {
       }
     }
 
-    if (tasks.length) out += `${legend()}<p class="hint">Ťuknutím odškrtnete, podržením otevřete podrobnosti, potažením doleva smažete.</p>`;
+    if (tasks.length) out += `${legend()}<p class="hint">Kolečkem odškrtnete, ťuknutím na úkol ho otevřete, potažením doleva smažete.</p>`;
     listRoot.innerHTML = out;
   }
 
   // ---------- Akce ----------
+
+  // Kolečko úkol splní, zbytek řádku ho otevře jako stránku
+  function tap(li, target) {
+    if (target?.closest?.('.check-tap')) toggle(li);
+    else navigate(`ukoly/${li.dataset.id}`);
+  }
 
   async function toggle(li) {
     // Odškrtnutý řádek nebo moje půlka úkolu pro oba: ťuknutí ji vrátí
@@ -209,97 +227,9 @@ export async function render(el, { subEl }) {
     if (removed.length) undoToast(`Smazáno hotových: ${removed.length}`, () => store.restoreTasks(removed));
   }
 
-  async function openEdit(id) {
-    const task = (await store.listTasks()).find((t) => t.id === id);
-    if (!task) return;
-
-    openSheet('Úkol', (body, close) => {
-      const current = repeatValue(task.repeat);
-      const repeats = REPEATS.some((r) => r.value === current) ? REPEATS : [...REPEATS, { value: current, name: repeatLabel(task.repeat) }];
-      const who = [['', 'Kdokoliv'], ...members.map((m) => [m, m]), [store.BOTH, 'Oba']];
-      const priority = task.priority ?? 2;
-      body.innerHTML = `<form class="edit-form" autocomplete="off">
-        <label class="field"><span>Název</span>
-          <input class="input" name="title" value="${escapeHtml(task.title)}" required></label>
-        <label class="field"><span>Podrobnosti</span>
-          <textarea class="input" name="note" rows="3" placeholder="Co přesně, kde, s kým…">${escapeHtml(task.note ?? '')}</textarea></label>
-        <div class="field"><span>Pro koho</span>
-          <div class="segmented" data-name="assignee">
-            ${who.map(([value, name]) => `<button type="button" class="${value ? whoClass(value, members) : ''}" data-value="${escapeHtml(value)}" aria-pressed="${(task.assignee ?? '') === value}">${escapeHtml(name)}</button>`).join('')}
-          </div>
-          <p class="field-hint">Oba: úkol je hotový, až ho odškrtne každý za sebe.</p></div>
-        <div class="field"><span>Důležitost</span>
-          <div class="segmented" data-name="priority">
-            ${[1, 2, 3].map((n) => `<button type="button" data-value="${n}" aria-pressed="${n === priority}"><span class="prio prio-${n}">${n}</span></button>`).join('')}
-          </div>
-          <p class="field-hint">1 bylo by fajn, 2 běžné, 3 hoří.</p></div>
-        <label class="field"><span>Termín</span>
-          <input class="input" type="date" name="due" value="${escapeHtml(task.due ?? '')}"></label>
-        <div class="quick-row">
-          <button type="button" class="chip-btn" data-due="${today()}">Dnes</button>
-          <button type="button" class="chip-btn" data-due="${addDays(today(), 1)}">Zítra</button>
-          <button type="button" class="chip-btn" data-due="${addDays(today(), 7)}">Za týden</button>
-          <button type="button" class="chip-btn" data-due="">Bez termínu</button>
-        </div>
-        <label class="field"><span>Opakování</span>
-          <select class="input" name="repeat">
-            ${repeats.map((r) => `<option value="${r.value}"${r.value === current ? ' selected' : ''}>${escapeHtml(r.name)}</option>`).join('')}
-          </select></label>
-        <div class="field" data-repeat-only><span>Další termín počítat</span>
-          <div class="segmented" data-name="mode">
-            <button type="button" data-value="fixed" aria-pressed="${task.repeat?.mode !== 'after'}">Od termínu</button>
-            <button type="button" data-value="after" aria-pressed="${task.repeat?.mode === 'after'}">Od splnění</button>
-          </div>
-          <p class="field-hint">Od termínu: pořád stejný den (popelnice). Od splnění: znovu až za danou dobu po odškrtnutí (výměna filtru).</p></div>
-        <div class="btn-row">
-          <button type="button" class="btn btn-danger" data-action="delete">Smazat</button>
-          <button type="submit" class="btn btn-primary">Uložit</button>
-        </div>
-      </form>`;
-
-      const f = body.querySelector('form');
-      const picked = wireSegmented(f);
-      const repeatOnly = f.querySelector('[data-repeat-only]');
-      const syncRepeat = () => { repeatOnly.hidden = !f.elements.repeat.value; };
-      syncRepeat();
-      f.elements.repeat.addEventListener('change', syncRepeat);
-      f.addEventListener('click', (e) => {
-        const quick = e.target.closest('[data-due]');
-        if (quick) f.elements.due.value = quick.dataset.due;
-      });
-
-      f.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const titleText = f.elements.title.value.trim();
-        if (!titleText) return;
-        const [every, unit] = f.elements.repeat.value.split(':');
-        const repeat = unit ? { every: Number(every), unit, mode: picked('mode') || 'fixed' } : null;
-        // Opakovaný úkol potřebuje termín, od kterého se počítá
-        const due = f.elements.due.value || (repeat ? today() : null);
-        const assignee = picked('assignee') || null;
-        const patch = {
-          title: titleText,
-          note: f.elements.note.value.trim() || null,
-          assignee,
-          priority: Number(picked('priority')) || 2,
-          due,
-          repeat,
-        };
-        // Rozdělané odškrtnutí "za oba" nedává smysl, když už úkol pro oba není
-        if (assignee !== store.BOTH) patch.doneParts = [];
-        await store.updateTask(id, patch);
-        close();
-      });
-      f.querySelector('[data-action="delete"]').addEventListener('click', () => {
-        close();
-        deleteTask(id);
-      });
-    });
-  }
-
   // ---------- Gesta ----------
 
-  const endGesture = rowGestures(listRoot, { onTap: toggle, onPress: openEdit, onSwipe: deleteTask });
+  const endGesture = rowGestures(listRoot, { onTap: tap, onPress: (id) => navigate(`ukoly/${id}`), onSwipe: deleteTask });
 
   listRoot.addEventListener('click', (e) => {
     if (e.target.closest('[data-action="clear"]')) clearDone();

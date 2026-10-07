@@ -332,6 +332,9 @@ export async function frequent(limit = 10) {
 //             ('both' je hotový, až ho odškrtnou všichni, doneParts = kdo už)
 //   priority  1 = bylo by fajn, 2 = běžné, 3 = hoří
 //   note      podrobnosti, nebo null
+//   steps     kroky jdoucí po sobě: [{ id, title, due, done, doneAt, doneBy }].
+//             Většina úkolů žádné nemá. Když je má, termín úkolu (due) je
+//             termín prvního nesplněného kroku a po posledním je úkol hotový.
 //   due       "RRRR-MM-DD", nebo null = někdy
 //   repeat    null, nebo { every, unit: 'day'|'week'|'month'|'year', mode }
 //             mode 'fixed' = další termín se počítá od termínu,
@@ -363,6 +366,7 @@ export async function addTask({ title, due = null, assignee = null, repeat = nul
     doneAt: null,
     doneBy: null,
     doneParts: [],
+    steps: [],
     prevDue: null,
     createdBy: await getMe(),
     createdAt: now,
@@ -424,6 +428,92 @@ export async function setTaskDone(id, done) {
   }
   return updateTask(id, { ...patch, doneParts: parts });
 }
+
+export async function getTask(id) {
+  const task = await db.get('tasks', id);
+  return task && !task.deleted ? task : null;
+}
+
+// ---------- Kroky úkolu ----------
+
+// Uloží nové kroky a srovná podle nich termín a stav celého úkolu
+async function saveSteps(task, steps) {
+  const patch = { steps };
+  const current = steps.find((s) => !s.done);
+  if (steps.length) {
+    if (current) {
+      patch.due = current.due ?? null;
+      if (task.done) Object.assign(patch, { done: false, doneAt: null, doneBy: null });
+    } else if (!task.done) {
+      // Splněný poslední krok = splněný úkol
+      Object.assign(patch, { done: true, doneAt: Date.now(), doneBy: await getMe() });
+    }
+  }
+  return updateTask(task.id, patch);
+}
+
+export async function addStep(taskId, { title, due = null }) {
+  const task = await getTask(taskId);
+  const clean = String(title).trim();
+  if (!task || !clean) return null;
+  const steps = task.steps ?? [];
+  // První krok převezme dosavadní termín úkolu
+  const step = { id: db.newId(), title: clean, due: due ?? (steps.length ? null : task.due ?? null), done: false, doneAt: null, doneBy: null };
+  return saveSteps(task, [...steps, step]);
+}
+
+export async function updateStep(taskId, stepId, patch) {
+  const task = await getTask(taskId);
+  if (!task) return null;
+  return saveSteps(task, (task.steps ?? []).map((s) => (s.id === stepId ? { ...s, ...patch } : s)));
+}
+
+export async function setStepDone(taskId, stepId, done) {
+  const me = await getMe();
+  return updateStep(taskId, stepId, { done, doneAt: done ? Date.now() : null, doneBy: done ? me : null });
+}
+
+export async function removeStep(taskId, stepId) {
+  const task = await getTask(taskId);
+  if (!task) return null;
+  return saveSteps(task, (task.steps ?? []).filter((s) => s.id !== stepId));
+}
+
+// ---------- Komentáře k úkolům ----------
+// Komentář: { id, taskId, author, body, createdAt, updatedAt }
+
+export async function listComments(taskId) {
+  const comments = (await live('comments')).filter((c) => c.taskId === taskId);
+  return comments.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+// Počet komentářů u každého úkolu: { [taskId]: počet }
+export async function commentCounts() {
+  const counts = {};
+  for (const c of await live('comments')) counts[c.taskId] = (counts[c.taskId] ?? 0) + 1;
+  return counts;
+}
+
+export async function addComment(taskId, body) {
+  const clean = String(body).trim();
+  if (!clean) return null;
+  const now = Date.now();
+  const comment = { id: db.newId(), taskId, author: await getMe(), body: clean, createdAt: now, updatedAt: now };
+  await save('comments', [comment]);
+  emit();
+  return comment;
+}
+
+export async function updateComment(id, body) {
+  const clean = String(body).trim();
+  if (!clean) return null;
+  const next = await patchRow('comments', id, { body: clean });
+  emit();
+  return next;
+}
+
+export const removeComments = (ids) => removeByIds('comments', ids);
+export const restoreComments = (comments) => restore('comments', comments);
 
 export const removeTasks = (ids) => removeByIds('tasks', ids);
 export const restoreTasks = (tasks) => restore('tasks', tasks);
@@ -572,7 +662,7 @@ export async function exportAll() {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Sklady s řádky podle id, které se synchronizují stejným způsobem
-const ID_STORES = ['items', 'tasks', 'payments'];
+const ID_STORES = ['items', 'tasks', 'payments', 'comments'];
 
 export async function importAll(backup) {
   if (backup?.app !== 'home-app' || !backup.data) throw new Error('Tohle není záloha této aplikace.');
@@ -583,7 +673,7 @@ export async function importAll(backup) {
     const rows = Array.isArray(backup.data[store]) ? backup.data[store] : [];
     const keep = [];
     for (const row of rows) {
-      if (!row?.id || !(row.name || row.title)) continue;
+      if (!row?.id || !(row.name || row.title || row.body)) continue;
       // Server bere jen UUID, starší id z náhradního generátoru dostane nové
       if (!UUID.test(row.id)) {
         keep.push({ ...row, id: db.newId(), deleted: false });
