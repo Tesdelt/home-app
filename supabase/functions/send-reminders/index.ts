@@ -40,6 +40,8 @@ Deno.serve(async () => {
   }
   const db = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'));
 
+  // stage říká, u čeho funkce zrovna je, aby šla případná chyba dohledat
+  let stage = 'platby';
   try {
     const day = today();
     const { data: payments, error } = await db
@@ -52,16 +54,23 @@ Deno.serve(async () => {
     if (!payments?.length) return Response.json({ sent: 0 });
 
     // Co už dnes upozornění dostalo, znovu nepůjde
-    const { data: logged } = await db.from('payment_reminders').select('payment_id').eq('day', day);
+    stage = 'zaznamy';
+    const { data: logged, error: loggedError } = await db.from('payment_reminders').select('payment_id').eq('day', day);
+    if (loggedError) throw loggedError;
     const already = new Set((logged ?? []).map((row) => row.payment_id));
     const fresh = payments.filter((p) => !already.has(p.id));
     if (!fresh.length) return Response.json({ sent: 0 });
 
     const households = [...new Set(fresh.map((p) => p.household_id))];
-    const [{ data: members }, { data: subs }] = await Promise.all([
-      db.from('household_members').select('user_id, household_id, display_name').in('household_id', households),
-      db.from('push_subscriptions').select('endpoint, p256dh, auth, user_id, household_id').in('household_id', households),
-    ]);
+    stage = 'clenove';
+    const { data: members, error: membersError } = await db
+      .from('household_members').select('user_id, household_id, display_name').in('household_id', households);
+    if (membersError) throw membersError;
+    stage = 'odbery';
+    const { data: subs, error: subsError } = await db
+      .from('push_subscriptions').select('endpoint, p256dh, auth, user_id, household_id').in('household_id', households);
+    if (subsError) throw subsError;
+    stage = 'odeslani';
 
     // Komu která platba patří: plátci podle jména, platba napůl všem
     const perUser = new Map<string, typeof fresh>();
@@ -94,10 +103,15 @@ Deno.serve(async () => {
       }
     }
 
-    await db.from('payment_reminders').upsert(fresh.map((p) => ({ payment_id: p.id, day })));
+    stage = 'zapis';
+    const { error: logError } = await db.from('payment_reminders').upsert(fresh.map((p) => ({ payment_id: p.id, day })));
+    if (logError) throw logError;
     return Response.json({ sent });
   } catch (err) {
-    console.error(err);
-    return Response.json({ error: 'chyba_databaze_nebo_odeslani' }, { status: 500 });
+    console.error(stage, err);
+    // Kód a text chyby databáze popisují jen strukturu (tabulka, oprávnění),
+    // žádná data domácnosti v nich nejsou
+    const e = err as { code?: string; message?: string };
+    return Response.json({ error: 'chyba', stage, code: e?.code ?? null, detail: String(e?.message ?? err).slice(0, 200) }, { status: 500 });
   }
 });
