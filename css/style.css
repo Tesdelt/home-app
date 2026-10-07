@@ -890,3 +890,9 @@ a.btn:not(.btn-ghost):not(.btn-primary) { color: inherit; }
 .opts-small .opt-due { width: 116px; }
 textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resize: none; overflow: hidden; }
 .step.is-current .step-title { border-color: var(--border); }
+
+/* Soukromý úkol: zámek v řádku a mezi tlačítky */
+.item-lock { flex: none; width: 16px; height: 16px; color: var(--text-3); }
+.item-lock svg, .opt-lock svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.item-lock svg { width: 100%; height: 100%; }
+.opt-lock.is-set { background: var(--accent-soft); }

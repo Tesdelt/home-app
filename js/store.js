@@ -408,6 +408,8 @@ export async function frequent(limit = 10) {
 //             se zvlášť a hlavní úkol neovlivňují (ani termín, ani splnění).
 //   due       "RRRR-MM-DD", nebo null = někdy
 //   time      volitelný čas "HH:MM" k termínu, nebo null
+//   privateTo id uživatele, který jediný úkol vidí (soukromý úkol, třeba
+//             dárek), nebo null = vidí oba. Hlídá to i databáze (RLS).
 //   repeat    null, nebo { every, unit: 'day'|'week'|'month'|'year', mode }
 //             mode 'fixed' = další termín se počítá od termínu,
 //                  'after' = ode dne, kdy se úkol opravdu splnil
@@ -426,7 +428,11 @@ export const BOTH = 'both';
 export const newId = () => db.newId();
 
 // notify = true pošle ostatním členům push upozornění, že úkol přibyl
-export async function addTask({ title, due = null, time = null, assignee = null, repeat = null, priority = 2, note = null, notify = false, steps = [] }) {
+// Id přihlášeného uživatele (pro soukromé úkoly)
+const myUserId = async () => (await getMeta('session', null))?.userId ?? null;
+
+// isPrivate = true: úkol uvidím jen já. Upozornění druhému se pak neposílá.
+export async function addTask({ title, due = null, time = null, assignee = null, repeat = null, priority = 2, note = null, notify = false, steps = [], isPrivate = false }) {
   const clean = String(title).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
@@ -444,12 +450,13 @@ export async function addTask({ title, due = null, time = null, assignee = null,
     doneBy: null,
     doneParts: [],
     steps,
+    privateTo: isPrivate ? await myUserId() : null,
     prevDue: null,
     createdBy: await getMe(),
     createdAt: now,
     updatedAt: now,
   };
-  if (notify) await sync.queueNotification('tasks', task.id, { task: task.id, title: task.title });
+  if (notify && !task.privateTo) await sync.queueNotification('tasks', task.id, { task: task.id, title: task.title });
   await save('tasks', [task]);
   emit();
   return task;
@@ -509,6 +516,16 @@ export async function setTaskDone(id, done) {
     patch = { due: task.prevDue ?? task.due, prevDue: null, doneAt: null, doneBy: null };
   }
   return updateTask(id, { ...patch, ...freshSteps, doneParts: parts });
+}
+
+// Udělá úkol soukromým (jen pro mě) nebo ho zase ukáže oběma.
+// Komentáře jdou s úkolem.
+export async function setTaskPrivate(id, isPrivate) {
+  const privateTo = isPrivate ? await myUserId() : null;
+  const comments = (await live('comments')).filter((c) => c.taskId === id);
+  const now = Date.now();
+  await save('comments', comments.map((c) => ({ ...c, privateTo, updatedAt: now })));
+  return updateTask(id, { privateTo });
 }
 
 export async function getTask(id) {
@@ -588,9 +605,9 @@ export async function addComment(taskId, body, { notify = false } = {}) {
   const clean = String(body).trim();
   if (!clean) return null;
   const now = Date.now();
-  const comment = { id: db.newId(), taskId, author: await getMe(), body: clean, createdAt: now, updatedAt: now };
-  if (notify) {
-    const task = await getTask(taskId);
+  const task = await getTask(taskId);
+  const comment = { id: db.newId(), taskId, privateTo: task?.privateTo ?? null, author: await getMe(), body: clean, createdAt: now, updatedAt: now };
+  if (notify && !comment.privateTo) {
     await sync.queueNotification('comments', comment.id, { task: taskId, title: task?.title ?? '', kind: 'comment', text: clean });
   }
   await save('comments', [comment]);

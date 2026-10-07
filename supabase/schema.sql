@@ -96,6 +96,10 @@ alter table public.tasks add column if not exists steps jsonb not null default '
 -- 0.9.1: volitelný čas úkolu "HH:MM" (např. 20:00), jen k zobrazení a řazení
 alter table public.tasks add column if not exists due_time text;
 
+-- 0.10.0: soukromý úkol. Když je private_to vyplněné, vidí úkol jen tento
+-- člen (dárky apod.). Hlídá to RLS níže, druhému telefonu se vůbec nepošle.
+alter table public.tasks add column if not exists private_to uuid references auth.users (id) on delete cascade;
+
 -- Komentáře k úkolům. Vlastní tabulka, aby se komentáře obou lidí
 -- napsané ve stejnou chvíli navzájem nepřepsaly.
 create table if not exists public.task_comments (
@@ -110,6 +114,9 @@ create table if not exists public.task_comments (
 );
 
 create index if not exists task_comments_household_idx on public.task_comments (household_id);
+
+-- Komentář soukromého úkolu je soukromý stejně jako úkol
+alter table public.task_comments add column if not exists private_to uuid references auth.users (id) on delete cascade;
 
 -- Pravidelné platby. payer je jméno člena, nebo 'split' (napůl).
 create table if not exists public.payments (
@@ -333,8 +340,10 @@ create policy "clen cte a zapisuje historii" on public.shopping_history
 drop policy if exists "clen cte a zapisuje ukoly" on public.tasks;
 create policy "clen cte a zapisuje ukoly" on public.tasks
   for all to authenticated
-  using (household_id in (select private.my_household_ids()))
-  with check (household_id in (select private.my_household_ids()));
+  using (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())))
+  with check (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())));
 
 drop policy if exists "clen cte a zapisuje platby" on public.payments;
 create policy "clen cte a zapisuje platby" on public.payments
@@ -351,8 +360,10 @@ create policy "clen cte a zapisuje obchody" on public.shops
 drop policy if exists "clen cte a zapisuje komentare" on public.task_comments;
 create policy "clen cte a zapisuje komentare" on public.task_comments
   for all to authenticated
-  using (household_id in (select private.my_household_ids()))
-  with check (household_id in (select private.my_household_ids()));
+  using (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())))
+  with check (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())));
 
 drop policy if exists "clen cte a zapisuje recepty" on public.recipes;
 create policy "clen cte a zapisuje recepty" on public.recipes

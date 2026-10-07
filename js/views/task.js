@@ -10,7 +10,7 @@ import * as store from '../store.js';
 import { escapeHtml, ICONS, undoToast, openMenu, whoClass } from '../ui.js';
 import { navigate } from '../router.js';
 import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
-import { REPEATS, repeatValue, repeatLabel, defaultDue } from './tasks.js';
+import { REPEATS, repeatValue, repeatLabel } from './tasks.js';
 
 export const NEW = 'novy';
 
@@ -24,7 +24,7 @@ export async function renderTask(el, id, { subEl }) {
 
   const draft = id === NEW;
   let task = draft
-    ? { title: '', note: null, assignee: null, priority: 2, due: defaultDue(), time: null, repeat: null, steps: [], doneParts: [], done: false }
+    ? { title: '', note: null, assignee: null, priority: 2, due: null, time: null, repeat: null, steps: [], doneParts: [], done: false, privateTo: null }
     : await store.getTask(id);
   let notify = false; // nový úkol: poslat druhému upozornění
   if (!task) {
@@ -115,7 +115,10 @@ export async function renderTask(el, id, { subEl }) {
       return;
     }
     const { note, assignee, priority, due, time, repeat, steps } = task;
-    await store.addTask({ title: title.charAt(0).toLocaleUpperCase('cs') + title.slice(1), note, assignee, priority, due, time, repeat, steps, notify });
+    await store.addTask({
+      title: title.charAt(0).toLocaleUpperCase('cs') + title.slice(1), note, assignee, priority, due, time, repeat, steps, notify,
+      isPrivate: Boolean(task.privateTo),
+    });
     navigate('ukoly');
   }
   const whoName = (value) => (!value ? 'Kdokoliv' : value === store.BOTH ? 'Oba' : value);
@@ -141,8 +144,11 @@ export async function renderTask(el, id, { subEl }) {
       `<button type="button" class="opt opt-icon${task.repeat ? ' is-set' : ''}" data-opt="repeat" aria-label="Opakování">${ICONS.repeat}</button>`,
       `<button type="button" class="opt opt-steps${stepsOpen ? ' is-set' : ''}" data-opt="steps"><span class="opt-text">${steps.length ? `Kroky ${done}/${steps.length}` : '+ Kroky'}</span></button>`,
     ];
+    // Zámek: soukromý úkol, který druhý neuvidí (dárky apod.)
+    opts.push(`<button type="button" class="opt opt-icon opt-lock${task.privateTo ? ' is-set' : ''}" data-opt="private" aria-pressed="${Boolean(task.privateTo)}" aria-label="Soukromý úkol">${ICONS.lock}</button>`);
     // Zvonek: dát druhému vědět, že úkol přibyl. Výchozí vypnuto.
-    if (draft) opts.push(`<button type="button" class="opt opt-icon opt-bell${notify ? ' is-set' : ''}" data-opt="notify" aria-pressed="${notify}" aria-label="Upozornit druhého">${ICONS.bell}</button>`);
+    // U soukromého úkolu nedává smysl.
+    if (draft) opts.push(`<button type="button" class="opt opt-icon opt-bell${notify && !task.privateTo ? ' is-set' : ''}" data-opt="notify" aria-pressed="${notify && !task.privateTo}" aria-label="Upozornit druhého"${task.privateTo ? ' disabled' : ''}>${ICONS.bell}</button>`);
     optsEl.innerHTML = opts.join('');
 
     const parts = task.doneParts ?? [];
@@ -411,6 +417,11 @@ export async function renderTask(el, id, { subEl }) {
     if (opt === 'priority') openPriority(btn, task.priority, (priority) => save({ priority }));
     if (opt === 'due') openDue(btn, task, Boolean(task.repeat), save);
     if (opt === 'repeat') openRepeat(btn);
+    if (opt === 'private') {
+      // U nového úkolu jen příznak, skutečné id uživatele doplní datová vrstva
+      if (draft) save({ privateTo: task.privateTo ? null : 'me' });
+      else store.setTaskPrivate(id, !task.privateTo);
+    }
     if (opt === 'notify') {
       notify = !notify;
       drawHead();

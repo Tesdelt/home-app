@@ -3,7 +3,7 @@
 import * as store from '../store.js';
 import { escapeHtml, ICONS, todayLabel, itemsCount, money } from '../ui.js';
 import { today, dueLabel } from '../dates.js';
-import { splitTasks } from './tasks.js';
+import { sortTasks } from './tasks.js';
 
 export const title = 'Dnes';
 
@@ -22,13 +22,12 @@ export async function render(el, { subEl }) {
     const open = items.filter((i) => !i.done);
     let out = '';
 
-    // Úkoly na dnes jsou nahoře, ty jediné chtějí akci
-    const { today: due, doneToday } = splitTasks(tasks);
-    const names = due.slice(0, 4).map((t) => escapeHtml(t.title) + (t.time ? ` ${escapeHtml(t.time)}` : '')).join(', ');
-    const more = due.length > 4 ? ` a ${due.length - 4} další` : '';
-    const tasksText = due.length
-      ? `${names}${more}`
-      : (doneToday.length ? `Na dnes hotovo (${doneToday.length}).` : 'Na dnes nic.');
+    // Všechny nehotové úkoly podle termínu, nejbližší první
+    const all = sortTasks(tasks, 'due').flatMap((group) => group.tasks);
+    const due = all.filter((t) => t.due && t.due <= today());
+    const names = all.slice(0, 4).map((t) => escapeHtml(t.title) + (t.time && t.due === today() ? ` ${escapeHtml(t.time)}` : '')).join(', ');
+    const more = all.length > 4 ? ` a ${all.length - 4} další` : '';
+    const tasksText = all.length ? `${names}${more}` : 'Žádné úkoly.';
     out += `<a class="card" href="#/ukoly">
       <div class="card-head">
         <span class="card-icon">${ICONS.tasks}</span>

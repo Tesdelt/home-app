@@ -84,6 +84,8 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
 - **Role `anon` nemá žádná práva.** U nové tabulky vždy `revoke all ... from public, anon,
   authenticated` a pak `grant` jen pro `authenticated` a jen to, co je potřeba.
 - Každá datová tabulka má sloupec `household_id`.
+- Co má vidět jen jeden člen (soukromé úkoly), musí hlídat RLS (`private_to = auth.uid()`),
+  nikdy jen filtr v appce: data by se jinak dostala do druhého telefonu.
 - **Žádné tajné klíče v kódu.** V `js/config.js` smí být jen Project URL a publishable klíč.
   Secret / `service_role` klíč, hesla ani e-maily členů do repozitáře nikdy nepatří.
 - **Registrace v appce není.** Účty se zakládají ručně v Supabase dashboardu, členství
@@ -184,6 +186,16 @@ Hotovo (0.6.0):
   i opakování jdou měnit vždy a splnit ho musí člověk sám. V seznamu kroků je vidět jen
   to nezbytné, ťuknutím se krok rozbalí k úpravě (stejné nabídky jako hlavní úkol, menší).
   U opakovaného úkolu se kroky s každým kolem vrátí na neodškrtnuté.
+
+Hotovo (0.10.0):
+- Úkoly jsou jeden seznam všech nehotových úkolů bez ohledu na termín (žádné záložky
+  Dnes / Týden / Někdy). Řazení se volí tlačítkem v horní liště: termín (skupiny Po termínu,
+  Dnes, Tento týden, Později, Bez termínu), důležitost, pro koho, přidáno (`sortTasks`
+  v `tasks.js`, volba v meta `taskSort`). Domů ukazuje nejbližší úkoly ze všech. Nový úkol
+  nemá předvyplněný termín.
+- Soukromý úkol (zámek mezi tlačítky na stránce úkolu): `privateTo` = id uživatele, sloupec
+  `private_to` v `tasks` i `task_comments`. Druhému se vůbec neposílá, hlídá to RLS politika.
+  Upozornění (zvonek) se u soukromého úkolu neposílají.
 
 Hotovo (0.9.1), úpravy po testování:
 - Nákup: hustý seznam (jeden souvislý blok, kategorie jako malý šedý nadpis, cíl aspoň
