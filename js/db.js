@@ -41,6 +41,10 @@ const MIGRATIONS = [
   (db) => {
     db.createObjectStore('wishes', { keyPath: 'id' });
   },
+  // v8: fotky receptů (mimo zálohu, jsou velké)
+  (db) => {
+    db.createObjectStore('photos', { keyPath: 'id' });
+  },
 ];
 
 export const DB_VERSION = MIGRATIONS.length;

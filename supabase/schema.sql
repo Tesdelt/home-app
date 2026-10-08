@@ -173,6 +173,24 @@ create table if not exists public.recipes (
 
 create index if not exists recipes_household_idx on public.recipes (household_id);
 
+-- 0.14.0: časy receptu v minutách (příprava a vaření) a kdy se naposledy
+-- změnila fotka (podle toho si telefon pozná, že má stáhnout novou)
+alter table public.recipes add column if not exists prep_min integer;
+alter table public.recipes add column if not exists cook_min integer;
+alter table public.recipes add column if not exists photo_at timestamptz;
+
+-- Fotky receptů: zmenšený obrázek jako text (data URL). Vlastní tabulka, aby
+-- se fotky nestahovaly při každé synchronizaci, ale jen když se změní.
+create table if not exists public.recipe_photos (
+  id           uuid primary key,
+  household_id uuid not null references public.households (id) on delete cascade,
+  data         text,
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+
+create index if not exists recipe_photos_household_idx on public.recipe_photos (household_id);
+
 -- 0.11.0: vysvětlivky k postupu, pole objektů { term, note }. Výraz (term),
 -- který se v postupu najde, je podtržený a po ťuknutí ukáže vysvětlení.
 alter table public.recipes add column if not exists hints jsonb not null default '[]';
@@ -282,6 +300,11 @@ create trigger shops_keep_newer
   before update on public.shops
   for each row execute function private.keep_newer();
 
+drop trigger if exists recipe_photos_keep_newer on public.recipe_photos;
+create trigger recipe_photos_keep_newer
+  before update on public.recipe_photos
+  for each row execute function private.keep_newer();
+
 drop trigger if exists wishes_keep_newer on public.wishes;
 create trigger wishes_keep_newer
   before update on public.wishes
@@ -310,6 +333,7 @@ revoke all on public.shops             from public, anon, authenticated;
 revoke all on public.task_comments     from public, anon, authenticated;
 revoke all on public.recipes           from public, anon, authenticated;
 revoke all on public.wishes            from public, anon, authenticated;
+revoke all on public.recipe_photos     from public, anon, authenticated;
 revoke all on public.push_subscriptions from public, anon, authenticated;
 revoke all on public.payment_reminders  from public, anon, authenticated;
 
@@ -323,6 +347,7 @@ grant select, insert, update, delete on public.shops            to authenticated
 grant select, insert, update, delete on public.task_comments    to authenticated;
 grant select, insert, update, delete on public.recipes          to authenticated;
 grant select, insert, update, delete on public.wishes           to authenticated;
+grant select, insert, update, delete on public.recipe_photos    to authenticated;
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 
 -- Servisní role (funkce send-reminders) dostane jen to, co k rozeslání
@@ -343,6 +368,7 @@ alter table public.shops             enable row level security;
 alter table public.task_comments     enable row level security;
 alter table public.recipes           enable row level security;
 alter table public.wishes            enable row level security;
+alter table public.recipe_photos     enable row level security;
 alter table public.push_subscriptions enable row level security;
 alter table public.payment_reminders  enable row level security;
 
@@ -395,6 +421,12 @@ create policy "clen cte a zapisuje komentare" on public.task_comments
     and (private_to is null or private_to = (select auth.uid())))
   with check (household_id in (select private.my_household_ids())
     and (private_to is null or private_to = (select auth.uid())));
+
+drop policy if exists "clen cte a zapisuje fotky receptu" on public.recipe_photos;
+create policy "clen cte a zapisuje fotky receptu" on public.recipe_photos
+  for all to authenticated
+  using (household_id in (select private.my_household_ids()))
+  with check (household_id in (select private.my_household_ids()));
 
 drop policy if exists "clen cte a zapisuje prani" on public.wishes;
 create policy "clen cte a zapisuje prani" on public.wishes

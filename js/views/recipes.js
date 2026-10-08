@@ -10,7 +10,7 @@ import * as store from '../store.js';
 import { parseEntry, normalize } from '../categories.js';
 import { findProduct } from '../catalog.js';
 import { productChips } from '../catalogui.js';
-import { escapeHtml, ICONS, toast, undoToast, rowGestures, openMenu, openSheet, dragSort, holdKeyboard } from '../ui.js';
+import { escapeHtml, ICONS, toast, undoToast, openMenu, openSheet, dragSort, holdKeyboard, squarePhoto } from '../ui.js';
 import { navigate } from '../router.js';
 
 export const title = 'Recepty';
@@ -83,7 +83,7 @@ async function renderList(el, extraEl) {
     const on = Boolean(linkId);
     listRoot.classList.toggle('is-moving-mode', on);
     [pantryBtn, addBtn, tabsEl].forEach((node) => node.classList.toggle('is-away', on));
-    listRoot.querySelectorAll('.item').forEach((li) => li.classList.toggle('is-moving', li.dataset.id === linkId));
+    listRoot.querySelectorAll('.rcard').forEach((li) => li.classList.toggle('is-moving', li.dataset.id === linkId));
   }
 
   function setLinking(recipeId) {
@@ -100,25 +100,23 @@ async function renderList(el, extraEl) {
     else toast('Sem přidat nejde');
   }
 
+  // Recepty jako mřížka čtverců: přes celý čtverec fotka, nahoře název,
+  // dole čas (příprava+vaření)
   async function drawRecipes() {
-    const recipes = await store.listRecipes();
+    const [recipes, photos] = await Promise.all([store.listRecipes(), store.recipePhotos()]);
     if (linkId && !recipes.some((r) => r.id === linkId)) linkId = null;
-    const sub = (r) => {
-      const all = r.ingredients ?? [];
-      const inner = all.filter((ing) => ing.recipeId).length;
-      const own = plural(all.length - inner, 'ingredience', 'ingredience', 'ingrediencí');
-      return inner ? `${own} · ${plural(inner, 'recept', 'recepty', 'receptů')}` : own;
-    };
     listRoot.innerHTML = recipes.length
-      ? `<ul class="item-list group">${recipes.map((r) => `<li class="item" data-id="${escapeHtml(r.id)}">
-          <div class="item-bg" aria-hidden="true">Smazat</div>
-          <div class="item-slide">
-            <button type="button" class="item-main">
-              <span class="item-text"><span class="item-name">${escapeHtml(r.name)}</span><span class="item-sub">${sub(r)}</span></span>
-            </button>
-            <button type="button" class="item-more" data-more aria-label="Další možnosti">${ICONS.more}</button>
-          </div>
-        </li>`).join('')}</ul>`
+      ? `<ul class="rgrid">${recipes.map((r) => {
+        const time = store.recipeTime(r);
+        return `<li class="rcard${photos[r.id] ? ' has-photo' : ''}" data-id="${escapeHtml(r.id)}">
+          <button type="button" class="rcard-main">
+            ${photos[r.id] ? `<img class="rcard-photo" src="${photos[r.id]}" alt="">` : `<span class="rcard-empty">${ICONS.recipe}</span>`}
+            <span class="rcard-name">${escapeHtml(r.name)}</span>
+            ${time ? `<span class="rcard-time">${escapeHtml(time)}</span>` : ''}
+          </button>
+          <button type="button" class="item-more rcard-more" data-more aria-label="Další možnosti">${ICONS.more}</button>
+        </li>`;
+      }).join('')}</ul>`
       : `<div class="empty"><div class="empty-icon">${ICONS.recipe}</div><p class="empty-title">Zatím žádné recepty</p></div>`;
     applyLinking();
   }
@@ -154,27 +152,31 @@ async function renderList(el, extraEl) {
     if (removed.length) undoToast(`${removed[0].name}: smazáno`, () => store.restoreRecipes(removed));
   }
 
-  const open = (id) => navigate(`recepty/${id}`);
-  const endGesture = rowGestures(listRoot, {
-    onTap: (li) => (linkId ? linkInto(li.dataset.id) : open(li.dataset.id)),
-    onPress: (id) => { if (!linkId) open(id); },
-    onSwipe: (id) => { if (!linkId) remove(id); else draw(); },
+  listRoot.addEventListener('click', (e) => {
+    // Tři tečky: nabídka přímo u tlačítka
+    const more = e.target.closest('[data-more]');
+    if (more) {
+      const recipeId = more.closest('.rcard').dataset.id;
+      openMenu(more, (menu, close) => {
+        menu.innerHTML = `<button type="button" class="menu-item" data-value="link">Přidat do receptu</button>
+          <button type="button" class="menu-item is-danger" data-value="remove">Smazat</button>`;
+        menu.addEventListener('click', (ev) => {
+          const value = ev.target.closest('[data-value]')?.dataset.value;
+          if (!value) return;
+          close();
+          if (value === 'link') setLinking(recipeId);
+          if (value === 'remove') remove(recipeId);
+        });
+      });
+      return;
+    }
+    const card = e.target.closest('.rcard');
+    if (!card) return;
+    if (linkId) linkInto(card.dataset.id);
+    else navigate(`recepty/${card.dataset.id}`);
   });
 
-  // Tři tečky: nabídka přímo u tlačítka
-  listRoot.addEventListener('click', (e) => {
-    const more = e.target.closest('[data-more]');
-    if (!more) return;
-    const recipeId = more.closest('.item').dataset.id;
-    openMenu(more, (menu, close) => {
-      menu.innerHTML = '<button type="button" class="menu-item" data-value="link">Přidat do receptu</button>';
-      menu.addEventListener('click', (ev) => {
-        if (!ev.target.closest('[data-value="link"]')) return;
-        close();
-        setLinking(recipeId);
-      });
-    });
-  });
+  const endGesture = () => {};
 
   await draw();
   const unsubscribe = store.subscribe(draw);
@@ -189,6 +191,7 @@ async function renderList(el, extraEl) {
 async function renderRecipe(el, id, fromPantry) {
   const { root, back } = page(el, fromPantry ? `recepty/${PANTRY}` : 'recepty');
   let view = await store.recipeView(id);
+  let photo = (await store.recipePhotos())[id] ?? null;
   if (!view) {
     root.innerHTML = `<div class="detail-head">${back}<span class="detail-name">Recept už neexistuje</span></div>`;
     return undefined;
@@ -219,6 +222,8 @@ async function renderRecipe(el, id, fromPantry) {
         <span class="detail-name">${escapeHtml(recipe.name)}</span>
         <a class="btn btn-ghost btn-small" href="#/recepty/${escapeHtml(id)}/upravit">Upravit</a>
       </div>
+      ${photo ? `<img class="recipe-photo" src="${photo}" alt="">` : ''}
+      ${store.recipeTime(recipe) ? `<p class="recipe-time">${escapeHtml(store.recipeTime(recipe))}</p>` : ''}
       ${ingredients.length ? `
         <div class="done-head" style="margin-top: 6px">
           <p class="section-label">Ingredience</p>
@@ -282,6 +287,7 @@ async function renderRecipe(el, id, fromPantry) {
       fresh.ingredients.forEach((_, i) => picked.add(i));
     }
     view = fresh;
+    photo = (await store.recipePhotos())[id] ?? null;
     draw();
   });
 }
@@ -379,6 +385,20 @@ async function renderEdit(el, id) {
         <textarea class="input detail-title" name="name" rows="1" aria-label="Název" placeholder="Nový recept"></textarea>
       </div>
 
+      <div class="recipe-meta">
+        <label class="photo-box">
+          <span class="photo-slot"></span>
+          <input type="file" name="photo" accept="image/*" aria-label="Fotka receptu">
+        </label>
+        <div class="recipe-times">
+          <label class="field"><span>Příprava (min)</span>
+            <input class="input" name="prepMin" inputmode="numeric" placeholder="30"></label>
+          <label class="field"><span>Vaření (min)</span>
+            <input class="input" name="cookMin" inputmode="numeric" placeholder="20"></label>
+          <button type="button" class="btn btn-ghost btn-danger btn-small" data-action="photo-remove" hidden>Odebrat fotku</button>
+        </div>
+      </div>
+
       <p class="section-label">Ingredience</p>
       <ul class="item-list group ing-list"></ul>
       <div class="add-form ing-add">
@@ -415,6 +435,30 @@ async function renderEdit(el, id) {
   const grow = (area) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
 
   form.elements.name.value = recipe.name;
+  form.elements.prepMin.value = recipe.prepMin ?? '';
+  form.elements.cookMin.value = recipe.cookMin ?? '';
+
+  // Fotka: undefined = beze změny, text = nová, null = odebrat. Ukládá se až
+  // s receptem.
+  let newPhoto;
+  const savedPhoto = id ? (await store.recipePhotos())[id] ?? null : null;
+  function drawPhoto() {
+    const shown = newPhoto === undefined ? savedPhoto : newPhoto;
+    root.querySelector('.photo-slot').innerHTML = shown ? `<img src="${shown}" alt="">` : ICONS.camera;
+    root.querySelector('[data-action="photo-remove"]').hidden = !shown;
+  }
+  form.elements.photo.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      newPhoto = await squarePhoto(file);
+      drawPhoto();
+    } catch {
+      toast('Fotku se nepodařilo načíst');
+    }
+  });
+  drawPhoto();
   grow(form.elements.name);
   form.elements.name.addEventListener('input', () => grow(form.elements.name));
   form.elements.name.addEventListener('keydown', (e) => {
@@ -650,6 +694,11 @@ async function renderEdit(el, id) {
       const selected = area ? area.value.slice(area.selectionStart, area.selectionEnd).replace(/\s+/g, ' ').trim() : '';
       openHint(null, selected);
     }
+    if (action === 'photo-remove') {
+      newPhoto = null;
+      drawPhoto();
+      return;
+    }
     if (action === 'sub-add') {
       // Vložit jiný recept (bešamel do lasagní): výběr přímo u tlačítka
       const options = await store.recipesToInclude(id, rows.map((r) => r.recipeId).filter(Boolean));
@@ -724,7 +773,9 @@ async function renderEdit(el, id) {
     // Rozepsaná ingredience v poli se nesmí ztratit
     if (entry.value.trim()) addRow(entry.value);
     const ingredients = rows.map((row) => (row.recipeId ? { name: row.name, qty: '', recipeId: row.recipeId } : { name: row.name, qty: joinQty(row) }));
-    const saved = await store.saveRecipe({ id, name, ingredients, method: methodText(), hints });
+    const minutes = (field) => Math.max(0, parseInt(form.elements[field].value, 10) || 0) || null;
+    const saved = await store.saveRecipe({ id, name, ingredients, method: methodText(), hints, prepMin: minutes('prepMin'), cookMin: minutes('cookMin') });
+    if (newPhoto !== undefined) await store.setRecipePhoto(saved.id, newPhoto);
     navigate(`recepty/${saved.id}`);
   });
 

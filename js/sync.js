@@ -213,6 +213,9 @@ const SPECS = {
       ingredients: r.ingredients ?? [],
       method: r.method ?? null,
       hints: r.hints ?? [],
+      prep_min: r.prepMin ?? null,
+      cook_min: r.cookMin ?? null,
+      photo_at: iso(r.photoAt),
       created_at: iso(r.createdAt ?? r.updatedAt ?? Date.now()),
       updated_at: iso(r.updatedAt ?? Date.now()),
       deleted: Boolean(r.deleted),
@@ -223,11 +226,34 @@ const SPECS = {
       ingredients: r.ingredients ?? [],
       method: r.method ?? null,
       hints: r.hints ?? [],
+      prepMin: r.prep_min ?? null,
+      cookMin: r.cook_min ?? null,
+      photoAt: ms(r.photo_at),
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
     }),
     pullFilter: (query) => query.eq('deleted', false),
     removeMissing: true,
+  },
+  // Fotky receptů: odesílají se frontou jako všechno ostatní, ale nestahují
+  // se při každé synchronizaci (lazy). Telefon si fotku stáhne, až když podle
+  // photoAt u receptu zjistí, že ji nemá nebo má starší (viz fetchOne).
+  photos: {
+    table: 'recipe_photos',
+    conflict: 'id',
+    lazy: true,
+    keyOf: (row) => row.id,
+    stamp: (local) => local.updatedAt ?? 0,
+    toRemote: (p, householdId) => ({
+      id: p.id,
+      household_id: householdId,
+      data: p.deleted ? null : p.data,
+      updated_at: iso(p.updatedAt ?? Date.now()),
+      deleted: Boolean(p.deleted),
+    }),
+    fromRemote: (r) => ({ id: r.id, data: r.data, updatedAt: ms(r.updated_at) }),
+    pullFilter: (query) => query.eq('deleted', false),
+    removeMissing: false,
   },
   wishes: {
     table: 'wishes',
@@ -485,6 +511,7 @@ async function pull(id, { keepMissing = false } = {}) {
   let firstError = null;
   try {
     for (const [store, spec] of Object.entries(SPECS)) {
+      if (spec.lazy) continue;
       let remote;
       try {
         remote = await fetchAll(spec, id);
@@ -528,6 +555,28 @@ async function pull(id, { keepMissing = false } = {}) {
 function sameRow(a, b) {
   // Pole a objekty (repeat, doneParts, order) se porovnávají obsahem
   return Object.keys(b).every((k) => JSON.stringify(a[k] ?? null) === JSON.stringify(b[k] ?? null));
+}
+
+// Stáhne jeden řádek líného skladu (fotku receptu), když ho telefon potřebuje.
+// Vrací true, když se lokální kopie změnila.
+const fetching = new Set();
+export async function fetchOne(store, key) {
+  const spec = SPECS[store];
+  const tag = outboxKey(store, key);
+  if (!householdId || fetching.has(tag)) return false;
+  fetching.add(tag);
+  try {
+    const { data, error } = await supabase.from(spec.table).select('*').eq(spec.conflict, key).eq('deleted', false).limit(1);
+    if (error || !data?.length) return false;
+    const next = spec.fromRemote(data[0]);
+    const local = await db.get(store, key);
+    if (local && spec.stamp(local) >= spec.stamp(next)) return false;
+    await db.put(store, next);
+    fire(dataListeners);
+    return true;
+  } finally {
+    fetching.delete(tag);
+  }
 }
 
 // Jedna živá změna z Realtime

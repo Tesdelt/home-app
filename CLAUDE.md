@@ -74,7 +74,9 @@ Posluchače událostí věšet na vlastní prvky uvnitř pohledu, ne přímo na 
   a každý nový soubor přidat do `ASSETS` v `sw.js`, jinak nebude fungovat offline.
 - Celé UI česky. V textech jen krátká pomlčka `-`, nikdy dlouhá `—`.
 - Mobile-first, dotykové plochy aspoň 44 px, písmo v polích aspoň 16 px (iOS jinak zoomuje).
-- Barvy jen přes CSS proměnné z `:root`, ať funguje tmavý režim.
+- Barvy jen přes CSS proměnné z `:root`, ať funguje tmavý režim. Hlavní barva je teplá
+  (terakota), tyrkysová se nepoužívá. Barvy „čí to je“ (olivová, modrá, švestková) a
+  důležitosti (šedá, okrová, malinová) jsou schválně mimo ni, ať se nepletou.
 - Žádné knihovny z CDN bez dobrého důvodu, appka musí fungovat offline.
 
 ## Soukromí a bezpečnost
@@ -260,6 +262,12 @@ Hotovo (0.9.0):
   vyplněná, je pod ní rovnou připravené prázdné pole pro další. Ukládá se dál jako text ve
   sloupci `method`, krok na řádek, každá další souběžná část jako řádek začínající `|| ` (viz `parseMethod` / `formatMethod` v `recipes.js`), takže to
   nevyžadovalo změnu databáze a starší recepty se rozpadly na kroky po řádcích.
+  Recept má jednu ilustrační fotku a časy v minutách (příprava + vaření, zobrazené jako
+  „30m+20m“). Seznam receptů je mřížka čtverců: fotka přes celý čtverec, nahoře název, dole
+  čas, bez počtu ingrediencí; mazání a „Přidat do receptu“ jsou pod třemi tečkami.
+  Fotka se před uložením zmenší na čtverec 720 px (`squarePhoto` v `ui.js`) a je v tabulce
+  `recipe_photos` / skladu `photos`. Nestahuje se při každé synchronizaci, jen když se podle
+  `photoAt` u receptu změnila (`lazy` v `SPECS`, `sync.fetchOne`). Není v záloze do JSON.
   Recept může obsahovat jiný recept (bešamel v lasagních). Vložený recept je v `ingredients`
   jako `{ name, qty: '', recipeId }`, takže to nevyžadovalo změnu databáze. Přidává se v
   úpravě receptu („+ Recept“) nebo ze seznamu přes tři tečky („Přidat do receptu“, režim na

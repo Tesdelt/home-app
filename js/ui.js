@@ -23,6 +23,7 @@ export const ICONS = {
   lock: '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
   more: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="18.5" r="1.4"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>',
+  camera: '<svg viewBox="0 0 24 24"><path d="M4 8h3l1.500-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.500"/></svg>',
   back: '<svg viewBox="0 0 24 24"><path d="m14.5 5-7 7 7 7"/></svg>',
   send: '<svg viewBox="0 0 24 24"><path d="M5 12h13M12.5 6l6 6-6 6"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>',
@@ -218,6 +219,34 @@ export function wireSegmented(formEl) {
 
 export function money(amount) {
   return `${Math.round(amount).toLocaleString('cs-CZ')} Kč`;
+}
+
+// ---------- Fotka: zmenšení před uložením ----------
+// Z vybrané fotky udělá čtverec (výřez ze středu) o dané hraně a vrátí ho jako
+// JPEG data URL. Fotky z telefonu mají několik MB, takhle má jedna kolem 80 kB.
+
+export async function squarePhoto(file, size = 720, quality = 0.72) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('Obrázek nejde načíst'));
+      img.src = url;
+    });
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    canvas.getContext('2d').drawImage(
+      img,
+      (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side,
+      0, 0, size, size,
+    );
+    return canvas.toDataURL('image/jpeg', quality);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 // ---------- Klávesnice hned po ťuknutí ----------

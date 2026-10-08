@@ -330,7 +330,7 @@ export async function getRecipe(id) {
 }
 
 // Uloží recept (nový dostane id sám). Vrací ho.
-export async function saveRecipe({ id = null, name, ingredients = [], method = null, hints = [] }) {
+export async function saveRecipe({ id = null, name, ingredients = [], method = null, hints = [], prepMin = null, cookMin = null }) {
   const clean = String(name).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
@@ -343,6 +343,9 @@ export async function saveRecipe({ id = null, name, ingredients = [], method = n
       : { name: i.name, qty: i.qty ?? '' })),
     method: String(method ?? '').trim() || null,
     hints: hints.filter((h) => h?.term && h?.note).map((h) => ({ term: String(h.term).trim(), note: String(h.note).trim() })),
+    prepMin: prepMin || null,
+    cookMin: cookMin || null,
+    photoAt: before?.photoAt ?? null,
     createdAt: before?.createdAt ?? now,
     updatedAt: now,
   };
@@ -371,6 +374,39 @@ export async function listSkills() {
     }
   }
   return [...skills.values()].sort((a, b) => a.term.localeCompare(b.term, 'cs'));
+}
+
+// ---------- Fotka receptu ----------
+// Fotka je zmenšený obrázek jako data URL ve skladu photos (klíč = id receptu).
+// Recept si pamatuje jen photoAt = kdy se fotka naposledy změnila.
+
+// Nastaví (nebo při data = null odebere) fotku receptu
+export async function setRecipePhoto(recipeId, data) {
+  const now = Date.now();
+  await db.put('photos', data ? { id: recipeId, data, updatedAt: now } : { id: recipeId, data: null, deleted: true, updatedAt: now });
+  await sync.markDirty('photos', recipeId);
+  await patchRow('recipes', recipeId, { photoAt: data ? now : null });
+  emit();
+}
+
+// Fotky k receptům: { [id receptu]: data URL }. Co telefon ještě nemá (fotku
+// přidal druhý), si na pozadí stáhne a pohledy se pak překreslí samy.
+export async function recipePhotos() {
+  const [recipes, photos] = await Promise.all([live('recipes'), db.getAll('photos')]);
+  const local = new Map(photos.map((p) => [p.id, p]));
+  const out = {};
+  for (const recipe of recipes) {
+    if (!recipe.photoAt) continue;
+    const photo = local.get(recipe.id);
+    if (photo?.data && !photo.deleted) out[recipe.id] = photo.data;
+    if (!photo || (photo.updatedAt ?? 0) < recipe.photoAt) sync.fetchOne('photos', recipe.id);
+  }
+  return out;
+}
+
+// "30m+20m" (příprava + vaření), jen jeden údaj, nebo prázdný text
+export function recipeTime(recipe) {
+  return [recipe.prepMin, recipe.cookMin].filter(Boolean).map((min) => `${min}m`).join('+');
 }
 
 export const removeRecipes = (ids) => removeByIds('recipes', ids);

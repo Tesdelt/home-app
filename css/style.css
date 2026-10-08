@@ -7,21 +7,25 @@
   --text: #1F1D1A;
   --text-2: #6E695F;
   --text-3: #A19C92;
-  --accent: #2F6F5E;
-  --accent-soft: #E3EFEA;
+  /* Hlavní barva je teplá (terakota). Chyba a "hoří" je malinová, aby se
+     s ní nepletla. */
+  --accent: #B8612B;
+  --accent-soft: #F7E8DB;
   --on-accent: #FFFFFF;
-  --danger: #B3402F;
-  --danger-soft: #F6E3DF;
+  --danger: #B02A45;
+  --danger-soft: #F8E1E6;
 
-  /* Čí to je: první člen, druhý člen, společné */
-  --who-1: #B4532A;
-  --who-1-soft: #F8E7DC;
-  --who-2: #2B63A8;
-  --who-2-soft: #DFEAF7;
-  --who-both: #7A4AA8;
-  --who-both-soft: #ECE3F5;
-  --warn: #A66A00;
-  --warn-soft: #F7EBCF;
+  /* Čí to je: první člen (olivová), druhý člen (modrá), společné (švestková).
+     Schválně mimo oranžovou a červenou, ať se nepletou s hlavní barvou
+     a s důležitostí. */
+  --who-1: #6E7F2A;
+  --who-1-soft: #EDF1DC;
+  --who-2: #3D6A9C;
+  --who-2-soft: #DFE9F4;
+  --who-both: #8A4A7D;
+  --who-both-soft: #F1E2EE;
+  --warn: #9A7400;
+  --warn-soft: #F6ECC8;
 
   --radius: 14px;
   --radius-sm: 10px;
@@ -47,19 +51,19 @@
     --text: #ECEAE4;
     --text-2: #A29E95;
     --text-3: #6F6C65;
-    --accent: #66B79E;
-    --accent-soft: #1E3029;
-    --on-accent: #0E1A16;
-    --danger: #E07A68;
-    --danger-soft: #3A221D;
-    --who-1: #E8946A;
-    --who-1-soft: #3A261B;
-    --who-2: #7FB0EA;
+    --accent: #E39A62;
+    --accent-soft: #3A2A1C;
+    --on-accent: #24160B;
+    --danger: #F08A9B;
+    --danger-soft: #3D2027;
+    --who-1: #B5C56A;
+    --who-1-soft: #2B3018;
+    --who-2: #86B1E3;
     --who-2-soft: #1B2A3D;
-    --who-both: #B693E0;
-    --who-both-soft: #2C2239;
-    --warn: #E0B050;
-    --warn-soft: #3A2F17;
+    --who-both: #D49AC6;
+    --who-both-soft: #382436;
+    --warn: #E2BD55;
+    --warn-soft: #3A3117;
   }
 }
 
@@ -275,7 +279,7 @@ a.card:active { background: var(--surface-2); }
   justify-content: flex-end;
   padding-right: 20px;
   background: var(--danger);
-  color: #fff;
+  color: var(--surface);
   font-weight: 600;
   font-size: 15px;
 }
@@ -403,7 +407,7 @@ a.card:active { background: var(--surface-2); }
 }
 .prio-1 { color: var(--text-3); background: var(--surface-2); }
 .prio-2 { color: var(--warn); background: var(--warn-soft); }
-.prio-3 { color: #fff; background: var(--danger); }
+.prio-3 { color: var(--surface); background: var(--danger); }
 
 /* Úkol pro oba, který jsem odškrtl jen já: napůl plné kolečko */
 .item.is-mine .check { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
@@ -1075,3 +1079,38 @@ textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: 9px 12p
 .recipe-tabs { transition: transform 200ms ease, opacity 160ms ease; }
 .recipe-tabs.is-away { transform: translateY(-24px); opacity: 0; pointer-events: none; }
 .item-slide .item-main:not(.has-stripe) { padding-right: 4px; }
+
+/* ---------- Recepty: mřížka čtverců s fotkou ---------- */
+.rgrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rcard { position: relative; aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); }
+.rcard-main { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; text-align: left; color: var(--text); }
+.rcard-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.rcard-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); }
+.rcard-empty svg { width: 34%; height: 34%; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; }
+.rcard-name { position: absolute; top: 0; left: 0; right: 0; padding: 10px 40px 18px 12px; font-weight: 600; font-size: 16px; line-height: 1.2; overflow-wrap: anywhere; }
+.rcard-time { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 12px 9px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Na fotce je text bílý na ztmavení, ať se dá přečíst na jakémkoli obrázku */
+.rcard.has-photo .rcard-name, .rcard.has-photo .rcard-time { color: #fff; }
+.rcard.has-photo .rcard-name { background: linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0)); }
+.rcard.has-photo .rcard-time { background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.62)); }
+.rcard-more { position: absolute; top: 0; right: 0; width: 40px; height: 44px; min-height: 0; color: var(--text-2); }
+.rcard.has-photo .rcard-more { color: #fff; }
+.rcard:active { filter: brightness(0.95); }
+.rcard.is-moving { animation: wiggle 0.9s ease-in-out infinite; box-shadow: 0 0 0 3px var(--accent); }
+.is-moving-mode .rcard-more { opacity: 0; pointer-events: none; }
+.menu-item.is-danger { color: var(--danger); }
+
+/* Stránka receptu: fotka a čas */
+.recipe-photo { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--radius); margin: 0 0 8px; }
+.recipe-time { margin: 0 4px 4px; color: var(--text-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Úprava receptu: fotka vlevo, časy vpravo */
+.recipe-meta { display: flex; gap: 12px; align-items: flex-start; margin: 4px 0 6px; }
+.photo-box { position: relative; flex: none; width: 112px; height: 112px; border-radius: var(--radius); overflow: hidden; background: var(--surface); border: 1px dashed var(--border); cursor: pointer; }
+.photo-slot { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); }
+.photo-slot svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.photo-slot img { width: 100%; height: 100%; object-fit: cover; }
+.photo-box input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
+.recipe-times { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+.recipe-times .field { margin-bottom: 6px; }
+.recipe-times .btn { grid-column: 1 / -1; justify-self: start; padding-left: 2px; }
