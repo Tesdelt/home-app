@@ -260,6 +260,12 @@ Hotovo (0.9.0):
   vyplněná, je pod ní rovnou připravené prázdné pole pro další. Ukládá se dál jako text ve
   sloupci `method`, krok na řádek, každá další souběžná část jako řádek začínající `|| ` (viz `parseMethod` / `formatMethod` v `recipes.js`), takže to
   nevyžadovalo změnu databáze a starší recepty se rozpadly na kroky po řádcích.
+  Recept může obsahovat jiný recept (bešamel v lasagních). Vložený recept je v `ingredients`
+  jako `{ name, qty: '', recipeId }`, takže to nevyžadovalo změnu databáze. Přidává se v
+  úpravě receptu („+ Recept“) nebo ze seznamu přes tři tečky („Přidat do receptu“, režim na
+  místě jako u přesunu úkolů). Recept pak ukazuje ingredience i postup vložených receptů,
+  do nákupu a do „Co uvařit“ se počítají všechny. Recepty se nesmí obsahovat navzájem
+  (`recipesToInclude`, `includesRecipe` ve `store.js`).
   V seznamu receptů je záložka Skills: všechny vysvětlivky na jednom místě, u každé
   recepty, kde se používá (`listSkills` ve `store.js`, upravují se dál v receptu).
   K postupu jdou přidat vysvětlivky (`hints`: výraz + vysvětlení): v úpravě se označí text

@@ -74,16 +74,53 @@ async function renderList(el, extraEl) {
   addBtn.addEventListener('click', () => holdKeyboard());
   extraEl.append(pantryBtn, addBtn);
 
+  // Recept, který se právě vkládá do jiného (režim na stejné obrazovce jako
+  // přesouvání úkolů: ovládání odjede, vkládaný recept se lehce třese, ťuknutí
+  // na cílový recept ho tam vloží hned a bez ptaní)
+  let linkId = null;
+
+  function applyLinking() {
+    const on = Boolean(linkId);
+    listRoot.classList.toggle('is-moving-mode', on);
+    [pantryBtn, addBtn, tabsEl].forEach((node) => node.classList.toggle('is-away', on));
+    listRoot.querySelectorAll('.item').forEach((li) => li.classList.toggle('is-moving', li.dataset.id === linkId));
+  }
+
+  function setLinking(recipeId) {
+    linkId = recipeId;
+    applyLinking();
+  }
+
+  async function linkInto(targetId) {
+    const sourceId = linkId;
+    setLinking(null);
+    if (targetId === sourceId) return;
+    const added = await store.addSubRecipe(targetId, sourceId);
+    if (added) undoToast(`${added.source.name}: přidáno do ${added.target.name}`, () => store.undoAddSubRecipe(added));
+    else toast('Sem přidat nejde');
+  }
+
   async function drawRecipes() {
     const recipes = await store.listRecipes();
+    if (linkId && !recipes.some((r) => r.id === linkId)) linkId = null;
+    const sub = (r) => {
+      const all = r.ingredients ?? [];
+      const inner = all.filter((ing) => ing.recipeId).length;
+      const own = plural(all.length - inner, 'ingredience', 'ingredience', 'ingrediencí');
+      return inner ? `${own} · ${plural(inner, 'recept', 'recepty', 'receptů')}` : own;
+    };
     listRoot.innerHTML = recipes.length
       ? `<ul class="item-list group">${recipes.map((r) => `<li class="item" data-id="${escapeHtml(r.id)}">
           <div class="item-bg" aria-hidden="true">Smazat</div>
-          <button type="button" class="item-main">
-            <span class="item-text"><span class="item-name">${escapeHtml(r.name)}</span><span class="item-sub">${plural((r.ingredients ?? []).length, 'ingredience', 'ingredience', 'ingrediencí')}</span></span>
-          </button>
+          <div class="item-slide">
+            <button type="button" class="item-main">
+              <span class="item-text"><span class="item-name">${escapeHtml(r.name)}</span><span class="item-sub">${sub(r)}</span></span>
+            </button>
+            <button type="button" class="item-more" data-more aria-label="Další možnosti">${ICONS.more}</button>
+          </div>
         </li>`).join('')}</ul>`
       : `<div class="empty"><div class="empty-icon">${ICONS.recipe}</div><p class="empty-title">Zatím žádné recepty</p></div>`;
+    applyLinking();
   }
 
   // Skills: vysvětlivky ze všech receptů na jednom místě, u každé recepty,
@@ -118,7 +155,26 @@ async function renderList(el, extraEl) {
   }
 
   const open = (id) => navigate(`recepty/${id}`);
-  const endGesture = rowGestures(listRoot, { onTap: (li) => open(li.dataset.id), onPress: open, onSwipe: remove });
+  const endGesture = rowGestures(listRoot, {
+    onTap: (li) => (linkId ? linkInto(li.dataset.id) : open(li.dataset.id)),
+    onPress: (id) => { if (!linkId) open(id); },
+    onSwipe: (id) => { if (!linkId) remove(id); else draw(); },
+  });
+
+  // Tři tečky: nabídka přímo u tlačítka
+  listRoot.addEventListener('click', (e) => {
+    const more = e.target.closest('[data-more]');
+    if (!more) return;
+    const recipeId = more.closest('.item').dataset.id;
+    openMenu(more, (menu, close) => {
+      menu.innerHTML = '<button type="button" class="menu-item" data-value="link">Přidat do receptu</button>';
+      menu.addEventListener('click', (ev) => {
+        if (!ev.target.closest('[data-value="link"]')) return;
+        close();
+        setLinking(recipeId);
+      });
+    });
+  });
 
   await draw();
   const unsubscribe = store.subscribe(draw);
@@ -132,20 +188,32 @@ async function renderList(el, extraEl) {
 
 async function renderRecipe(el, id, fromPantry) {
   const { root, back } = page(el, fromPantry ? `recepty/${PANTRY}` : 'recepty');
-  let recipe = await store.getRecipe(id);
-  if (!recipe) {
+  let view = await store.recipeView(id);
+  if (!view) {
     root.innerHTML = `<div class="detail-head">${back}<span class="detail-name">Recept už neexistuje</span></div>`;
     return undefined;
   }
 
   // Vybrané = půjdou do nákupu. Ze zásob jsou předvybrané jen ty, co chybí.
+  // Seznam obsahuje i ingredience vložených receptů.
   const pantry = fromPantry ? await store.getPantry() : [];
-  const picked = new Set((recipe.ingredients ?? [])
+  const picked = new Set(view.ingredients
     .map((ing, i) => (fromPantry && store.hasIngredient(pantry, ing.name) ? null : i))
     .filter((i) => i !== null));
 
   function draw() {
-    const ingredients = recipe.ingredients ?? [];
+    const { recipe, subs, ingredients } = view;
+    const pickRow = (ing, i) => `<li class="catalog-row pick-row${picked.has(i) ? ' is-on' : ''}">
+        <button type="button" class="shop-pick" data-index="${i}" aria-pressed="${picked.has(i)}">
+          <span class="check">${ICONS.check}</span>
+          <span class="item-text"><span class="item-name">${escapeHtml(ing.name)}</span>${ing.qty ? `<span class="item-qty">${escapeHtml(ing.qty)}</span>` : ''}</span>
+        </button>
+      </li>`;
+    // Vlastní ingredience, pod nimi po skupinách ty z vložených receptů
+    const groups = [...new Set(ingredients.map((ing) => ing.from))];
+    const rows = groups
+      .map((from) => `${from ? `<li class="cat-head">${escapeHtml(from)}</li>` : ''}${ingredients.map((ing, i) => (ing.from === from ? pickRow(ing, i) : '')).join('')}`)
+      .join('');
     root.innerHTML = `
       <div class="detail-head">${back}
         <span class="detail-name">${escapeHtml(recipe.name)}</span>
@@ -156,21 +224,22 @@ async function renderRecipe(el, id, fromPantry) {
           <p class="section-label">Ingredience</p>
           <button type="button" class="btn btn-ghost btn-small" data-action="all">${picked.size === ingredients.length ? 'Nic' : 'Vše'}</button>
         </div>
-        <ul class="item-list group">${ingredients.map((ing, i) => `<li class="catalog-row pick-row${picked.has(i) ? ' is-on' : ''}">
-          <button type="button" class="shop-pick" data-index="${i}" aria-pressed="${picked.has(i)}">
-            <span class="check">${ICONS.check}</span>
-            <span class="item-text"><span class="item-name">${escapeHtml(ing.name)}</span>${ing.qty ? `<span class="item-qty">${escapeHtml(ing.qty)}</span>` : ''}</span>
-          </button>
-        </li>`).join('')}</ul>
+        <ul class="item-list group">${rows}</ul>
         <button type="button" class="btn btn-primary btn-block" data-action="shop" style="margin-top: 12px"${picked.size ? '' : ' disabled'}>${ICONS.cart} Do nákupu (${picked.size})</button>` : ''}
-      ${recipe.method ? `<p class="section-label">Postup</p>${stepsHtml(recipe.method, recipe.hints)}` : ''}`;
+      ${subs.map((sub) => `<div class="done-head">
+          <p class="section-label">${escapeHtml(sub.name)}</p>
+          <a class="btn btn-ghost btn-small" href="#/recepty/${escapeHtml(sub.id)}">Otevřít</a>
+        </div>
+        ${sub.method ? stepsHtml(sub.method, sub.hints, sub.id) : ''}`).join('')}
+      ${recipe.method ? `<p class="section-label">${subs.length ? escapeHtml(recipe.name) : 'Postup'}</p>${stepsHtml(recipe.method, recipe.hints, recipe.id)}` : ''}`;
   }
 
   root.addEventListener('click', async (e) => {
     // Podtržený výraz v postupu: ťuknutí ukáže vysvětlení, další ho schová
     const term = e.target.closest('[data-hint]');
     if (term) {
-      const hint = (recipe.hints ?? [])[Number(term.dataset.hint)];
+      const owner = [view.recipe, ...view.subs].find((r) => r.id === term.closest('[data-recipe]')?.dataset.recipe) ?? view.recipe;
+      const hint = (owner.hints ?? [])[Number(term.dataset.hint)];
       if (hint) openMenu(term, (menu) => { menu.innerHTML = `<p class="hint-pop">${escapeHtml(hint.note)}</p>`; });
       return;
     }
@@ -183,7 +252,7 @@ async function renderRecipe(el, id, fromPantry) {
       return;
     }
     const action = e.target.closest('[data-action]')?.dataset.action;
-    const ingredients = recipe.ingredients ?? [];
+    const { ingredients } = view;
     if (action === 'all') {
       const all = picked.size === ingredients.length;
       picked.clear();
@@ -202,22 +271,20 @@ async function renderRecipe(el, id, fromPantry) {
 
   draw();
   return store.subscribe(async () => {
-    const fresh = await store.getRecipe(id);
+    const fresh = await store.recipeView(id);
     if (!fresh) {
       navigate('recepty');
       return;
     }
     // Počet ingrediencí se mohl změnit, výběr musí sedět na nový seznam
-    if ((fresh.ingredients ?? []).length !== (recipe.ingredients ?? []).length) {
+    if (fresh.ingredients.length !== view.ingredients.length) {
       picked.clear();
-      (fresh.ingredients ?? []).forEach((_, i) => picked.add(i));
+      fresh.ingredients.forEach((_, i) => picked.add(i));
     }
-    recipe = fresh;
+    view = fresh;
     draw();
   });
 }
-
-// ---------- Nový recept a úprava ----------
 
 // Jednotky množství. "ks" se do množství nepíše ("2"), ostatní ano ("500 g").
 const UNITS = ['ks', 'g', 'kg', 'ml', 'l', 'lžíce', 'lžička', 'hrnek', 'špetka'];
@@ -285,8 +352,8 @@ function formatMethod(steps) {
 }
 
 // Postup v receptu: očíslované kroky, souběžné části jako 1A, 1B, 1C…
-function stepsHtml(method, hints) {
-  return `<ol class="rsteps">${parseMethod(method).map((step, i) => (step.parts.length === 1
+function stepsHtml(method, hints, recipeId = '') {
+  return `<ol class="rsteps" data-recipe="${escapeHtml(recipeId)}">${parseMethod(method).map((step, i) => (step.parts.length === 1
     ? `<li class="rstep-view"><span class="rstep-num">${i + 1}</span><div class="rstep-text">${methodHtml(step.parts[0], hints)}</div></li>`
     : `<li class="rstep-view is-split">${step.parts.map((part, p) => `<span class="rstep-num">${i + 1}${letter(p)}</span><div class="rstep-text">${methodHtml(part, hints)}</div>`).join('')}</li>`)).join('')}</ol>`;
 }
@@ -300,7 +367,10 @@ async function renderEdit(el, id) {
   }
 
   // Rozpracovaný stav je jen v paměti, uloží se tlačítkem
-  let rows = (recipe.ingredients ?? []).map((ing) => ({ key: store.newId(), name: ing.name, ...splitQty(ing.qty, ing.name) }));
+  // Řádek je buď ingredience, nebo vložený recept (recipeId)
+  let rows = (recipe.ingredients ?? []).map((ing) => (ing.recipeId
+    ? { key: store.newId(), name: ing.name, recipeId: ing.recipeId, n: '', unit: '' }
+    : { key: store.newId(), name: ing.name, ...splitQty(ing.qty, ing.name) }));
   let hints = (recipe.hints ?? []).map((h) => ({ ...h }));
 
   root.innerHTML = `
@@ -317,6 +387,7 @@ async function renderEdit(el, id) {
         <button class="add-btn" type="button" data-action="ing-add" aria-label="Přidat">${ICONS.plus}</button>
       </div>
       <div class="chips ing-chips"></div>
+      <button type="button" class="btn btn-ghost btn-small step-add" data-action="sub-add">${ICONS.plus} Recept</button>
 
       <p class="section-label">Postup</p>
       <ol class="rsteps rsteps-edit"></ol>
@@ -356,12 +427,17 @@ async function renderEdit(el, id) {
   // ---------- Ingredience: každá na svém řádku s množstvím a jednotkou ----------
 
   function drawRows() {
-    listEl.innerHTML = rows.map((row) => `<li class="ing-row" data-key="${row.key}">
+    listEl.innerHTML = rows.map((row) => (row.recipeId
+      ? `<li class="ing-row is-recipe" data-key="${row.key}">
+        <span class="ing-name"><span class="ing-recipe-icon">${ICONS.recipe}</span>${escapeHtml(row.name)}</span>
+        <button type="button" class="icon-btn" data-action="ing-remove" aria-label="Odebrat">×</button>
+      </li>`
+      : `<li class="ing-row" data-key="${row.key}">
         <span class="ing-name">${escapeHtml(row.name)}</span>
         <input class="input ing-qty" name="qty" inputmode="decimal" value="${escapeHtml(row.n)}" placeholder="1" aria-label="Množství">
         <button type="button" class="opt ing-unit" data-action="unit">${escapeHtml(row.unit)}</button>
         <button type="button" class="icon-btn" data-action="ing-remove" aria-label="Odebrat">×</button>
-      </li>`).join('');
+      </li>`)).join('');
   }
 
   // Věc se zapíše pod názvem z katalogu, "mouka 500 g" se rozdělí
@@ -386,11 +462,11 @@ async function renderEdit(el, id) {
       refreshChips();
     },
     count: (name) => {
-      const row = rows.find((r) => r.name === name);
+      const row = rows.find((r) => r.name === name && !r.recipeId);
       return row ? row.n || '1' : 0;
     },
     step: (name, direction) => {
-      const row = rows.find((r) => r.name === name);
+      const row = rows.find((r) => r.name === name && !r.recipeId);
       if (!row) {
         if (direction > 0) addRow(name);
         return;
@@ -574,6 +650,24 @@ async function renderEdit(el, id) {
       const selected = area ? area.value.slice(area.selectionStart, area.selectionEnd).replace(/\s+/g, ' ').trim() : '';
       openHint(null, selected);
     }
+    if (action === 'sub-add') {
+      // Vložit jiný recept (bešamel do lasagní): výběr přímo u tlačítka
+      const options = await store.recipesToInclude(id, rows.map((r) => r.recipeId).filter(Boolean));
+      openMenu(e.target.closest('button'), (menu, close) => {
+        menu.innerHTML = options.length
+          ? options.map((r) => `<button type="button" class="menu-item" data-value="${escapeHtml(r.id)}">${escapeHtml(r.name)}</button>`).join('')
+          : '<p class="hint-pop">Žádný další recept</p>';
+        menu.addEventListener('click', (ev) => {
+          const btn = ev.target.closest('[data-value]');
+          if (!btn) return;
+          close();
+          const picked = options.find((r) => r.id === btn.dataset.value);
+          rows = [...rows, { key: store.newId(), name: picked.name, recipeId: picked.id, n: '', unit: '' }];
+          drawRows();
+        });
+      });
+      return;
+    }
     if (action === 'rstep-add') {
       holdKeyboard();
       addStep();
@@ -629,7 +723,7 @@ async function renderEdit(el, id) {
     }
     // Rozepsaná ingredience v poli se nesmí ztratit
     if (entry.value.trim()) addRow(entry.value);
-    const ingredients = rows.map((row) => ({ name: row.name, qty: joinQty(row) }));
+    const ingredients = rows.map((row) => (row.recipeId ? { name: row.name, qty: '', recipeId: row.recipeId } : { name: row.name, qty: joinQty(row) }));
     const saved = await store.saveRecipe({ id, name, ingredients, method: methodText(), hints });
     navigate(`recepty/${saved.id}`);
   });
@@ -677,11 +771,11 @@ async function renderPantry(el) {
       .map((name, i) => `<button type="button" class="chip pantry-chip" data-remove="${i}" aria-label="Odebrat ${escapeHtml(name)}">${escapeHtml(name)}<span aria-hidden="true">×</span></button>`)
       .join('');
 
-    const matches = (await store.matchRecipes(have)).filter((m) => (m.recipe.ingredients ?? []).length);
+    const matches = (await store.matchRecipes(have)).filter((m) => m.total);
     const ready = matches.filter((m) => !m.missing.length);
     // "Skoro" = chybí jedna nebo dvě věci a aspoň něco z receptu doma je
     const almost = matches.filter((m) => m.missing.length >= 1 && m.missing.length <= 2
-      && m.missing.length < m.recipe.ingredients.length);
+      && m.missing.length < m.total);
     countEl.textContent = ready.length;
     countEl.classList.toggle('is-zero', !ready.length);
 

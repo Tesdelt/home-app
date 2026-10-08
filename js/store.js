@@ -312,6 +312,10 @@ export async function removeShop(key) {
 
 // ---------- Recepty ----------
 // Recept: { id, name, ingredients: [{ name, qty }], method, hints, createdAt, updatedAt }
+//   Recept může obsahovat jiný recept (bešamel v lasagních). Vložený recept je
+//   v ingredients jako { name, qty: '', recipeId }: pro starší verze appky je
+//   to prostě ingredience se jménem receptu, nová si podle recipeId dohledá
+//   aktuální název, ingredience i postup.
 //   hints  vysvětlivky k postupu: [{ term, note }]. Kde se term v postupu
 //          najde, je podtržený a po ťuknutí ukáže vysvětlení.
 
@@ -334,7 +338,9 @@ export async function saveRecipe({ id = null, name, ingredients = [], method = n
   const recipe = {
     id: id ?? db.newId(),
     name: clean,
-    ingredients: ingredients.filter((i) => i?.name).map((i) => ({ name: i.name, qty: i.qty ?? '' })),
+    ingredients: ingredients.filter((i) => i?.name).map((i) => (i.recipeId
+      ? { name: i.name, qty: '', recipeId: i.recipeId }
+      : { name: i.name, qty: i.qty ?? '' })),
     method: String(method ?? '').trim() || null,
     hints: hints.filter((h) => h?.term && h?.note).map((h) => ({ term: String(h.term).trim(), note: String(h.note).trim() })),
     createdAt: before?.createdAt ?? now,
@@ -395,12 +401,78 @@ export const hasIngredient = (have, name) => have.some((h) => sameThing(h, name)
 
 // Co se dá uvařit z toho, co je doma. have = seznam názvů. Vrací recepty
 // seřazené od těch, kterým chybí nejméně: [{ recipe, missing: [ingredience] }].
+// Vrací [{ recipe, missing, total }], total = počet všech ingrediencí včetně
+// těch z vložených receptů.
 export async function matchRecipes(have) {
   const recipes = await live('recipes');
+  const byId = new Map(recipes.map((r) => [r.id, r]));
   return recipes
-    .map((recipe) => ({ recipe, missing: (recipe.ingredients ?? []).filter((ing) => !hasIngredient(have, ing.name)) }))
+    .map((recipe) => {
+      const all = expandIngredients(recipe, byId);
+      return { recipe, total: all.length, missing: all.filter((ing) => !hasIngredient(have, ing.name)) };
+    })
     .sort((a, b) => a.missing.length - b.missing.length || a.recipe.name.localeCompare(b.recipe.name, 'cs'));
 }
+
+// ---------- Recept v receptu ----------
+
+// Všechny ingredience receptu včetně těch z vložených receptů (i vnořených).
+// Vrací [{ name, qty, from }], from = název vloženého receptu, nebo null.
+// seen hlídá, aby se recepty obsahující se navzájem nezacyklily.
+function expandIngredients(recipe, byId, seen = new Set()) {
+  const path = new Set(seen).add(recipe.id);
+  const out = [];
+  for (const ing of recipe.ingredients ?? []) {
+    const sub = ing.recipeId ? byId.get(ing.recipeId) : null;
+    if (sub && !path.has(sub.id)) {
+      out.push(...expandIngredients(sub, byId, path).map((x) => ({ ...x, from: sub.name })));
+    } else if (!ing.recipeId) {
+      out.push({ name: ing.name, qty: ing.qty ?? '', from: null });
+    }
+  }
+  return out;
+}
+
+// Obsahuje recept (přímo nebo přes jiné) recept s daným id?
+function includesRecipe(recipe, targetId, byId, seen = new Set()) {
+  if (seen.has(recipe.id)) return false;
+  seen.add(recipe.id);
+  return (recipe.ingredients ?? []).some((ing) => ing.recipeId
+    && (ing.recipeId === targetId || (byId.get(ing.recipeId) && includesRecipe(byId.get(ing.recipeId), targetId, byId, seen))));
+}
+
+// Recept připravený k zobrazení: { recipe, subs: [vložené recepty], ingredients }
+export async function recipeView(id) {
+  const recipes = await live('recipes');
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const recipe = byId.get(id);
+  if (!recipe) return null;
+  const subs = (recipe.ingredients ?? []).map((ing) => byId.get(ing.recipeId)).filter(Boolean);
+  return { recipe, subs, ingredients: expandIngredients(recipe, byId) };
+}
+
+// Recepty, které jdou vložit do daného receptu (ne on sám, ne ty, co už v něm
+// jsou, a ne ty, které ho samy obsahují). id = null: nový recept, jde cokoli.
+export async function recipesToInclude(id, already = []) {
+  const recipes = await listRecipes();
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  return recipes.filter((r) => r.id !== id && !already.includes(r.id) && !(id && includesRecipe(r, id, byId)));
+}
+
+// Vloží recept sourceId do receptu targetId. Vrací { target, source, before }
+// (before = ingredience cíle před vložením, pro Zpět), nebo null, když to
+// nejde (už tam je, nebo by se recepty obsahovaly navzájem).
+export async function addSubRecipe(targetId, sourceId) {
+  const allowed = await recipesToInclude(targetId, []);
+  const [target, source] = await Promise.all([getRecipe(targetId), getRecipe(sourceId)]);
+  if (!target || !source || !allowed.some((r) => r.id === sourceId)) return null;
+  const before = target.ingredients ?? [];
+  if (before.some((ing) => ing.recipeId === sourceId)) return null;
+  await saveRecipe({ ...target, ingredients: [...before, { name: source.name, qty: '', recipeId: sourceId }] });
+  return { target, source, before };
+}
+
+export const undoAddSubRecipe = ({ target, before }) => saveRecipe({ ...target, ingredients: before });
 
 // Co máme doma: seznam názvů, pamatuje si ho každý telefon zvlášť
 export const getPantry = () => getMeta('pantry', []);
