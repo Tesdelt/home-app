@@ -89,9 +89,10 @@ async function init() {
     cleanup = null;
 
     titleEl.textContent = view.title;
-    // Podstránka (modul otevřený z jiné záložky) má vlevo šipku zpět
-    backEl.hidden = !view.tab || view.tab === name;
-    backEl.href = `#/${view.tab ?? 'domu'}`;
+    // Každý modul má vlevo šipku zpět na Domů (i ty, které jsou zároveň ve spodní
+    // liště, na Domů mají dlaždici jako ostatní). Bez šipky je jen Domů a Nastavení.
+    backEl.hidden = name === 'domu' || name === 'vice';
+    backEl.href = `#/${view.tab && view.tab !== name ? view.tab : 'domu'}`;
     // Pohled si horní lištu může schovat (stránka úkolu), každý další začíná s ní
     appEl.classList.remove('no-topbar');
     subEl.hidden = true;

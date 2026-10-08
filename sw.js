@@ -1,6 +1,6 @@
 // Service worker: offline cache. Při každém nasazení zvýšit VERSION
 // (a APP_VERSION v js/config.js) a nové soubory doplnit do ASSETS.
-const VERSION = '0.16.1';
+const VERSION = '0.16.2';
 const CACHE = `home-app-v${VERSION}`;
 
 const ASSETS = [

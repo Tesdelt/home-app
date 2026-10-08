@@ -173,7 +173,8 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
 ### Komponenty
 
 - **Hlavička stránky**: název, na podstránce vlevo šipka zpět, vpravo nejvýš jedno hlavní
-  tlačítko `.add-btn` (+). Šipku u modulů z Domů kreslí `app.js` sám podle `tab` pohledu,
+  tlačítko `.add-btn` (+). Šipku zpět na Domů mají všechny moduly včetně Úkolů, Nákupu a Peněz (bez ní je jen Domů
+  a Nastavení), kreslí ji `app.js` sám,
   stránka položky má vlastní `.detail-head` se šipkou. Vedlejší ovládání (řazení, výběr
   obchodu, přepínač záložek, „Co uvařit“) patří do řádku `.toolbar` nad obsahem, ne do hlavičky.
 - **Karta** `.card` (Nastavení, souhrn plateb) a **dlaždice modulu** `.card.tile` na Domů.
