@@ -3,7 +3,7 @@
 // Nový úkol tlačítkem + (otevře stránku úkolu, kde se všechno nastaví předem).
 // Ťuknutí na kolečko = hotovo, ťuknutí na řádek = stránka úkolu (podrobnosti,
 // kroky, komentáře, viz task.js), potažení doleva = smazat.
-// V řádku je vidět pro koho úkol je (barva), termín a důležitost (1-3).
+// V řádku je vidět pro koho úkol je (barevný pruh vlevo), termín a důležitost (1-3).
 // Úkol pro oba musí odškrtnout každý za sebe. Soukromý úkol (zámek) vidí jen
 // ten, kdo ho založil.
 // Tři tečky v řádku: přesun úkolu do jiného úkolu jako krok. Seznam se při tom
@@ -11,7 +11,7 @@
 // se lehce třese) a ťuknutí na cílový úkol ho tam rovnou přesune.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, whoBadge } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass } from '../ui.js';
 import { navigate } from '../router.js';
 import { renderTask, NEW } from './task.js';
 import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
@@ -182,7 +182,6 @@ export async function render(el, { params, subEl, extraEl }) {
           <span class="item-text"><span class="item-name">${escapeHtml(task.title)}</span>${meta.length ? `<span class="item-sub">${meta.join(' · ')}</span>` : ''}${note}</span>
           ${task.privateTo ? `<span class="item-lock" title="Soukromý">${ICONS.lock}</span>` : ''}
           ${checked ? '' : `<span class="prio prio-${priority}" title="Důležitost ${priority} ze 3">${priority}</span>`}
-          ${whoBadge(task.assignee, members)}
         </button>
         ${checked ? '' : `<button type="button" class="item-more" data-more aria-label="Další možnosti">${ICONS.more}</button>`}
       </div>

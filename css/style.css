@@ -15,15 +15,14 @@
   --danger: #B02A45;
   --danger-soft: #F8E1E6;
 
-  /* Čí to je: první člen (olivová), druhý člen (modrá), společné (švestková).
-     Schválně mimo oranžovou a červenou, ať se nepletou s hlavní barvou
-     a s důležitostí. */
-  --who-1: #6E7F2A;
-  --who-1-soft: #EDF1DC;
-  --who-2: #3D6A9C;
-  --who-2-soft: #DFE9F4;
-  --who-both: #8A4A7D;
-  --who-both-soft: #F1E2EE;
+  /* Čí to je: první člen (Domi, růžová), druhý člen (Tom, modrá), společné
+     (oranžová). Syté barvy, ať se od sebe na úzkém pruhu dobře liší. */
+  --who-1: #D6408F;
+  --who-1-soft: #FBE1EF;
+  --who-2: #2468C4;
+  --who-2-soft: #DCE9FA;
+  --who-both: #E8780C;
+  --who-both-soft: #FCE7D2;
   --warn: #9A7400;
   --warn-soft: #F6ECC8;
 
@@ -56,12 +55,12 @@
     --on-accent: #24160B;
     --danger: #F08A9B;
     --danger-soft: #3D2027;
-    --who-1: #B5C56A;
-    --who-1-soft: #2B3018;
-    --who-2: #86B1E3;
-    --who-2-soft: #1B2A3D;
-    --who-both: #D49AC6;
-    --who-both-soft: #382436;
+    --who-1: #FF7FC2;
+    --who-1-soft: #3F1F31;
+    --who-2: #5AA2FF;
+    --who-2-soft: #172B45;
+    --who-both: #FF9A2E;
+    --who-both-soft: #40290F;
     --warn: #E2BD55;
     --warn-soft: #3A3117;
   }
@@ -384,7 +383,7 @@ a.card:active { background: var(--surface-2); }
 .who-2 { --who: var(--who-2); --who-soft: var(--who-2-soft); }
 .who-both { --who: var(--who-both); --who-soft: var(--who-both-soft); }
 .who-any { --who: var(--border); --who-soft: var(--surface-2); }
-.item-main.has-stripe { box-shadow: inset 5px 0 0 var(--who, transparent); padding-left: 16px; }
+.item-main.has-stripe { box-shadow: inset 9px 0 0 var(--who, transparent); padding-left: 21px; }
 .item-who.who-1, .item-who.who-2, .item-who.who-both { background: var(--who-soft); color: var(--who); width: auto; min-width: 24px; padding: 0 6px; border-radius: 12px; }
 .segmented button.who-1[aria-pressed="true"], .segmented button.who-2[aria-pressed="true"], .segmented button.who-both[aria-pressed="true"] { background: var(--who-soft); color: var(--who); }
 .legend { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 16px 4px 0; font-size: 13px; color: var(--text-2); }
@@ -592,12 +591,12 @@ textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 10px 10px 10px 18px;
+  padding: 10px 10px 10px 22px;
   margin-bottom: 8px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: inset 5px 0 0 var(--who, transparent);
+  box-shadow: inset 9px 0 0 var(--who, transparent);
 }
 .detail-head .check-tap { margin: 1px -4px 0 -8px; }
 textarea.detail-title {

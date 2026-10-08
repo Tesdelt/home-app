@@ -5,7 +5,7 @@
 // stránka položky, potažení doleva = smazat, + = nová položka na vlastní stránce.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, whoBadge } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass } from '../ui.js';
 import { navigate } from '../router.js';
 
 const NEW = 'novy';
@@ -55,7 +55,6 @@ function makeView({ list, title, route, icon }) {
         <button type="button" class="item-main has-stripe" aria-pressed="${wish.done}">
           <span class="check-tap"><span class="check">${ICONS.check}</span></span>
           <span class="item-text"><span class="item-name">${escapeHtml(wish.title)}</span>${note}</span>
-          ${whoBadge(wish.assignee, members)}
         </button>
       </li>`;
     }

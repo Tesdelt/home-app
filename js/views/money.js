@@ -3,7 +3,7 @@
 // určitou. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, holdKeyboard, money, whoClass, whoBadge, wireSegmented } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, holdKeyboard, money, whoClass, wireSegmented } from '../ui.js';
 import { today, dueLabel } from '../dates.js';
 
 export const title = 'Peníze';
@@ -73,7 +73,6 @@ export async function render(el, { extraEl }) {
         ${can || payment.done ? `<span class="check">${ICONS.check}</span>` : '<span class="check is-empty"></span>'}
         <span class="item-text"><span class="item-name">${escapeHtml(payment.name)}</span>${sub.length ? `<span class="item-sub">${sub.join(' · ')}</span>` : ''}</span>
         <span class="item-amount">${money(payment.amount)}</span>
-        ${whoBadge(payment.payer || store.SPLIT, members, 'Napůl')}
       </button>
     </li>`;
   }
