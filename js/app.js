@@ -13,6 +13,7 @@ import * as recipes from './views/recipes.js';
 import { wishlist, bucketlist } from './views/wishes.js';
 import * as docs from './views/docs.js';
 import * as notes from './views/notes.js';
+import * as demo from './views/demo.js';
 
 // Pořadí = pořadí v liště. První trasa je výchozí.
 addRoute('domu', home);
@@ -26,10 +27,13 @@ addRoute('wishlist', wishlist);
 addRoute('bucketlist', bucketlist);
 addRoute('administrativa', docs);
 addRoute('info', notes);
+// Skrytá stránka se všemi komponentami (design systém), v menu není
+addRoute('ukazka', demo);
 
 const viewEl = document.getElementById('view');
 const titleEl = document.getElementById('screen-title');
 const subEl = document.getElementById('screen-sub');
+const backEl = document.getElementById('topbar-back');
 const extraEl = document.getElementById('topbar-extra');
 const tabs = document.querySelectorAll('.tab');
 const tabbar = document.querySelector('.tabbar');
@@ -70,6 +74,7 @@ async function init() {
     cleanup = null;
     document.querySelectorAll('.sheet-backdrop, .menu-backdrop').forEach((sheet) => sheet.remove());
     appEl.classList.remove('no-topbar');
+    backEl.hidden = true;
     titleEl.textContent = login.TITLES[state.status] ?? 'Domácnost';
     document.title = 'Domácnost';
     subEl.hidden = true;
@@ -84,6 +89,9 @@ async function init() {
     cleanup = null;
 
     titleEl.textContent = view.title;
+    // Podstránka (modul otevřený z jiné záložky) má vlevo šipku zpět
+    backEl.hidden = !view.tab || view.tab === name;
+    backEl.href = `#/${view.tab ?? 'domu'}`;
     // Pohled si horní lištu může schovat (stránka úkolu), každý další začíná s ní
     appEl.classList.remove('no-topbar');
     subEl.hidden = true;

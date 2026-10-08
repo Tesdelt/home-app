@@ -1,5 +1,5 @@
 // Úkoly: jeden seznam všech úkolů bez ohledu na termín, řazení se volí
-// tlačítkem v horní liště (termín, důležitost, pro koho, přidáno).
+// tlačítkem nad seznamem (termín, důležitost, pro koho, přidáno).
 // Nový úkol tlačítkem + (otevře stránku úkolu, kde se všechno nastaví předem).
 // Ťuknutí na kolečko = hotovo, ťuknutí na řádek = stránka úkolu (podrobnosti,
 // kroky, komentáře, viz task.js), potažení doleva = smazat.
@@ -11,7 +11,7 @@
 // se lehce třese) a ťuknutí na cílový úkol ho tam rovnou přesune.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 import { renderTask, NEW } from './task.js';
 import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
@@ -85,13 +85,16 @@ export async function render(el, { params, subEl, extraEl }) {
   // #/ukoly/<id> je stránka jednoho úkolu
   if (params?.[0]) return renderTask(el, params[0], { subEl, extraEl });
 
+  const toolbar = document.createElement('div');
+  toolbar.className = 'toolbar';
   const listRoot = document.createElement('div');
   listRoot.className = 'list-root';
-  el.append(listRoot);
+  el.append(toolbar, listRoot);
 
   const sortBtn = document.createElement('button');
   sortBtn.type = 'button';
   sortBtn.className = 'btn btn-small shop-btn';
+  toolbar.append(sortBtn);
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.className = 'add-btn';
@@ -102,7 +105,7 @@ export async function render(el, { params, subEl, extraEl }) {
     holdKeyboard();
     navigate(`ukoly/${NEW}`);
   });
-  extraEl.append(sortBtn, addBtn);
+  extraEl.append(addBtn);
 
   let me = await store.getMe();
   let members = await store.listMembers();
@@ -117,7 +120,7 @@ export async function render(el, { params, subEl, extraEl }) {
   function applyMoving() {
     const on = Boolean(moveId);
     listRoot.classList.toggle('is-moving-mode', on);
-    sortBtn.classList.toggle('is-away', on);
+    toolbar.classList.toggle('is-away', on);
     addBtn.classList.toggle('is-away', on);
     listRoot.querySelectorAll('.item').forEach((li) => li.classList.toggle('is-moving', li.dataset.id === moveId));
   }
@@ -198,8 +201,9 @@ export async function render(el, { params, subEl, extraEl }) {
 
     sortBtn.textContent = SORTS.find(([value]) => value === sort)?.[1] ?? 'Termín';
 
+    toolbar.hidden = !tasks.some((t) => !t.done);
     if (!tasks.length) {
-      listRoot.innerHTML = `<div class="empty"><div class="empty-icon">${ICONS.tasks}</div><p class="empty-title">Žádné úkoly</p></div>`;
+      listRoot.innerHTML = emptyState('tasks', 'Žádné úkoly', 'Patří sem všechno, co je potřeba udělat, třeba vynést tříděný odpad každý čtvrtek.');
       return;
     }
 
@@ -214,7 +218,7 @@ export async function render(el, { params, subEl, extraEl }) {
 
     let out = rows
       ? `<ul class="item-list group">${rows}</ul>`
-      : `<div class="empty" style="padding: 28px 24px 12px"><div class="empty-icon">${ICONS.check}</div><p class="empty-title">Všechno hotovo</p></div>`;
+      : emptyState('check', 'Všechno hotovo', 'Nový úkol přidáte tlačítkem + nahoře, třeba zalít kytky.');
     if (done.length) {
       out += `<div class="done-wrap"><div class="done-head">
           <p class="section-label">Hotové (${done.length})</p>

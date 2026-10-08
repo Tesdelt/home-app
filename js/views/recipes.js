@@ -53,18 +53,17 @@ async function renderList(el, extraEl) {
   const root = document.createElement('div');
   el.append(root);
   root.innerHTML = `
-    <div class="segmented seg-bar tabs-only recipe-tabs" role="tablist">
-      <button type="button" role="tab" data-tab="recipes">Recepty</button>
-      <button type="button" role="tab" data-tab="skills">Skills</button>
+    <div class="toolbar">
+      <div class="segmented" role="tablist">
+        <button type="button" role="tab" data-tab="recipes">Recepty</button>
+        <button type="button" role="tab" data-tab="skills">Skills</button>
+      </div>
+      <a class="btn btn-small" href="#/recepty/${PANTRY}">Co uvařit</a>
     </div>
     <div class="list-root"></div>`;
-  const tabsEl = root.querySelector('.recipe-tabs');
+  const tabsEl = root.querySelector('.toolbar');
   const listRoot = root.querySelector('.list-root');
 
-  const pantryBtn = document.createElement('a');
-  pantryBtn.className = 'btn btn-small';
-  pantryBtn.href = `#/recepty/${PANTRY}`;
-  pantryBtn.textContent = 'Co uvařit';
   const addBtn = document.createElement('a');
   addBtn.className = 'add-btn';
   addBtn.href = `#/recepty/${NEW}`;
@@ -72,7 +71,7 @@ async function renderList(el, extraEl) {
   addBtn.innerHTML = ICONS.plus;
   // Na stránce nového receptu se rovnou píše název
   addBtn.addEventListener('click', () => holdKeyboard());
-  extraEl.append(pantryBtn, addBtn);
+  extraEl.append(addBtn);
 
   // Recept, který se právě vkládá do jiného (režim na stejné obrazovce jako
   // přesouvání úkolů: ovládání odjede, vkládaný recept se lehce třese, ťuknutí
@@ -82,7 +81,7 @@ async function renderList(el, extraEl) {
   function applyLinking() {
     const on = Boolean(linkId);
     listRoot.classList.toggle('is-moving-mode', on);
-    [pantryBtn, addBtn, tabsEl].forEach((node) => node.classList.toggle('is-away', on));
+    [addBtn, tabsEl].forEach((node) => node.classList.toggle('is-away', on));
     listRoot.querySelectorAll('.rcard').forEach((li) => li.classList.toggle('is-moving', li.dataset.id === linkId));
   }
 
@@ -117,7 +116,7 @@ async function renderList(el, extraEl) {
           <button type="button" class="item-more rcard-more" data-more aria-label="Další možnosti">${ICONS.more}</button>
         </li>`;
       }).join('')}</ul>`
-      : `<div class="empty"><div class="empty-icon">${ICONS.recipe}</div><p class="empty-title">Zatím žádné recepty</p></div>`;
+      : emptyState('recipe', 'Zatím žádné recepty', 'Patří sem jídla, která vaříte, třeba lasagne i s bešamelem jako receptem v receptu.');
     applyLinking();
   }
 
@@ -131,7 +130,7 @@ async function renderList(el, extraEl) {
           ${skill.notes.map((entry) => `<p class="skill-note">${escapeHtml(entry.note)}</p>
             <p class="skill-recipes">${entry.recipes.map((r) => `<a class="chip skill-recipe" href="#/recepty/${escapeHtml(r.id)}">${escapeHtml(r.name)}</a>`).join('')}</p>`).join('')}
         </li>`).join('')}</ul>`
-      : `<div class="empty"><div class="empty-icon">${ICONS.recipe}</div><p class="empty-title">Zatím žádné skills</p></div>`;
+      : emptyState('recipe', 'Zatím žádné skills', 'Sejdou se tu vysvětlení z postupů, třeba co znamená zaprášit nebo blanšírovat.');
   }
 
   function draw() {
@@ -225,12 +224,12 @@ async function renderRecipe(el, id, fromPantry) {
       ${photo ? `<img class="recipe-photo" src="${photo}" alt="">` : ''}
       ${store.recipeTime(recipe) ? `<p class="recipe-time">${escapeHtml(store.recipeTime(recipe))}</p>` : ''}
       ${ingredients.length ? `
-        <div class="done-head" style="margin-top: 6px">
+        <div class="done-head" style="margin-top: var(--s2)">
           <p class="section-label">Ingredience</p>
           <button type="button" class="btn btn-ghost btn-small" data-action="all">${picked.size === ingredients.length ? 'Nic' : 'Vše'}</button>
         </div>
         <ul class="item-list group">${rows}</ul>
-        <button type="button" class="btn btn-primary btn-block" data-action="shop" style="margin-top: 12px"${picked.size ? '' : ' disabled'}>${ICONS.cart} Do nákupu (${picked.size})</button>` : ''}
+        <button type="button" class="btn btn-primary btn-block" data-action="shop" style="margin-top: var(--s3)"${picked.size ? '' : ' disabled'}>${ICONS.cart} Do nákupu (${picked.size})</button>` : ''}
       ${subs.map((sub) => `<div class="done-head">
           <p class="section-label">${escapeHtml(sub.name)}</p>
           <a class="btn btn-ghost btn-small" href="#/recepty/${escapeHtml(sub.id)}">Otevřít</a>
@@ -372,12 +371,21 @@ async function renderEdit(el, id) {
     return undefined;
   }
 
-  // Rozpracovaný stav je jen v paměti, uloží se tlačítkem
+  // Rozpracovaný stav je v paměti. Nový recept se uloží tlačítkem Přidat,
+  // existující se ukládá sám chvilku po každé změně (queueSave).
   // Řádek je buď ingredience, nebo vložený recept (recipeId)
   let rows = (recipe.ingredients ?? []).map((ing) => (ing.recipeId
     ? { key: store.newId(), name: ing.name, recipeId: ing.recipeId, n: '', unit: '' }
     : { key: store.newId(), name: ing.name, ...splitQty(ing.qty, ing.name) }));
   let hints = (recipe.hints ?? []).map((h) => ({ ...h }));
+  let ready = false;
+  let saveTimer = null;
+  let saveNow = async () => null;
+  const queueSave = () => {
+    if (!id || !ready) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => saveNow(), 400);
+  };
 
   root.innerHTML = `
     <form class="edit-form" autocomplete="off">
@@ -417,10 +425,9 @@ async function renderEdit(el, id) {
         <span class="hint-chips"></span>
       </div>
 
-      <div class="btn-row" style="margin-top: 18px">
-        ${id ? '<button type="button" class="btn btn-danger" data-action="delete">Smazat</button>' : ''}
-        <button type="submit" class="btn btn-primary">${id ? 'Uložit' : 'Přidat'}</button>
-      </div>
+      ${id
+    ? '<button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat</button>'
+    : '<button type="submit" class="btn btn-primary btn-block detail-create">Přidat</button>'}
     </form>`;
 
   const form = root.querySelector('form');
@@ -441,8 +448,9 @@ async function renderEdit(el, id) {
   // Fotka: undefined = beze změny, text = nová, null = odebrat. Ukládá se až
   // s receptem.
   let newPhoto;
-  const savedPhoto = id ? (await store.recipePhotos())[id] ?? null : null;
+  let savedPhoto = id ? (await store.recipePhotos())[id] ?? null : null;
   function drawPhoto() {
+    queueSave();
     const shown = newPhoto === undefined ? savedPhoto : newPhoto;
     root.querySelector('.photo-slot').innerHTML = shown ? `<img src="${shown}" alt="">` : ICONS.camera;
     root.querySelector('[data-action="photo-remove"]').hidden = !shown;
@@ -471,6 +479,7 @@ async function renderEdit(el, id) {
   // ---------- Ingredience: každá na svém řádku s množstvím a jednotkou ----------
 
   function drawRows() {
+    queueSave();
     listEl.innerHTML = rows.map((row) => (row.recipeId
       ? `<li class="ing-row is-recipe" data-key="${row.key}">
         <span class="ing-name"><span class="ing-recipe-icon">${ICONS.recipe}</span>${escapeHtml(row.name)}</span>
@@ -562,6 +571,7 @@ async function renderEdit(el, id) {
   // Výraz je pak v receptu podtržený a po ťuknutí ukáže vysvětlení.
 
   function drawHints() {
+    queueSave();
     hintChips.innerHTML = hints
       .map((h, i) => `<button type="button" class="chip hint-chip${methodText().toLowerCase().includes(h.term.toLowerCase()) ? '' : ' is-missing'}" data-hint="${i}">${escapeHtml(h.term)}</button>`)
       .join('');
@@ -576,6 +586,7 @@ async function renderEdit(el, id) {
   const hasSpare = (step) => step.parts.length >= 2 && Boolean(step.parts.at(-1).trim());
 
   function drawSteps() {
+    queueSave();
     stepsEl.innerHTML = steps.map((step, i) => {
       const split = step.parts.length > 1;
       const line = (part, p, spare = false) => `<div class="rstep-line${spare ? ' is-spare' : ''}">
@@ -651,10 +662,9 @@ async function renderEdit(el, id) {
           <input class="input" name="term" value="${escapeHtml(existing?.term ?? term)}" required></label>
         <label class="field"><span>Vysvětlení</span>
           <textarea class="input" name="note" rows="3" required>${escapeHtml(existing?.note ?? '')}</textarea></label>
-        <div class="btn-row">
-          ${existing ? '<button type="button" class="btn btn-danger" data-action="remove">Smazat</button>' : ''}
-          <button type="submit" class="btn btn-primary">Uložit</button>
-        </div>
+        ${existing
+          ? '<button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="remove">Smazat</button>'
+          : '<button type="submit" class="btn btn-primary btn-block">Přidat</button>'}
       </form>`;
       const f = body.querySelector('form');
       (f.elements.term.value ? f.elements.note : f.elements.term).focus();
@@ -667,6 +677,15 @@ async function renderEdit(el, id) {
         close();
         drawHints();
       });
+      // Existující vysvětlení se ukládá samo při změně
+      if (existing) {
+        f.addEventListener('change', () => {
+          const hint = { term: f.elements.term.value.trim(), note: f.elements.note.value.trim() };
+          if (!hint.term || !hint.note) return;
+          hints[index] = hint;
+          drawHints();
+        });
+      }
       f.querySelector('[data-action="remove"]')?.addEventListener('click', () => {
         hints = hints.filter((_, i) => i !== index);
         close();
@@ -763,27 +782,52 @@ async function renderEdit(el, id) {
     }
   });
 
+  // Uloží, co je právě ve formuláři. Bez názvu se neukládá.
+  saveNow = async () => {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    const name = form.elements.name.value.replace(/\s+/g, ' ').trim();
+    if (!name) return null;
+    const ingredients = rows.map((row) => (row.recipeId ? { name: row.name, qty: '', recipeId: row.recipeId } : { name: row.name, qty: joinQty(row) }));
+    const minutes = (field) => Math.max(0, parseInt(form.elements[field].value, 10) || 0) || null;
+    const saved = await store.saveRecipe({ id, name, ingredients, method: methodText(), hints, prepMin: minutes('prepMin'), cookMin: minutes('cookMin') });
+    if (newPhoto !== undefined) {
+      const photo = newPhoto;
+      newPhoto = undefined;
+      savedPhoto = photo;
+      await store.setRecipePhoto(saved.id, photo);
+    }
+    return saved;
+  };
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = form.elements.name.value.replace(/\s+/g, ' ').trim();
-    if (!name) {
+    if (id) {
+      form.querySelector(':focus')?.blur();
+      return;
+    }
+    if (!form.elements.name.value.trim()) {
       form.elements.name.focus();
       return;
     }
     // Rozepsaná ingredience v poli se nesmí ztratit
     if (entry.value.trim()) addRow(entry.value);
-    const ingredients = rows.map((row) => (row.recipeId ? { name: row.name, qty: '', recipeId: row.recipeId } : { name: row.name, qty: joinQty(row) }));
-    const minutes = (field) => Math.max(0, parseInt(form.elements[field].value, 10) || 0) || null;
-    const saved = await store.saveRecipe({ id, name, ingredients, method: methodText(), hints, prepMin: minutes('prepMin'), cookMin: minutes('cookMin') });
-    if (newPhoto !== undefined) await store.setRecipePhoto(saved.id, newPhoto);
-    navigate(`recepty/${saved.id}`);
+    const saved = await saveNow();
+    if (saved) navigate(`recepty/${saved.id}`);
   });
+  form.addEventListener('input', (e) => { if (e.target !== entry) queueSave(); });
+  form.addEventListener('change', (e) => { if (e.target !== entry) queueSave(); });
 
   drawRows();
   drawSteps();
   drawHints();
   refreshChips();
-  return endSort;
+  ready = true;
+  return () => {
+    endSort();
+    // Co se nestihlo uložit, se uloží při odchodu
+    if (saveTimer) saveNow();
+  };
 }
 
 // ---------- Co máme doma -> co uvařit ----------

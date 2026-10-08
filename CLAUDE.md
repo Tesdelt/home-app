@@ -36,8 +36,9 @@ js/views/*.js         jednotlivé obrazovky
 js/views/task.js      stránka jednoho úkolu (#/ukoly/<id>): pole, kroky, komentáře
 js/views/wishes.js    wishlist a bucketlist (#/wishlist, #/bucketlist), jedno rozhraní
 js/views/docs.js      administrativa (#/administrativa): dokumenty podle kategorií, společné / osobní
-js/views/notes.js     info o domácnosti (#/info): poznámky
-js/views/recipes.js   recepty (#/recepty, z Více): seznam, recept, úprava, „co uvařit“
+js/views/notes.js     Byt (#/info): poznámky o bytě
+js/views/demo.js      skrytá ukázka všech komponent (#/ukazka), viz Design systém
+js/views/recipes.js   recepty (#/recepty, z Domů): seznam, recept, úprava, „co uvařit“
 js/views/login.js     přihlášení, „Nemáte přístup“, nabídka nahrát stará lokální data
 sw.js                 offline cache
 supabase/schema.sql   tabulky, RLS politiky, oprávnění rolí, Realtime
@@ -138,8 +139,59 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
 - Volby u malého tlačítka se otevírají jako nabídka přímo u něj (`openMenu` v `ui.js`),
   spodní panel (`openSheet`) je jen pro větší formuláře.
 - Spodní lišta max. 5 položek. Další moduly (recepty, administrativa, wishlist, bucketlist,
-  info o domácnosti a každý nový) mají dlaždici na Domů. „Více“ je jen nastavení aplikace
+  info o domácnosti a každý nový) mají dlaždici na Domů. „Nastavení“ (trasa `#/vice`) je jen nastavení aplikace
   (účet, synchronizace, upozornění, záloha), moduly do něj nepatří.
+
+## Design systém
+
+Appka má působit jako jeden celek. **Nové obrazovky se skládají jen z komponent níž.
+Nový styl se píše, až když komponenta opravdu chybí, a pak se přidá sem i na `#/ukazka`.**
+Všechny komponenty ve všech stavech jsou na skryté stránce `#/ukazka` (`js/views/demo.js`),
+po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
+
+### Tokeny (`:root` v `css/style.css`, světlý i tmavý režim)
+
+- Písmo, jen 4 velikosti: `--fs-title` 28 (nadpis stránky), `--fs-section` 19 (nadpis sekce,
+  název na stránce položky), `--fs-text` 16 (text, pole, tlačítka), `--fs-small` 13 (drobný text).
+- Rozestupy, jen jedna škála: `--s1` 4, `--s2` 8, `--s3` 12, `--s4` 16, `--s5` 24. Jiné hodnoty
+  v `padding`, `margin` a `gap` nepoužívat (výjimka jsou vlasové 1-3 px a `calc` se safe-area).
+- Zaoblení: `--radius` 14 (karty, panely, nabídka), `--radius-sm` 10 (tlačítka, čipy, pole).
+- Barvy s pevným významem:
+  - `--accent` (oranžová) jen pro hlavní akci (tlačítko +, Přidat) a aktivní stav
+    (aktivní záložka, zapnutý zámek / zvonek / opakování). Nic dalšího.
+  - barvy osob jen pro osoby: `--who-2` Tom modrá, `--who-1` Domi růžová, `--who-both` oba
+    zelená, kdokoliv neutrální (`whoClass()` z `ui.js`).
+  - `--danger` (červená) jen pro „po termínu“ a mazání, **vždy s ikonou** (třída `.is-late`
+    přidá hodiny, `.btn-danger` a `.menu-item.is-danger` koš), ať se neplete s růžovou Domi.
+  - ostatní stavový text je šedý (`--text-2`): opakování, „hotovo Tom, zbývá Domi“, počty.
+    Důležitost úkolu je v odstínech šedé, ne barevně.
+
+### Komponenty
+
+- **Hlavička stránky**: název, na podstránce vlevo šipka zpět, vpravo nejvýš jedno hlavní
+  tlačítko `.add-btn` (+). Šipku u modulů z Domů kreslí `app.js` sám podle `tab` pohledu,
+  stránka položky má vlastní `.detail-head` se šipkou. Vedlejší ovládání (řazení, výběr
+  obchodu, přepínač záložek, „Co uvařit“) patří do řádku `.toolbar` nad obsahem, ne do hlavičky.
+- **Karta** `.card` a **dlaždice** `.card.tile` (stejná komponenta, dlaždice ve dvou sloupcích
+  `.tiles`): `.card-head` s ikonou, názvem a počtem vpravo, pod tím jeden stavový řádek
+  `.card-line`. Prázdný modul má „Zatím prázdné“.
+- **Řádek seznamu** `.item` > `.item-main` v `ul.item-list.group`: všude stejná výška a odsazení,
+  vlevo pruh v barvě osoby (`.has-stripe` + `whoClass`), `.item-name`, šedý `.item-sub`,
+  nadpis skupiny `li.cat-head`. Gesta přes `rowGestures`.
+- **Segmentový přepínač** `.segmented`: vybraný stav je všude stejný (světlý podklad, tučně),
+  bez barev osob.
+- **Čip** `.chip` a malé tlačítko volby `.opt`, **nabídka** `openMenu` (u tlačítka) a
+  **spodní panel** `openSheet`: vždy plné, neprůhledné pozadí.
+- **Prázdný stav** `emptyState(ikona, nadpis, věta)`: ikona, nadpis a jedna věta, co sem
+  patří, s příkladem. Jediné místo, kde je v appce vysvětlující text.
+- **Toast** `toast` / `undoToast` (se Zpět).
+- **Ikony** jen ze sady `ICONS` v `ui.js`: čárové, viewBox 24, tloušťka 1.8, bez výplně.
+
+### Ukládání
+
+Nová položka se zakládá tlačítkem **Přidat** (do té doby je jen v paměti, odchodem zmizí),
+existující položka se **ukládá sama** při změně, tlačítko Uložit nikde není. Platí pro
+úkoly, dokumenty, recepty, wishlist, platby i poznámky.
 
 ## Stav a plán
 
@@ -312,6 +364,22 @@ Hotovo (0.7.0):
   po odeslání řádku na server dostanou ostatní členové push „Nový úkol od: …“ nebo
   „Komentář od: …“. Fronta v meta `notifyQueue` (`sync.js`), posílá funkce `send-reminders`
   s tělem `{ task, title }` nebo `{ task, title, kind: 'comment', text }` a přihlášením člena.
+
+Hotovo (0.16.0), úklid vzhledu a UX bez nových funkcí:
+- Design systém (viz sekce výš): tokeny pro písmo, rozestupy a zaoblení, barvy s pevným
+  významem, sjednocené komponenty, stránka `#/ukazka`.
+- Záložka „Více“ se jmenuje „Nastavení“ (ozubené kolo), modul „Domácnost“ je „Byt“.
+- Domů: karta Úkoly počítá a vypisuje totéž (po termínu a na dnes, po termínu první a
+  červeně s ikonou), každá dlaždice má jeden stavový řádek.
+- Prázdné stavy ve všech modulech mají jednu větu s příkladem.
+- Dokumenty a poznámky se zakládají až tlačítkem Přidat, recepty a platby se po založení
+  ukládají samy.
+- Oprava: opakovaný úkol s pevným termínem už nezůstane viset. Když začne další období
+  a minulé kolo není splněné, `rollOver` ve `store.js` ho uzavře jako zmeškané a posune
+  termín. Kdo nesplnil, se zapíše jako komentář bez autora (id i čas se počítají z úkolu
+  a termínu, oba telefony tedy vyrobí stejný řádek, schéma se neměnilo). Na stránce úkolu
+  je vidět jako šedý řádek, do počtu komentářů ani nepřečtených se nepočítá. Posouvá se
+  jen s čerstvě staženými daty. Opakování „od splnění“ se nemění.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

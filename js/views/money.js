@@ -3,7 +3,7 @@
 // určitou. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, holdKeyboard, money, whoClass, wireSegmented } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState } from '../ui.js';
 import { today, dueLabel } from '../dates.js';
 
 export const title = 'Peníze';
@@ -21,6 +21,12 @@ const KINDS = [
   { id: 'term', name: 'Na dobu', tab: 'Na dobu' },
 ];
 const kindOf = (payment) => payment.kind ?? 'recurring';
+
+const EMPTY = {
+  recurring: 'Pravidelné platby, třeba nájem nebo internet každý měsíc.',
+  once: 'Jednorázové platby, třeba doplatek za energie.',
+  term: 'Platby na dobu určitou, třeba 12 splátek za pračku.',
+};
 
 // Volby vydrží, dokud je appka otevřená. section = null: vybere se sama.
 let yearly = false;
@@ -88,10 +94,7 @@ export async function render(el, { extraEl }) {
     if (!payments.length) {
       summaryRoot.innerHTML = '';
       tabsEl.hidden = true;
-      listRoot.innerHTML = `<div class="empty">
-        <div class="empty-icon">${ICONS.wallet}</div>
-        <p class="empty-title">Zatím žádné platby</p>
-      </div>`;
+      listRoot.innerHTML = emptyState('wallet', 'Zatím žádné platby', 'Patří sem všechno, co platíte opakovaně, třeba nájem, internet nebo pojištění.');
       return;
     }
 
@@ -120,14 +123,13 @@ export async function render(el, { extraEl }) {
     if (section === 'due') {
       out = due.length
         ? list(due)
-        : `<div class="empty" style="padding: 28px 24px 12px"><div class="empty-icon">${ICONS.check}</div>
-            <p class="empty-title">Nic k zaplacení</p></div>`;
+        : emptyState('check', 'Nic k zaplacení', 'Objeví se tu platby splatné do 7 dní, třeba nájem před prvním.');
     } else {
       const inKind = byKind(section);
       const open = inKind.filter((p) => !p.done).sort((a, b) => (a.nextDue ?? '9').localeCompare(b.nextDue ?? '9') || b.amount - a.amount);
       const done = inKind.filter((p) => p.done).sort((a, b) => (b.paidAt ?? 0) - (a.paidAt ?? 0));
       if (open.length) out += list(open);
-      else if (!done.length) out += '<p class="hint">Nic tu není.</p>';
+      else if (!done.length) out += emptyState('wallet', 'Nic tu není', EMPTY[section]);
       if (done.length) {
         out += `<div class="done-head">
             <p class="section-label">${section === 'term' ? 'Doplacené' : 'Zaplacené'} (${done.length})</p>
@@ -192,7 +194,7 @@ export async function render(el, { extraEl }) {
     const p = existing ?? { name: '', amount: '', kind: startKind, period: 'month', payer: me ?? store.SPLIT, nextDue: null, total: null };
     const payers = [...members.map((m) => [m, m]), [store.SPLIT, 'Napůl']];
 
-    openSheet(existing ? 'Upravit platbu' : 'Nová platba', (body, close) => {
+    openSheet(existing ? existing.name : 'Nová platba', (body, close) => {
       body.innerHTML = `<form class="edit-form" autocomplete="off">
         <div class="field"><span>Druh</span>
           <div class="segmented" data-name="kind">
@@ -216,10 +218,9 @@ export async function render(el, { extraEl }) {
           <input class="input" name="remaining" inputmode="numeric" value="${escapeHtml(p.remaining ?? '')}"></label>
         <label class="field"><span data-due-label>Splatnost</span>
           <input class="input" type="date" name="nextDue" value="${escapeHtml(p.nextDue ?? '')}"></label>
-        <div class="btn-row">
-          ${existing ? '<button type="button" class="btn btn-danger" data-action="delete">Smazat</button>' : ''}
-          <button type="submit" class="btn btn-primary">${existing ? 'Uložit' : 'Přidat'}</button>
-        </div>
+        ${existing
+          ? '<button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat</button>'
+          : '<button type="submit" class="btn btn-primary btn-block">Přidat</button>'}
       </form>`;
 
       const f = body.querySelector('form');
@@ -236,10 +237,10 @@ export async function render(el, { extraEl }) {
       f.querySelector('[data-name="kind"]').addEventListener('click', () => setTimeout(syncKind, 0));
       if (!existing) f.elements.name.focus();
 
-      f.addEventListener('submit', async (e) => {
-        e.preventDefault();
+      // Nová platba se přidá tlačítkem, existující se ukládá sama při každé změně
+      const commit = async () => {
         const name = f.elements.name.value.trim();
-        if (!name) return;
+        if (!name) return false;
         const kind = picked('kind') || 'recurring';
         const amount = Number(f.elements.amount.value.replace(/\s/g, '').replace(',', '.'));
         const count = (field) => {
@@ -273,8 +274,17 @@ export async function render(el, { extraEl }) {
           await store.addPayment(data);
           section = kind;
         }
-        close();
+        return true;
+      };
+      f.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (existing) f.querySelector(':focus')?.blur();
+        else if (await commit()) close();
       });
+      if (existing) {
+        f.addEventListener('change', commit);
+        f.querySelectorAll('.segmented').forEach((seg) => seg.addEventListener('click', () => setTimeout(commit, 0)));
+      }
       f.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
         close();
         deletePayment(id);

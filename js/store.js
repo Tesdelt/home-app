@@ -582,9 +582,13 @@ export async function getDoc(id) {
   return doc && !doc.deleted ? doc : null;
 }
 
-export async function addDoc({ category = 'ostatni', isPrivate = false } = {}) {
+// pages = data URL naskenovaných stránek, které se k dokumentu rovnou přidají
+export async function addDoc({ title = '', category = 'ostatni', note = null, validUntil = null, isPrivate = false, pages = [] } = {}) {
   const now = Date.now();
-  const doc = { id: db.newId(), title: '', category, note: null, validUntil: null, files: [], privateTo: isPrivate ? await myUserId() : null, createdAt: now, updatedAt: now };
+  const privateTo = isPrivate ? await myUserId() : null;
+  const files = pages.map((data) => ({ id: db.newId(), data }));
+  const doc = { id: db.newId(), title: String(title).trim(), category, note, validUntil, files: files.map(({ id }) => ({ id })), privateTo, createdAt: now, updatedAt: now };
+  await save('docfiles', files.map((f) => ({ ...f, docId: doc.id, privateTo, updatedAt: now })));
   await save('documents', [doc]);
   emit();
   return doc;
@@ -647,9 +651,9 @@ export async function getNote(id) {
   return note && !note.deleted ? note : null;
 }
 
-export async function addNote() {
+export async function addNote({ title = '', body = null } = {}) {
   const now = Date.now();
-  const note = { id: db.newId(), title: '', body: null, createdAt: now, updatedAt: now };
+  const note = { id: db.newId(), title: String(title).trim(), body, createdAt: now, updatedAt: now };
   await save('notes', [note]);
   emit();
   return note;
@@ -721,8 +725,65 @@ export async function frequent(limit = 10) {
 // odškrtnutí vrátit.
 
 export async function listTasks() {
-  const tasks = await live('tasks');
+  const tasks = await rollOver(await live('tasks'));
   return tasks.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+// Opakovaný úkol s pevným termínem nesmí zůstat viset na starém termínu.
+// Jakmile začne další období a minulé kolo není splněné (typicky úkol pro oba,
+// kde jeden neodškrtl), kolo se uzavře jako zmeškané a úkol dostane termín
+// nového období. Kdo ho nesplnil, se zapíše k úkolu jako záznam (komentář bez
+// autora), je vidět na stránce úkolu a seznam neblokuje.
+// Opakování "od splnění" se tohle netýká, tam se čeká na splnění.
+// Id i čas záznamu se počítají z úkolu a termínu, takže oba telefony vyrobí
+// stejný řádek. Posouvá se jen s čerstvě staženými daty: telefon, který byl
+// dlouho offline, by jinak přepsal splnění od druhého.
+const MISSED_KEEP = 12;
+const missedId = (taskId, day) => `${taskId.slice(0, 28)}${day.replaceAll('-', '')}`;
+const czDate = (day) => day.split('-').map(Number).reverse().join('. ');
+
+async function rollOver(tasks) {
+  const day = today();
+  const stale = tasks.filter((t) => !t.done && t.due && t.repeat && t.repeat.mode !== 'after'
+    && addInterval(t.due, t.repeat.every, t.repeat.unit) <= day);
+  if (!stale.length) return tasks;
+  const state = sync.getStatus();
+  if (state.active && !(state.online && state.lastSyncAt)) return tasks;
+
+  const members = await listMembers();
+  const comments = [];
+  const moved = new Map();
+  for (const task of stale) {
+    const { every, unit } = task.repeat;
+    const parts = task.doneParts ?? [];
+    const missed = [];
+    let due = task.due;
+    for (let next = addInterval(due, every, unit); next <= day; next = addInterval(due, every, unit)) {
+      missed.push([due, next]);
+      due = next;
+    }
+    missed.slice(-MISSED_KEEP).forEach(([was, next], i, list) => {
+      // Rozdělané odškrtnutí u úkolu pro oba patří jen k prvnímu zmeškanému kolu
+      const first = list.length === missed.length && i === 0;
+      const who = task.assignee === BOTH ? members.filter((m) => !(first && parts.includes(m))) : [task.assignee].filter(Boolean);
+      const at = new Date(`${next}T00:00:00`).getTime();
+      comments.push({
+        id: missedId(task.id, was), taskId: task.id, privateTo: task.privateTo ?? null, author: null,
+        body: `Nesplněno ${czDate(was)}${who.length ? `: ${who.join(', ')}` : ''}`, createdAt: at, updatedAt: at,
+      });
+    });
+    moved.set(task.id, {
+      ...task, due, prevDue: null, doneParts: [],
+      steps: (task.steps ?? []).map((s) => ({ ...s, done: false, doneAt: null, doneBy: null })),
+      updatedAt: Date.now(),
+    });
+  }
+  // Záznam, který už existuje (vyrobil ho druhý telefon), se nepřepisuje
+  const fresh = [];
+  for (const c of comments) if (!(await db.get('comments', c.id))) fresh.push(c);
+  await save('comments', fresh);
+  await save('tasks', [...moved.values()]);
+  return tasks.map((t) => moved.get(t.id) ?? t);
 }
 
 export const BOTH = 'both';
@@ -939,6 +1000,7 @@ export async function removeStep(taskId, stepId) {
 
 // ---------- Komentáře k úkolům ----------
 // Komentář: { id, taskId, author, body, createdAt, updatedAt }
+// Řádek bez autora je záznam o zmeškaném kole opakovaného úkolu (viz rollOver).
 
 export async function listComments(taskId) {
   const comments = (await live('comments')).filter((c) => c.taskId === taskId);
@@ -948,7 +1010,7 @@ export async function listComments(taskId) {
 // Počet komentářů u každého úkolu: { [taskId]: počet }
 export async function commentCounts() {
   const counts = {};
-  for (const c of await live('comments')) counts[c.taskId] = (counts[c.taskId] ?? 0) + 1;
+  for (const c of await live('comments')) if (c.author) counts[c.taskId] = (counts[c.taskId] ?? 0) + 1;
   return counts;
 }
 
@@ -959,7 +1021,7 @@ export async function unreadComments() {
   const [me, seen, comments] = await Promise.all([getMe(), getMeta('commentsSeen', {}), live('comments')]);
   const counts = {};
   for (const c of comments) {
-    if (c.author === me || c.createdAt <= (seen[c.taskId] ?? 0)) continue;
+    if (!c.author || c.author === me || c.createdAt <= (seen[c.taskId] ?? 0)) continue;
     counts[c.taskId] = (counts[c.taskId] ?? 0) + 1;
   }
   return counts;

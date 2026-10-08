@@ -6,7 +6,7 @@
 
 import * as store from '../store.js';
 import { CATEGORIES, categoryName, parseEntry, stepQty, qtyNumber } from '../categories.js';
-import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount, rowGestures, dragSort } from '../ui.js';
+import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount, rowGestures, dragSort, emptyState } from '../ui.js';
 import { productChips } from '../catalogui.js';
 
 export const title = 'Nákup';
@@ -21,6 +21,7 @@ export async function render(el, { subEl, extraEl }) {
       </form>
       <div class="chips"></div>
     </div>
+    <div class="toolbar"></div>
     <div class="list-root"></div>`;
 
   const form = el.querySelector('.add-form');
@@ -28,12 +29,12 @@ export async function render(el, { subEl, extraEl }) {
   const chipsEl = el.querySelector('.chips');
   const listRoot = el.querySelector('.list-root');
 
-  // Výběr obchodu v horní liště
+  // Výběr obchodu nad seznamem (v horní liště je místo jen pro hlavní tlačítko)
   const shopBtn = document.createElement('button');
   shopBtn.type = 'button';
   shopBtn.className = 'btn btn-small shop-btn';
   shopBtn.addEventListener('click', () => openShops());
-  extraEl.append(shopBtn);
+  el.querySelector('.toolbar').append(shopBtn);
 
   let me = await store.getMe();
   let shop = await store.currentShop();
@@ -97,7 +98,7 @@ export async function render(el, { subEl, extraEl }) {
           </button>
           <button type="button" class="btn btn-ghost btn-small" data-edit="${escapeHtml(s.key)}">Pořadí</button>
         </li>`).join('')}</ul>
-        <button type="button" class="btn btn-block" data-new style="margin-top: 12px">${ICONS.plus} Přidat obchod</button>`;
+        <button type="button" class="btn btn-block" data-new style="margin-top: var(--s3)">${ICONS.plus} Přidat obchod</button>`;
 
       body.addEventListener('click', async (e) => {
         const pick = e.target.closest('[data-pick]');
@@ -128,7 +129,7 @@ export async function render(el, { subEl, extraEl }) {
         <label class="field"><span>Název obchodu</span>
           <input class="input" name="name" value="${escapeHtml(target.name)}" placeholder="Lidl Blackfield" required></label>
         <ul class="item-list group order-list"></ul>
-        <div class="btn-row" style="margin-top: 14px">
+        <div class="btn-row" style="margin-top: var(--s3)">
           ${target.key && !target.builtin ? '<button type="button" class="btn btn-danger" data-action="delete">Smazat</button>' : ''}
           <button type="submit" class="btn btn-primary">Uložit</button>
         </div>
@@ -205,10 +206,7 @@ export async function render(el, { subEl, extraEl }) {
     subEl.textContent = open.length ? itemsCount(open.length) : '';
 
     if (!items.length) {
-      listRoot.innerHTML = `<div class="empty">
-        <div class="empty-icon">${ICONS.cart}</div>
-        <p class="empty-title">Seznam je prázdný</p>
-      </div>`;
+      listRoot.innerHTML = emptyState('cart', 'Seznam je prázdný', 'Napište nahoře, co koupit, třeba mléko 2 nebo 2x rohlíky.');
       return;
     }
 
@@ -224,10 +222,7 @@ export async function render(el, { subEl, extraEl }) {
     if (rows) out += `<ul class="item-list group is-dense">${rows}</ul>`;
 
     if (!open.length) {
-      out += `<div class="empty" style="padding-bottom: 16px">
-        <div class="empty-icon">${ICONS.check}</div>
-        <p class="empty-title">Všechno koupeno</p>
-      </div>`;
+      out += emptyState('check', 'Všechno koupeno', 'Další věci přidáte nahoře, třeba chleba nebo máslo.');
     }
 
     if (done.length) {

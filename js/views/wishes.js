@@ -1,11 +1,11 @@
-// Wishlist a bucketlist (#/wishlist, #/bucketlist, otevírají se z Více).
+// Wishlist a bucketlist (#/wishlist, #/bucketlist, otevírají se z Domů).
 // Dva seznamy se stejným rozhraním: položka má název, pro koho je, orientační
 // "do kdy" (ne termín, jen do kolika let) a podrobnosti.
 // Ovládání je stejné jako u úkolů: kolečko = splněno, ťuknutí na řádek =
 // stránka položky, potažení doleva = smazat, + = nová položka na vlastní stránce.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 
 const NEW = 'novy';
@@ -25,7 +25,7 @@ function horizonLabel(untilYear) {
 
 const whoName = (value) => (!value ? 'Kdokoliv' : value === store.BOTH ? 'Oba' : value);
 
-function makeView({ list, title, route, icon }) {
+function makeView({ list, title, route, icon, empty }) {
   async function render(el, { params, extraEl }) {
     if (params?.[0]) return renderItem(el, params[0]);
 
@@ -67,7 +67,7 @@ function makeView({ list, title, route, icon }) {
       members = people;
 
       if (!wishes.length) {
-        listRoot.innerHTML = `<div class="empty"><div class="empty-icon">${ICONS[icon]}</div><p class="empty-title">Zatím nic</p></div>`;
+        listRoot.innerHTML = emptyState(icon, empty[0], empty[1]);
         return;
       }
       // Jeden souvislý seznam, skupiny podle horizontu jako malý nadpis
@@ -295,5 +295,11 @@ function makeView({ list, title, route, icon }) {
   return { title, tab: 'domu', render };
 }
 
-export const wishlist = makeView({ list: 'wish', title: 'Wishlist', route: 'wishlist', icon: 'gift' });
-export const bucketlist = makeView({ list: 'bucket', title: 'Bucketlist', route: 'bucketlist', icon: 'star' });
+export const wishlist = makeView({
+  list: 'wish', title: 'Wishlist', route: 'wishlist', icon: 'gift',
+  empty: ['Zatím žádná přání', 'Patří sem věci, které by udělaly radost, třeba nová sluchátka nebo víkend ve Vídni.'],
+});
+export const bucketlist = makeView({
+  list: 'bucket', title: 'Bucketlist', route: 'bucketlist', icon: 'star',
+  empty: ['Zatím žádné nápady', 'Patří sem, co chcete jednou zažít, třeba přejít Alpy nebo vidět polární záři.'],
+});

@@ -1,4 +1,4 @@
-// Více: nastavení aplikace (účet, synchronizace, upozornění, záloha).
+// Nastavení (#/vice): nastavení aplikace (účet, synchronizace, upozornění, záloha).
 // Moduly sem nepatří, ty jsou na Domů.
 
 import * as store from '../store.js';
@@ -7,7 +7,7 @@ import * as push from '../push.js';
 import { APP_VERSION } from '../config.js';
 import { escapeHtml, ICONS, toast } from '../ui.js';
 
-export const title = 'Více';
+export const title = 'Nastavení';
 
 export async function render(el) {
   const root = document.createElement('div');
@@ -21,7 +21,7 @@ export async function render(el) {
       <p class="section-label">Na tomto telefonu</p>
       <section class="card">
         <div class="card-head"><span class="card-icon">${ICONS.user}</span><h2 class="card-title">Kdo jsem</h2><span class="card-meta">${escapeHtml(me ?? '')}</span></div>
-        <p class="card-meta" style="margin: 0 0 10px">${escapeHtml(email ?? '')}</p>
+        <p class="card-meta" style="margin: 0 0 var(--s2)">${escapeHtml(email ?? '')}</p>
         <button type="button" class="btn" data-action="signout">Odhlásit</button>
       </section>
 
@@ -32,7 +32,7 @@ export async function render(el) {
 
       <section class="card">
         <div class="card-head"><span class="card-icon">${ICONS.bell}</span><h2 class="card-title">Upozornění</h2><span class="card-meta">${pushState === 'on' ? 'zapnuto' : ''}</span></div>
-        ${PUSH_TEXT[pushState] ? `<p class="card-meta" style="margin: 0 0 10px">${escapeHtml(PUSH_TEXT[pushState])}</p>` : ''}
+        ${PUSH_TEXT[pushState] ? `<p class="card-meta" style="margin: 0 0 var(--s2)">${escapeHtml(PUSH_TEXT[pushState])}</p>` : ''}
         ${pushState === 'off' ? '<button type="button" class="btn btn-primary" data-action="push-on">Zapnout upozornění</button>' : ''}
         ${pushState === 'on' ? `<div class="btn-row">
           <button type="button" class="btn" data-action="push-test">Zkusit</button>

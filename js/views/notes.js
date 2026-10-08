@@ -1,13 +1,16 @@
-// Info o domácnosti (#/info, otevírá se z Domů): seznam poznámek typu wifi,
+// Byt (#/info, otevírá se z Domů): seznam poznámek typu wifi,
 // odečty měřáků, kontakt na správce. Poznámka má název a text.
-// + založí novou, ťuknutí otevře, potažení doleva smaže. Ukládá se samo.
+// + otevře novou (vznikne až tlačítkem Přidat), ťuknutí otevře, potažení
+// doleva smaže. Existující se ukládá sama.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, rowGestures, holdKeyboard } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, rowGestures, holdKeyboard, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 
-export const title = 'Domácnost';
+export const title = 'Byt';
 export const tab = 'domu';
+
+const NEW = 'novy';
 
 export async function render(el, { params, extraEl }) {
   if (params?.[0]) return renderNote(el, params[0]);
@@ -21,11 +24,10 @@ export async function render(el, { params, extraEl }) {
   addBtn.className = 'add-btn';
   addBtn.setAttribute('aria-label', 'Přidat poznámku');
   addBtn.innerHTML = ICONS.plus;
-  // Nová poznámka vznikne hned a rovnou se píše její název
-  addBtn.addEventListener('click', async () => {
+  // Na stránce nové poznámky se rovnou píše název
+  addBtn.addEventListener('click', () => {
     holdKeyboard();
-    const note = await store.addNote();
-    navigate(`info/${note.id}`);
+    navigate(`info/${NEW}`);
   });
   extraEl.append(addBtn);
 
@@ -38,7 +40,7 @@ export async function render(el, { params, extraEl }) {
             <span class="item-text"><span class="item-name${n.title ? '' : ' is-blank'}">${escapeHtml(n.title || 'Bez názvu')}</span>${n.body ? `<span class="item-sub note-preview">${escapeHtml(n.body)}</span>` : ''}</span>
           </button>
         </li>`).join('')}</ul>`
-      : `<div class="empty"><div class="empty-icon">${ICONS.house}</div><p class="empty-title">Zatím nic</p></div>`;
+      : emptyState('house', 'Zatím žádné poznámky', 'Patří sem věci o bytě, které se hledají jednou za čas, třeba heslo na Wi-Fi nebo kontakt na správce.');
   }
 
   async function remove(id) {
@@ -62,7 +64,9 @@ async function renderNote(el, id) {
   root.className = 'detail';
   el.append(root);
 
-  let note = await store.getNote(id);
+  // Nová poznámka je do tlačítka Přidat jen v paměti
+  const draft = id === NEW;
+  let note = draft ? { title: '', body: null } : await store.getNote(id);
   const back = `<a class="back-btn" href="#/info" aria-label="Zpět">${ICONS.back}</a>`;
   if (!note) {
     root.innerHTML = `<div class="detail-head">${back}<span class="detail-name">Poznámka už neexistuje</span></div>`;
@@ -74,13 +78,16 @@ async function renderNote(el, id) {
       <textarea class="input detail-title" name="title" rows="1" aria-label="Název" placeholder="Nová poznámka" enterkeyhint="done"></textarea>
     </div>
     <textarea class="input note-body" name="body" rows="8" aria-label="Text" autocapitalize="sentences"></textarea>
-    <button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat</button>`;
+    ${draft
+    ? '<button type="button" class="btn btn-primary btn-block detail-create" data-action="create">Přidat</button>'
+    : '<button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat</button>'}`;
 
   const titleEl = root.querySelector('.detail-title');
   const bodyEl = root.querySelector('.note-body');
   const grow = (area) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
 
   async function draw() {
+    if (draft) return;
     const fresh = await store.getNote(id);
     if (!fresh) {
       navigate('info');
@@ -101,22 +108,35 @@ async function renderNote(el, id) {
     e.preventDefault();
     bodyEl.focus();
   });
-  titleEl.addEventListener('change', () => store.updateNote(id, { title: titleEl.value.replace(/\s+/g, ' ').trim() }));
-  bodyEl.addEventListener('change', () => store.updateNote(id, { body: bodyEl.value.trim() || null }));
+  // Existující poznámka se ukládá sama, název nejde smazat do prázdna
+  titleEl.addEventListener('change', () => {
+    if (draft) return;
+    const name = titleEl.value.replace(/\s+/g, ' ').trim();
+    if (name) store.updateNote(id, { title: name });
+    else titleEl.value = note.title ?? '';
+  });
+  bodyEl.addEventListener('change', () => { if (!draft) store.updateNote(id, { body: bodyEl.value.trim() || null }); });
 
-  root.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+  root.querySelector('[data-action="create"]')?.addEventListener('click', async () => {
+    const name = titleEl.value.replace(/\s+/g, ' ').trim();
+    if (!name) {
+      titleEl.focus();
+      return;
+    }
+    await store.addNote({ title: name, body: bodyEl.value.trim() || null });
+    navigate('info');
+  });
+
+  root.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
     const removed = await store.removeNotes([id]);
     if (removed.length) undoToast(`${removed[0].title || 'Poznámka'}: smazáno`, () => store.restoreNotes(removed));
     navigate('info');
   });
 
   await draw();
-  if (!note.title) titleEl.focus();
-  const unsubscribe = store.subscribe(draw);
-  return () => {
-    unsubscribe();
-    // Poznámka založená omylem (prázdná) se zahodí. Rozhoduje, co je v polích:
-    // uložení posledního psaní může ještě dobíhat.
-    if (!titleEl.value.trim() && !bodyEl.value.trim()) store.removeNotes([id]);
-  };
+  if (draft) {
+    titleEl.focus();
+    return undefined;
+  }
+  return store.subscribe(draw);
 }

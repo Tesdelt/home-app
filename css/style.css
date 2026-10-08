@@ -12,8 +12,8 @@
   --accent: #B8612B;
   --accent-soft: #F7E8DB;
   --on-accent: #FFFFFF;
-  --danger: #B02A45;
-  --danger-soft: #F8E1E6;
+  --danger: #C4291C;
+  --danger-soft: #FBE4E1;
 
   /* Čí to je: první člen (Domi, růžová), druhý člen (Tom, modrá), společné
      (světlejší zelená, ať nebije do očí a neplete se s hlavní barvou). */
@@ -26,8 +26,18 @@
   --warn: #9A7400;
   --warn-soft: #F6ECC8;
 
-  --radius: 14px;
-  --radius-sm: 10px;
+  /* Design systém: jediné povolené velikosti. Viz CLAUDE.md, sekce Design systém. */
+  --fs-title: 28px;    /* nadpis stránky */
+  --fs-section: 19px;  /* nadpis sekce, název na stránce položky */
+  --fs-text: 16px;     /* běžný text, pole, tlačítka */
+  --fs-small: 13px;    /* drobný text */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --radius: 14px;      /* karty, panely */
+  --radius-sm: 10px;   /* tlačítka, čipy, pole */
   --tap: 48px;
   --gutter: 16px;
 
@@ -53,8 +63,8 @@
     --accent: #E39A62;
     --accent-soft: #3A2A1C;
     --on-accent: #24160B;
-    --danger: #F08A9B;
-    --danger-soft: #3D2027;
+    --danger: #FF6B5C;
+    --danger-soft: #40201C;
     --who-1: #FF7FC2;
     --who-1-soft: #3F1F31;
     --who-2: #5AA2FF;
@@ -75,7 +85,7 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 17px;
+  font-size: var(--fs-text);
   line-height: 1.4;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
@@ -104,26 +114,26 @@ button { cursor: pointer; }
   background: var(--bg);
 }
 
-.topbar-row { display: flex; align-items: center; gap: 12px; min-height: 40px; }
+.topbar-row { display: flex; align-items: center; gap: var(--s3); min-height: 40px; }
 
 .screen-title {
   margin: 0;
   flex: 1;
-  font-size: 30px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
 
-.screen-sub { margin: 2px 0 0; color: var(--text-2); font-size: 15px; }
-.topbar-extra { display: flex; gap: 8px; align-items: center; }
+.screen-sub { margin: 2px 0 0; color: var(--text-2); font-size: var(--fs-text); }
+.topbar-extra { display: flex; gap: var(--s2); align-items: center; }
 
 /* ---------- Obsah ---------- */
 .view {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 8px var(--gutter) 24px;
+  padding: var(--s2) var(--gutter) var(--s5);
   outline: none;
 }
 
@@ -131,26 +141,26 @@ button { cursor: pointer; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 12px;
+  padding: var(--s3) var(--s4);
+  margin-bottom: var(--s3);
 }
 
 a.card { display: block; color: inherit; text-decoration: none; }
 a.card:active { background: var(--surface-2); }
 
-.card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.card-title { margin: 0; font-size: 17px; font-weight: 600; flex: 1; }
+.card-head { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
+.card-title { margin: 0; font-size: var(--fs-text); font-weight: 600; flex: 1; }
 .card-icon { width: 22px; height: 22px; color: var(--accent); flex: none; }
 .card-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.card-meta { color: var(--text-2); font-size: 15px; }
+.card-meta { color: var(--text-2); font-size: var(--fs-text); }
 .card.is-muted { background: transparent; border-style: dashed; }
 .card.is-muted .card-icon { color: var(--text-3); }
 
 .muted { color: var(--text-2); }
-.small { font-size: 14px; }
+.small { font-size: var(--fs-small); }
 .section-label {
-  margin: 18px 4px 6px;
-  font-size: 13px;
+  margin: var(--s4) var(--s1) var(--s2);
+  font-size: var(--fs-small);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-2);
@@ -161,9 +171,9 @@ a.card:active { background: var(--surface-2); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--s2);
   min-height: 44px;
-  padding: 0 16px;
+  padding: 0 var(--s4);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -173,17 +183,17 @@ a.card:active { background: var(--surface-2); }
 .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn-danger, .btn-ghost.btn-danger { color: var(--danger); }
-.btn-small { min-height: 34px; padding: 0 12px; font-size: 15px; }
-.btn-ghost { border-color: transparent; background: transparent; color: var(--accent); padding: 0 8px; }
-.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-small { min-height: 34px; padding: 0 var(--s3); font-size: var(--fs-text); }
+.btn-ghost { border-color: transparent; background: transparent; color: var(--accent); padding: 0 var(--s2); }
+.btn-row { display: flex; gap: var(--s2); flex-wrap: wrap; }
 .btn-row .btn { flex: 1 1 140px; white-space: nowrap; }
 
-.segmented { display: flex; gap: 4px; padding: 4px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.segmented { display: flex; gap: var(--s1); padding: var(--s1); border-radius: var(--radius-sm); background: var(--surface-2); }
 .segmented button {
   flex: 1;
   min-height: 38px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   font-weight: 500;
   color: var(--text-2);
@@ -191,24 +201,24 @@ a.card:active { background: var(--surface-2); }
 .segmented button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
 
 /* ---------- Formuláře ---------- */
-.field { display: block; margin-bottom: 12px; }
-.field > span { display: block; font-size: 14px; color: var(--text-2); margin: 0 0 4px 2px; }
+.field { display: block; margin-bottom: var(--s3); }
+.field > span { display: block; font-size: var(--fs-small); color: var(--text-2); margin: 0 0 var(--s1) 2px; }
 .input, select.input {
   width: 100%;
   min-height: 46px;
-  padding: 0 14px;
+  padding: 0 var(--s3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 17px;
+  font-size: var(--fs-text);
   -webkit-appearance: none;
   appearance: none;
 }
 .input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
-.form-error { margin: 0 0 12px; color: var(--danger); font-size: 15px; }
+.form-error { margin: 0 0 var(--s3); color: var(--danger); font-size: var(--fs-text); }
 .btn-block { width: 100%; }
 .btn:disabled { opacity: 0.6; }
-.card .btn-row + .card-meta { margin: 10px 0 0; }
+.card .btn-row + .card-meta { margin: var(--s2) 0 0; }
 
 /* ---------- Nákup ---------- */
 .add-bar {
@@ -216,11 +226,11 @@ a.card:active { background: var(--surface-2); }
   top: -8px;
   z-index: 2;
   margin: -8px calc(var(--gutter) * -1) 0;
-  padding: 8px var(--gutter) 10px;
+  padding: var(--s2) var(--gutter) var(--s2);
   background: var(--bg);
 }
 
-.add-form { display: flex; gap: 8px; }
+.add-form { display: flex; gap: var(--s2); }
 .add-form .input { flex: 1; }
 .add-btn {
   flex: none;
@@ -237,9 +247,9 @@ a.card:active { background: var(--surface-2); }
 
 .chips {
   display: flex;
-  gap: 8px;
+  gap: var(--s2);
   overflow-x: auto;
-  padding: 10px 0 2px;
+  padding: var(--s2) 0 2px;
   margin: 0 calc(var(--gutter) * -1);
   padding-left: var(--gutter);
   padding-right: var(--gutter);
@@ -249,11 +259,11 @@ a.card:active { background: var(--surface-2); }
 .chip {
   flex: none;
   min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
+  padding: 0 var(--s3);
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 15px;
+  font-size: var(--fs-text);
   white-space: nowrap;
 }
 .chip::before { content: "+ "; color: var(--accent); font-weight: 600; }
@@ -276,21 +286,21 @@ a.card:active { background: var(--surface-2); }
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding-right: 20px;
+  padding-right: var(--s4);
   background: var(--danger);
   color: var(--surface);
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--fs-text);
 }
 
 .item-main {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--s3);
   width: 100%;
   min-height: 52px;
-  padding: 8px 14px;
+  padding: var(--s2) var(--s3);
   border: 0;
   background: var(--surface);
   text-align: left;
@@ -315,33 +325,33 @@ a.card:active { background: var(--surface-2); }
 .item + .item .item-slide { border-top: 1px solid var(--border); }
 .item + .item .item-slide .item-main { border-top: 0; }
 
-.stepper { flex: none; display: flex; align-items: center; padding-right: 6px; }
+.stepper { flex: none; display: flex; align-items: center; padding-right: var(--s2); }
 .stepper button {
   width: 38px;
   height: 44px;
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 22px;
+  font-size: var(--fs-section);
   line-height: 1;
 }
 .stepper button:disabled { color: var(--text-3); opacity: 0.5; }
-.stepper button:active:not(:disabled) { background: var(--surface-2); border-radius: 8px; }
-.stepper-value { min-width: 30px; text-align: center; font-variant-numeric: tabular-nums; font-size: 15px; color: var(--text-2); white-space: nowrap; }
+.stepper button:active:not(:disabled) { background: var(--surface-2); border-radius: var(--radius-sm); }
+.stepper-value { min-width: 30px; text-align: center; font-variant-numeric: tabular-nums; font-size: var(--fs-text); color: var(--text-2); white-space: nowrap; }
 
 /* Katalog, výběr obchodu a pořadí oddělení (řádky ve spodním panelu) */
-.catalog-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 2px 0 2px 14px; background: var(--surface); }
+.catalog-row { display: flex; align-items: center; gap: var(--s2); min-height: 48px; padding: 2px 0 2px var(--s3); background: var(--surface); }
 .catalog-row + .catalog-row { border-top: 1px solid var(--border); }
 .catalog-row.is-on .item-name { font-weight: 600; }
 .catalog-row.is-on .stepper-value { color: var(--accent); font-weight: 700; }
-.catalog-row .btn-ghost { margin-right: 6px; }
-.shop-pick { flex: 1; display: flex; align-items: center; gap: 12px; min-height: 48px; border: 0; background: transparent; text-align: left; padding: 0; }
+.catalog-row .btn-ghost { margin-right: var(--s2); }
+.shop-pick { flex: 1; display: flex; align-items: center; gap: var(--s3); min-height: 48px; border: 0; background: transparent; text-align: left; padding: 0; }
 .catalog-row.is-on .check { background: var(--accent); border-color: var(--accent); }
 .catalog-row.is-on .check svg { opacity: 1; }
-.order-num { flex: none; width: 22px; color: var(--text-3); font-size: 14px; font-variant-numeric: tabular-nums; }
+.order-num { flex: none; width: 22px; color: var(--text-3); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
 .shop-btn { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shop-btn::after { content: " ▾"; color: var(--text-3); }
-.cat-chips { padding-top: 8px; }
+.cat-chips { padding-top: var(--s2); }
 .chip.cat-chip { background: var(--surface-2); border-color: transparent; }
 .chip.cat-chip::before { content: none; }
 .item-main:active { background: var(--surface-2); }
@@ -359,7 +369,7 @@ a.card:active { background: var(--surface-2); }
 
 .item-text { flex: 1; min-width: 0; }
 .item-name { overflow-wrap: anywhere; }
-.item-qty { color: var(--text-2); margin-left: 6px; font-size: 15px; }
+.item-qty { color: var(--text-2); margin-left: var(--s2); font-size: var(--fs-text); }
 .item-who {
   flex: none;
   width: 24px;
@@ -367,13 +377,13 @@ a.card:active { background: var(--surface-2); }
   border-radius: 50%;
   background: var(--surface-2);
   color: var(--text-2);
-  font-size: 12px;
+  font-size: var(--fs-small);
   font-weight: 600;
   display: grid;
   place-items: center;
 }
 
-.item-sub { display: block; font-size: 13px; color: var(--text-2); line-height: 1.3; }
+.item-sub { display: block; font-size: var(--fs-small); color: var(--text-2); line-height: 1.3; }
 .item-sub .is-late { color: var(--danger); font-weight: 600; }
 .item.is-done .item-sub { color: var(--text-3); }
 .item-who.is-me { background: var(--accent-soft); color: var(--accent); }
@@ -383,12 +393,12 @@ a.card:active { background: var(--surface-2); }
 .who-2 { --who: var(--who-2); --who-soft: var(--who-2-soft); }
 .who-both { --who: var(--who-both); --who-soft: var(--who-both-soft); }
 .who-any { --who: var(--border); --who-soft: var(--surface-2); }
-.item-main.has-stripe { box-shadow: inset 9px 0 0 var(--who, transparent); padding-left: 21px; }
-.item-who.who-1, .item-who.who-2, .item-who.who-both { background: var(--who-soft); color: var(--who); width: auto; min-width: 24px; padding: 0 6px; border-radius: 12px; }
+.item-main.has-stripe { box-shadow: inset 9px 0 0 var(--who, transparent); padding-left: var(--s5); }
+.item-who.who-1, .item-who.who-2, .item-who.who-both { background: var(--who-soft); color: var(--who); width: auto; min-width: 24px; padding: 0 var(--s2); border-radius: var(--radius-sm); }
 .segmented button.who-1[aria-pressed="true"], .segmented button.who-2[aria-pressed="true"], .segmented button.who-both[aria-pressed="true"] { background: var(--who-soft); color: var(--who); }
-.legend { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 16px 4px 0; font-size: 13px; color: var(--text-2); }
-.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--who); margin-right: 4px; }
-.legend .legend-dot { margin-left: 8px; }
+.legend { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s1) var(--s2); margin: var(--s4) var(--s1) 0; font-size: var(--fs-small); color: var(--text-2); }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--who); margin-right: var(--s1); }
+.legend .legend-dot { margin-left: var(--s2); }
 .legend .legend-dot:first-child { margin-left: 0; }
 .legend-gap { flex: 1; }
 
@@ -399,8 +409,8 @@ a.card:active { background: var(--surface-2); }
   place-items: center;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-small);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -415,57 +425,57 @@ a.card:active { background: var(--surface-2); }
 .check.is-empty { border-color: transparent; }
 .card-meta.is-late { color: var(--danger); }
 .seg-count.is-alert { color: var(--danger); }
-textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize: vertical; }
-.item-main.is-compact { min-height: 48px; padding-top: 6px; padding-bottom: 6px; }
+textarea.input { padding: var(--s2) var(--s3); min-height: 84px; line-height: 1.35; resize: vertical; }
+.item-main.is-compact { min-height: 48px; padding-top: var(--s2); padding-bottom: var(--s2); }
 .item-amount { flex: none; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 
 /* ---------- Přepínač pod polem (záložky úkolů, filtr plateb) ---------- */
-.seg-bar { margin-top: 10px; }
-.filter-bar { margin: 0 0 12px; }
-.filter-bar button { font-size: 14px; white-space: nowrap; padding: 0 2px; }
-.seg-count { font-size: 13px; color: var(--accent); font-weight: 600; }
+.seg-bar { margin-top: var(--s2); }
+.filter-bar { margin: 0 0 var(--s3); }
+.filter-bar button { font-size: var(--fs-small); white-space: nowrap; padding: 0 2px; }
+.seg-count { font-size: var(--fs-small); color: var(--accent); font-weight: 600; }
 
-.quick-row { display: flex; gap: 8px; flex-wrap: wrap; margin: -4px 0 12px; }
+.quick-row { display: flex; gap: var(--s2); flex-wrap: wrap; margin: calc(var(--s1) * -1) 0 var(--s3); }
 .chip-btn {
   min-height: 36px;
-  padding: 0 12px;
-  border-radius: 999px;
+  padding: 0 var(--s3);
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 15px;
+  font-size: var(--fs-text);
 }
 .chip-btn:active { background: var(--accent-soft); }
-.field-hint { margin: 6px 2px 0; font-size: 13px; color: var(--text-2); }
+.field-hint { margin: var(--s2) 2px 0; font-size: var(--fs-small); color: var(--text-2); }
 
 /* ---------- Souhrn plateb ---------- */
 .summary { display: block; width: 100%; text-align: left; }
 .summary:active { background: var(--surface-2); }
-.sum-row { display: flex; gap: 12px; }
+.sum-row { display: flex; gap: var(--s3); }
 .sum-cell { flex: 1; min-width: 0; }
-.sum-label { display: block; font-size: 13px; color: var(--text-2); }
-.sum-value { display: block; font-size: 19px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sum-label { display: block; font-size: var(--fs-small); color: var(--text-2); }
+.sum-value { display: block; font-size: var(--fs-section); font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sum-cell.is-total .sum-value { color: var(--accent); }
-.sum-note { display: block; margin-top: 8px; font-size: 13px; color: var(--text-3); }
+.sum-note { display: block; margin-top: var(--s2); font-size: var(--fs-small); color: var(--text-3); }
 
 .item.is-done .check { background: var(--accent); border-color: var(--accent); }
 .item.is-done .check svg { opacity: 1; }
 .item.is-done .item-name { color: var(--text-3); text-decoration: line-through; }
 .item.is-done .item-qty { color: var(--text-3); }
 
-.done-head { display: flex; align-items: center; justify-content: space-between; margin: 18px 4px 6px; }
+.done-head { display: flex; align-items: center; justify-content: space-between; margin: var(--s4) var(--s1) var(--s2); }
 .done-head .section-label { margin: 0; }
 
 .empty {
   text-align: center;
-  padding: 48px 24px;
+  padding: calc(var(--s5) * 2) var(--s5);
   color: var(--text-2);
 }
-.empty-icon { width: 44px; height: 44px; margin: 0 auto 10px; color: var(--text-3); }
+.empty-icon { width: 44px; height: 44px; margin: 0 auto var(--s2); color: var(--text-3); }
 .empty-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.empty-title { color: var(--text); font-weight: 600; margin: 0 0 4px; }
+.empty-title { color: var(--text); font-weight: 600; margin: 0 0 var(--s1); }
 .empty p { margin: 0 auto; max-width: 300px; }
 
-.hint { font-size: 13px; color: var(--text-3); text-align: center; margin: 16px 0 0; }
+.hint { font-size: var(--fs-small); color: var(--text-3); text-align: center; margin: var(--s4) 0 0; }
 
 /* ---------- Spodní panel (úprava položky) ---------- */
 .sheet-backdrop {
@@ -482,12 +492,12 @@ textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize
   max-height: 90dvh;
   overflow-y: auto;
   background: var(--bg);
-  border-radius: 20px 20px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
   padding: 10px var(--gutter) calc(var(--safe-bottom) + 16px);
   animation: slide-up 0.2s ease;
 }
-.sheet-grip { width: 36px; height: 5px; border-radius: 3px; background: var(--border); margin: 0 auto 12px; }
-.sheet-title { margin: 0 0 14px; font-size: 20px; font-weight: 700; }
+.sheet-grip { width: 36px; height: 5px; border-radius: 3px; background: var(--border); margin: 0 auto var(--s3); }
+.sheet-title { margin: 0 0 var(--s3); font-size: var(--fs-section); font-weight: 700; }
 
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes slide-up { from { transform: translateY(100%); } }
@@ -508,19 +518,19 @@ textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--s3);
   max-width: 480px;
   width: 100%;
   min-height: 48px;
-  padding: 6px 8px 6px 16px;
+  padding: var(--s2) var(--s2) var(--s2) var(--s4);
   border-radius: var(--radius-sm);
   background: var(--text);
   color: var(--bg);
-  font-size: 15px;
+  font-size: var(--fs-text);
   animation: slide-up-small 0.2s ease;
 }
 .toast span { flex: 1; }
-.toast button { border: 0; background: transparent; color: var(--accent-soft); font-weight: 600; min-height: 36px; padding: 0 10px; }
+.toast button { border: 0; background: transparent; color: var(--accent-soft); font-weight: 600; min-height: 36px; padding: 0 var(--s2); }
 @media (prefers-color-scheme: dark) { .toast button { color: var(--accent); } }
 @keyframes slide-up-small { from { transform: translateY(12px); opacity: 0; } }
 
@@ -530,10 +540,10 @@ textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px var(--gutter);
+  gap: var(--s3);
+  padding: var(--s2) var(--gutter);
   background: var(--accent-soft);
-  font-size: 15px;
+  font-size: var(--fs-text);
 }
 
 /* ---------- Spodní lišta ---------- */
@@ -550,11 +560,11 @@ textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 8px 0 6px;
+  padding: var(--s2) 0 var(--s2);
   min-height: 54px;
   color: var(--text-3);
   text-decoration: none;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: 500;
 }
 .tab svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -567,7 +577,7 @@ textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize
   place-items: center;
   width: 44px;
   height: 44px;
-  margin: -10px;
+  margin: calc(var(--s2) * -1);
   padding: 0;
   border: 0;
   background: transparent;
@@ -579,8 +589,8 @@ textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize
   align-items: center;
   gap: 2px;
   min-height: 44px;
-  margin: -6px 0 4px -6px;
-  padding-right: 12px;
+  margin: calc(var(--s2) * -1) 0 var(--s1) calc(var(--s2) * -1);
+  padding-right: var(--s3);
   color: var(--accent);
   text-decoration: none;
   font-weight: 500;
@@ -590,22 +600,22 @@ textarea.input { padding: 10px 14px; min-height: 84px; line-height: 1.35; resize
 .detail-head {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 10px 10px 10px 22px;
-  margin-bottom: 8px;
+  gap: var(--s2);
+  padding: var(--s2) var(--s2) var(--s2) var(--s5);
+  margin-bottom: var(--s2);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: inset 9px 0 0 var(--who, transparent);
 }
-.detail-head .check-tap { margin: 1px -4px 0 -8px; }
+.detail-head .check-tap { margin: 1px calc(var(--s1) * -1) 0 calc(var(--s2) * -1); }
 textarea.detail-title {
   flex: 1;
   min-height: 0;
-  padding: 9px 6px;
+  padding: var(--s2) var(--s2);
   border-color: transparent;
   background: transparent;
-  font-size: 20px;
+  font-size: var(--fs-section);
   font-weight: 600;
   line-height: 1.25;
   resize: none;
@@ -615,22 +625,22 @@ textarea.detail-title {
 .detail.is-done .detail-head .check svg { opacity: 1; }
 .detail.is-done .detail-title { color: var(--text-3); text-decoration: line-through; }
 .detail.is-mine .detail-head .check { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
-.detail-state { margin: 0 4px 10px; font-size: 14px; }
-.detail-delete { margin-top: 20px; }
+.detail-state { margin: 0 var(--s1) var(--s2); font-size: var(--fs-small); }
+.detail-delete { margin-top: var(--s4); }
 
 /* Malá tlačítka s nastavením pod názvem */
-.opts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.opts { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0 0 var(--s2); }
 .opt {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s1);
   min-height: 36px;
-  padding: 0 11px;
-  border-radius: 999px;
+  padding: 0 var(--s3);
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-2);
-  font-size: 15px;
+  font-size: var(--fs-text);
   white-space: nowrap;
 }
 button.opt:active { background: var(--surface-2); }
@@ -641,18 +651,18 @@ button.opt:active { background: var(--surface-2); }
 .opt.is-set { color: var(--accent); border-color: var(--accent); }
 .opt.is-late { color: var(--danger); border-color: var(--danger); font-weight: 600; }
 .opt.is-static { border-style: dashed; }
-.opt[data-opt="priority"] { padding: 0 7px; }
+.opt[data-opt="priority"] { padding: 0 var(--s2); }
 
 /* Podrobnosti: sbalené na tři řádky, ťuknutím se upravují */
-.note-box { margin: 0 0 6px; }
+.note-box { margin: 0 0 var(--s2); }
 .note-view {
-  padding: 10px 14px;
+  padding: var(--s2) var(--s3);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 16px;
+  font-size: var(--fs-text);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -660,41 +670,41 @@ button.opt:active { background: var(--surface-2); }
   overflow: hidden;
 }
 .note-view.is-open { display: block; -webkit-line-clamp: unset; line-clamp: unset; }
-.note-add, .note-more { min-height: 36px; padding: 0 4px; border: 0; background: transparent; color: var(--accent); font-size: 15px; }
+.note-add, .note-more { min-height: 36px; padding: 0 var(--s1); border: 0; background: transparent; color: var(--accent); font-size: var(--fs-text); }
 .note-add { color: var(--text-2); }
-.note-input { font-size: 16px; }
+.note-input { font-size: var(--fs-text); }
 
-.pick-list { display: grid; gap: 8px; }
+.pick-list { display: grid; gap: var(--s2); }
 .pick { justify-content: flex-start; width: 100%; }
 .pick[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .pick.who-1, .pick.who-2, .pick.who-both { color: var(--who); }
 
 /* Kroky: vidět jen po ťuknutí na tlačítko Kroky */
-.steps-box { margin: 0 0 12px; padding: 4px 12px 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
-.steps-list { list-style: none; margin: 0 0 8px; padding: 0; }
-.step { display: flex; align-items: flex-start; gap: 6px; padding: 6px 0; }
-.step .check-tap { margin: 1px -4px 0 -10px; }
+.steps-box { margin: 0 0 var(--s3); padding: var(--s1) var(--s3) var(--s2); border: 1px dashed var(--border); border-radius: var(--radius-sm); }
+.steps-list { list-style: none; margin: 0 0 var(--s2); padding: 0; }
+.step { display: flex; align-items: flex-start; gap: var(--s2); padding: var(--s2) 0; }
+.step .check-tap { margin: 1px calc(var(--s1) * -1) 0 calc(var(--s2) * -1); }
 .step-body { flex: 1; min-width: 0; }
-.step-title { min-height: 42px; font-size: 16px; }
-.step-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
-.step-due { display: inline-block; width: auto; min-height: 36px; padding: 0 8px; font-size: 16px; margin-left: 4px; }
+.step-title { min-height: 42px; font-size: var(--fs-text); }
+.step-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s1); }
+.step-due { display: inline-block; width: auto; min-height: 36px; padding: 0 var(--s2); font-size: var(--fs-text); margin-left: var(--s1); }
 .step.is-done .check { background: var(--accent); border-color: var(--accent); }
 .step.is-done .check svg { opacity: 1; }
 .step.is-done .step-title { color: var(--text-3); text-decoration: line-through; }
 .step.is-current .step-title { border-color: var(--accent); }
 
 /* Komentáře */
-.comments { list-style: none; margin: 0 0 10px; padding: 0; }
-.comment { padding: 10px 14px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
-.comment.is-empty { background: transparent; border-style: dashed; color: var(--text-3); font-size: 15px; }
-.comment-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
-.comment-author { font-weight: 600; font-size: 15px; color: var(--who, var(--text)); }
-.comment-time { flex: 1; font-size: 13px; color: var(--text-3); }
+.comments { list-style: none; margin: 0 0 var(--s2); padding: 0; }
+.comment { padding: var(--s2) var(--s3); margin-bottom: var(--s2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.comment.is-empty { background: transparent; border-style: dashed; color: var(--text-3); font-size: var(--fs-text); }
+.comment-head { display: flex; align-items: center; gap: var(--s2); min-height: 28px; }
+.comment-author { font-weight: 600; font-size: var(--fs-text); color: var(--who, var(--text)); }
+.comment-time { flex: 1; font-size: var(--fs-small); color: var(--text-3); }
 .comment-head .btn { min-height: 28px; }
 .comment-body { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.comment .comment-input { margin: 6px 0 8px; }
+.comment .comment-input { margin: var(--s2) 0 var(--s2); }
 .comment .btn-row .btn { flex: 1 1 0; }
-.comment-form { margin-bottom: 4px; }
+.comment-form { margin-bottom: var(--s1); }
 
 /* ---------- Rozbalovací nabídka u tlačítka ---------- */
 .menu-backdrop { position: fixed; inset: 0; z-index: 50; }
@@ -704,7 +714,7 @@ button.opt:active { background: var(--surface-2); }
   max-width: calc(100vw - 24px);
   max-height: calc(100dvh - 24px);
   overflow-y: auto;
-  padding: 6px;
+  padding: var(--s2);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -714,12 +724,12 @@ button.opt:active { background: var(--surface-2); }
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s2);
   width: 100%;
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 var(--s3);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   text-align: left;
   white-space: nowrap;
@@ -735,10 +745,10 @@ button.opt:active { background: var(--surface-2); }
 }
 .menu-item.who-any::before { background: var(--text-3); }
 .menu.menu-narrow { min-width: 0; }
-.menu-narrow .menu-item { justify-content: center; padding: 0 18px; }
-.menu-date { margin-top: 6px; min-height: 44px; }
-.menu-seg { margin-top: 6px; }
-.menu-seg button { font-size: 15px; white-space: nowrap; padding: 0 8px; }
+.menu-narrow .menu-item { justify-content: center; padding: 0 var(--s4); }
+.menu-date { margin-top: var(--s2); min-height: 44px; }
+.menu-seg { margin-top: var(--s2); }
+.menu-seg button { font-size: var(--fs-text); white-space: nowrap; padding: 0 var(--s2); }
 
 /* Zvonek u přidání úkolu: upozornit druhého */
 .notify-btn {
@@ -758,14 +768,14 @@ button.opt:active { background: var(--surface-2); }
 
 /* Úkoly: lišta jen se záložkami, nový úkol je tlačítko + nahoře */
 .seg-bar.tabs-only { margin-top: 0; }
-.detail-create { margin-top: 16px; }
-.opt-bell { padding: 0 10px; }
+.detail-create { margin-top: var(--s4); }
+.opt-bell { padding: 0 var(--s2); }
 .opt-bell.is-set { background: var(--accent-soft); }
 .opt-bell.is-set svg { fill: currentColor; }
 
 /* Nepřečtený komentář: tečka a barva v řádku úkolu, tečka u záložky Úkoly */
 .item-sub .is-unread { color: var(--accent); font-weight: 600; }
-.item-sub .is-unread::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--accent); vertical-align: 1px; }
+.item-sub .is-unread::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: var(--s1); border-radius: 50%; background: var(--accent); vertical-align: 1px; }
 .tab { position: relative; }
 .tab.has-dot::after {
   content: "";
@@ -788,31 +798,31 @@ button.opt:active { background: var(--surface-2); }
   place-items: center;
   width: 36px;
   height: 44px;
-  margin: 1px -6px 0 -12px;
+  margin: 1px calc(var(--s2) * -1) 0 calc(var(--s3) * -1);
   color: var(--accent);
 }
 .back-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.detail-head .back-btn + .check-tap { margin-left: -4px; }
+.detail-head .back-btn + .check-tap { margin-left: calc(var(--s1) * -1); }
 
 /* ---------- Recepty ---------- */
-.detail-name { flex: 1; min-width: 0; padding: 9px 6px; font-size: 20px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.detail-name { flex: 1; min-width: 0; padding: var(--s2) var(--s2); font-size: var(--fs-section); font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
 .detail-head .btn-ghost { align-self: center; }
 a.item-main { color: inherit; text-decoration: none; }
 .item-amount.is-muted { color: var(--text-3); font-weight: 500; }
-.pick-row .shop-pick { padding-right: 14px; }
+.pick-row .shop-pick { padding-right: var(--s3); }
 .pick-row:not(.is-on) .item-name { color: var(--text-2); }
-.recipe-method { font-size: 16px; }
+.recipe-method { font-size: var(--fs-text); }
 
 a.btn { text-decoration: none; }
 a.btn:not(.btn-ghost):not(.btn-primary) { color: inherit; }
 
 /* ---------- Nákup: hustý seznam ---------- */
 /* Jeden souvislý blok, kategorie jen jako malý šedý nadpis uvnitř */
-.is-dense .item-main { min-height: 44px; padding-top: 4px; padding-bottom: 4px; }
+.is-dense .item-main { min-height: 44px; padding-top: var(--s1); padding-bottom: var(--s1); }
 .cat-head {
-  padding: 5px 14px 0;
+  padding: var(--s1) var(--s3) 0;
   line-height: 13px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -822,14 +832,14 @@ a.btn:not(.btn-ghost):not(.btn-primary) { color: inherit; }
 .cat-head + .item .item-main { border-top: 0; }
 .item + .cat-head { border-top: 1px solid var(--border); }
 /* Jediný řádek pod polem: často kupované a kategorie */
-.add-bar .chips { padding-top: 8px; }
-.sheet-done { position: sticky; bottom: 0; padding: 12px 0 0; background: var(--bg); }
+.add-bar .chips { padding-top: var(--s2); }
+.sheet-done { position: sticky; bottom: 0; padding: var(--s3) 0 0; background: var(--bg); }
 
 /* ---------- Stránka úkolu: tlačítka s pevnou šířkou ---------- */
 /* Po výběru se nic neposune: každé tlačítko má své místo a šířku */
-.opt { justify-content: center; font-size: 14px; padding: 0 8px; }
+.opt { justify-content: center; font-size: var(--fs-small); padding: 0 var(--s2); }
 .opt .opt-text { overflow: hidden; text-overflow: ellipsis; }
-.opt-who { width: 88px; justify-content: flex-start; padding-left: 10px; }
+.opt-who { width: 88px; justify-content: flex-start; padding-left: var(--s2); }
 .opt-prio { width: 40px; }
 .opt-due { width: 124px; }
 .opt-icon { width: 42px; }
@@ -843,55 +853,55 @@ a.btn:not(.btn-ghost):not(.btn-primary) { color: inherit; }
   align-self: center;
   min-width: 40px;
   height: 40px;
-  padding: 0 10px;
+  padding: 0 var(--s2);
   margin-right: 2px;
-  border-radius: 20px;
+  border-radius: var(--radius);
   display: grid;
   place-items: center;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 19px;
+  font-size: var(--fs-section);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .pantry-count.is-zero { background: var(--surface-2); color: var(--text-3); }
-.chips.suggest { margin: 0; padding: 8px 0 0; }
-.pantry-items { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
-.pantry-items:empty { margin: 0 0 14px; }
-.chip.pantry-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; background: var(--surface-2); border-color: transparent; }
+.chips.suggest { margin: 0; padding: var(--s2) 0 0; }
+.pantry-items { display: flex; flex-wrap: wrap; gap: var(--s2); margin: var(--s2) 0 var(--s3); }
+.pantry-items:empty { margin: 0 0 var(--s3); }
+.chip.pantry-chip { display: inline-flex; align-items: center; gap: var(--s2); min-height: 36px; background: var(--surface-2); border-color: transparent; }
 .chip.pantry-chip::before { content: none; }
-.chip.pantry-chip span { color: var(--text-3); font-size: 18px; line-height: 1; }
-.almost-btn { margin: 12px 0; color: var(--text-2); }
+.chip.pantry-chip span { color: var(--text-3); font-size: var(--fs-section); line-height: 1; }
+.almost-btn { margin: var(--s3) 0; color: var(--text-2); }
 .almost-btn::after { content: "▾"; color: var(--text-3); }
 .almost-btn[aria-expanded="true"]::after { content: "▴"; }
 
 /* ---------- Kroky jako podúkoly: sbalený řádek jen s tím nezbytným ---------- */
 .step { align-items: center; padding: 0; border-top: 1px solid var(--border); }
 .step:first-child { border-top: 0; }
-.step.is-open { align-items: flex-start; padding: 8px 0; }
+.step.is-open { align-items: flex-start; padding: var(--s2) 0; }
 .step-row {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   min-height: 44px;
-  padding: 4px 2px 4px 0;
+  padding: var(--s1) 2px var(--s1) 0;
   border: 0;
   background: transparent;
   text-align: left;
 }
-.step-row .item-name { font-size: 16px; }
+.step-row .item-name { font-size: var(--fs-text); }
 .step-row .legend-dot { flex: none; margin: 0; }
 .step.is-done .step-row .item-name { color: var(--text-3); text-decoration: line-through; }
 .step .item-sub .is-late { color: var(--danger); font-weight: 600; }
 .step-title { min-height: 40px; }
-.opts-small { margin: 6px 0; gap: 5px; }
-.opts-small .opt { min-height: 32px; font-size: 13px; }
+.opts-small { margin: var(--s2) 0; gap: var(--s1); }
+.opts-small .opt { min-height: 32px; font-size: var(--fs-small); }
 .opts-small .opt-who { width: 80px; }
 .opts-small .opt-prio { width: 36px; }
 .opts-small .opt-due { width: 116px; }
-textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resize: none; overflow: hidden; }
+textarea.step-note { min-height: 40px; padding: var(--s2) var(--s3); font-size: var(--fs-text); resize: none; overflow: hidden; }
 .step.is-current .step-title { border-color: var(--border); }
 
 /* Soukromý úkol: zámek v řádku a mezi tlačítky */
@@ -901,11 +911,11 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .opt-lock.is-set { background: var(--accent-soft); }
 
 /* Kroky: přidání tlačítkem, posouvání šipkami */
-.step-add { margin: 2px 0 0 -6px; }
+.step-add { margin: 2px 0 0 calc(var(--s2) * -1); }
 .step-add svg { width: 16px; height: 16px; }
 .step-row .item-name.is-blank { color: var(--text-3); }
 .step-meta .stepper { padding: 0; }
-.step-meta .stepper button { width: 40px; height: 36px; font-size: 18px; }
+.step-meta .stepper button { width: 40px; height: 36px; font-size: var(--fs-section); }
 
 /* Jméno "Kdokoliv" se musí vejít celé */
 .opt-who { width: 98px; }
@@ -918,25 +928,25 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .is-sorting .step:not(.is-held) { opacity: 0.75; transition: opacity 170ms ease; }
 
 /* Rozbalený krok: řádek s názvem (ťuknutí sbalí) a tužka na přejmenování */
-.step-headline { display: flex; align-items: center; gap: 4px; }
+.step-headline { display: flex; align-items: center; gap: var(--s1); }
 .step.is-open .step-row { min-height: 40px; }
 .step.is-open .step-row .item-name { font-weight: 600; }
-.icon-btn { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); }
+.icon-btn { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-2); }
 .icon-btn:active { background: var(--surface-2); }
 .icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.step-remove { margin: 4px 0 0 -8px; }
+.step-remove { margin: var(--s1) 0 0 calc(var(--s2) * -1); }
 
 /* ---------- Recept: ingredience po řádcích, vysvětlivky v postupu ---------- */
-.ing-row { display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 2px 2px 2px 14px; background: var(--surface); }
+.ing-row { display: flex; align-items: center; gap: var(--s2); min-height: 48px; padding: 2px 2px 2px var(--s3); background: var(--surface); }
 .ing-row + .ing-row { border-top: 1px solid var(--border); }
 .ing-name { flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; overflow-wrap: anywhere; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.ing-qty { flex: none; width: 64px; min-height: 38px; padding: 0 8px; text-align: right; font-size: 16px; font-variant-numeric: tabular-nums; }
+.ing-qty { flex: none; width: 64px; min-height: 38px; padding: 0 var(--s2); text-align: right; font-size: var(--fs-text); font-variant-numeric: tabular-nums; }
 .ing-unit { flex: none; width: 62px; min-height: 38px; border-radius: var(--radius-sm); }
-.ing-row .icon-btn { font-size: 22px; line-height: 1; color: var(--text-3); width: 36px; }
+.ing-row .icon-btn { font-size: var(--fs-section); line-height: 1; color: var(--text-3); width: 36px; }
 .ing-row.is-held { position: relative; z-index: 2; background: var(--surface-2); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
 .ing-list.is-sorting { overflow: visible; }
-.ing-add { margin-top: 8px; }
-.hint-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.ing-add { margin-top: var(--s2); }
+.hint-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); }
 .hint-bar .btn svg { width: 16px; height: 16px; }
 .hint-chips { display: contents; }
 .chip.hint-chip { text-decoration: underline dotted; text-underline-offset: 3px; }
@@ -953,32 +963,32 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
 }
-.hint-pop { margin: 0; padding: 8px 10px; max-width: 280px; font-size: 15px; line-height: 1.4; white-space: pre-wrap; }
+.hint-pop { margin: 0; padding: var(--s2) var(--s2); max-width: 280px; font-size: var(--fs-text); line-height: 1.4; white-space: pre-wrap; }
 
 /* Pořadí oddělení v obchodě: řazení přetažením */
-.order-row { padding-right: 14px; min-height: 44px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.order-grip { flex: none; color: var(--text-3); font-size: 20px; line-height: 1; }
+.order-row { padding-right: var(--s3); min-height: 44px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.order-grip { flex: none; color: var(--text-3); font-size: var(--fs-section); line-height: 1; }
 .order-row.is-held { position: relative; z-index: 2; background: var(--surface-2); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
 .order-list.is-sorting { overflow: visible; }
 
 /* Neviditelné pole, které drží klávesnici, než se objeví to skutečné */
-.kb-ghost { position: fixed; top: 0; left: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; pointer-events: none; }
+.kb-ghost { position: fixed; top: 0; left: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: var(--fs-text); pointer-events: none; }
 
 /* Spodek stránky úkolu: smazat a přesunout */
-.detail-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 20px; }
+.detail-foot { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); margin-top: var(--s4); }
 .menu-item { white-space: normal; text-align: left; }
 .menu { max-width: min(calc(100vw - 24px), 320px); }
 
 /* Řádek Vybrat v nabídce termínu: přes celý řádek leží neviditelné pole s datem */
 .menu-pick { position: relative; justify-content: space-between; cursor: pointer; }
 .menu-pick-value { color: var(--text-2); font-weight: 400; }
-.menu-pick input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: 16px; -webkit-appearance: none; appearance: none; }
+.menu-pick input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: var(--fs-text); -webkit-appearance: none; appearance: none; }
 
 /* ---------- Úkoly: tři tečky v řádku a režim přesouvání ---------- */
 .item-more { flex: none; align-self: stretch; display: grid; place-items: center; width: 36px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text-3); }
 .item-more:active { color: var(--text); }
 .item-more svg { width: 20px; height: 20px; fill: currentColor; stroke: none; }
-.item-slide .item-main.has-stripe { padding-right: 4px; }
+.item-slide .item-main.has-stripe { padding-right: var(--s1); }
 
 /* Přesouvání: ovládání během 200 ms odjede ke kraji obrazovky (kolečka
    doleva, tečky a horní tlačítka doprava, hotové úkoly dolů) a po skončení se
@@ -987,9 +997,9 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
   transition: width 200ms ease, margin 200ms ease, padding 200ms ease, opacity 160ms ease, transform 200ms ease;
 }
 .list-root .check-tap { overflow: hidden; }
-.is-moving-mode .check-tap { width: 0; margin-right: -12px; opacity: 0; transform: translateX(-28px); pointer-events: none; }
+.is-moving-mode .check-tap { width: 0; margin-right: calc(var(--s3) * -1); opacity: 0; transform: translateX(-28px); pointer-events: none; }
 .is-moving-mode .item-more { width: 0; opacity: 0; transform: translateX(28px); pointer-events: none; }
-.is-moving-mode .item-main.has-stripe { padding-right: 14px; }
+.is-moving-mode .item-main.has-stripe { padding-right: var(--s3); }
 
 .topbar-extra > * { transition: transform 200ms ease, opacity 160ms ease; }
 .topbar-extra > .is-away { transform: translateX(70px); opacity: 0; pointer-events: none; }
@@ -1011,26 +1021,26 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .item .item-slide.is-dragging { transition: none; }
 
 /* Řádek bublinek pod polem je všude stejný (nákup, recept, co uvařit) */
-.ing-chips, .pantry-chips { padding-top: 8px; }
+.ing-chips, .pantry-chips { padding-top: var(--s2); }
 .detail .chips { margin: 0 calc(var(--gutter) * -1); }
 
 .ing-list:empty { display: none; }
 
 /* ---------- Recepty: záložka Skills ---------- */
-.recipe-tabs { margin: 0 0 12px; }
+.recipe-tabs { margin: 0 0 var(--s3); }
 .skills { list-style: none; margin: 0; padding: 0; }
-.skill { padding: 12px 14px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.skill { padding: var(--s3) var(--s3); margin-bottom: var(--s2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .skill-term { margin: 0; font-weight: 600; text-decoration: underline dotted var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
-.skill-note { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.skill-recipes { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
-.chip.skill-recipe { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; font-size: 14px; color: var(--text-2); text-decoration: none; background: var(--surface-2); border-color: transparent; }
+.skill-note { margin: var(--s2) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.skill-recipes { display: flex; flex-wrap: wrap; gap: var(--s2); margin: var(--s2) 0 0; }
+.chip.skill-recipe { display: inline-flex; align-items: center; min-height: 30px; padding: 0 var(--s2); font-size: var(--fs-small); color: var(--text-2); text-decoration: none; background: var(--surface-2); border-color: transparent; }
 .chip.skill-recipe::before { content: none; }
-.skill-note + .skill-recipes + .skill-note { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.skill-note + .skill-recipes + .skill-note { margin-top: var(--s3); padding-top: var(--s2); border-top: 1px solid var(--border); }
 
 /* Řádek Čas v nabídce termínu: stejný jako Vybrat, vedle něj křížek na zrušení */
 .menu-time { display: flex; align-items: center; }
 .menu-time .menu-pick { flex: 1; min-width: 0; }
-.menu-time .icon-btn { font-size: 22px; line-height: 1; color: var(--text-3); }
+.menu-time .icon-btn { font-size: var(--fs-section); line-height: 1; color: var(--text-3); }
 
 /* ---------- Recept: postup po krocích (1, 2, případně 1A a 1B) ---------- */
 .rsteps { list-style: none; margin: 0; padding: 0; }
@@ -1040,30 +1050,30 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
   place-items: center;
   min-width: 28px;
   height: 28px;
-  padding: 0 6px;
-  border-radius: 14px;
+  padding: 0 var(--s2);
+  border-radius: var(--radius);
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 13px;
+  font-size: var(--fs-small);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.rstep-view { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; padding: 10px 14px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.rstep-view { display: grid; grid-template-columns: auto 1fr; gap: var(--s2) var(--s2); align-items: start; padding: var(--s2) var(--s3); margin-bottom: var(--s2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .rstep-view .rstep-text { padding-top: 3px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .rstep-view.is-split { border-left: 3px solid var(--accent); }
 
-.rstep { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
-.rstep > .rstep-num { margin-top: 7px; }
+.rstep { display: flex; align-items: flex-start; gap: var(--s2); padding: var(--s1) 0; }
+.rstep > .rstep-num { margin-top: var(--s2); }
 .rstep-body { flex: 1; min-width: 0; }
 .rstep-line { display: flex; align-items: flex-start; gap: 2px; }
-.rstep-line + .rstep-line { margin-top: 6px; }
-.rstep-line .rstep-num.is-b { margin: 7px 6px 0 0; background: var(--surface-2); color: var(--text-2); }
-textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: 9px 12px; font-size: 16px; line-height: 1.35; resize: none; overflow: hidden; }
-.rstep .icon-btn { font-size: 20px; line-height: 1; color: var(--text-3); width: 36px; height: 42px; }
-.rstep .rstep-split { font-size: 13px; font-weight: 700; color: var(--accent); }
+.rstep-line + .rstep-line { margin-top: var(--s2); }
+.rstep-line .rstep-num.is-b { margin: var(--s2) var(--s2) 0 0; background: var(--surface-2); color: var(--text-2); }
+textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: var(--s2) var(--s3); font-size: var(--fs-text); line-height: 1.35; resize: none; overflow: hidden; }
+.rstep .icon-btn { font-size: var(--fs-section); line-height: 1; color: var(--text-3); width: 36px; height: 42px; }
+.rstep .rstep-split { font-size: var(--fs-small); font-weight: 700; color: var(--accent); }
 .rstep.is-held { position: relative; z-index: 2; background: var(--bg); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
 
 /* Připravené pole pro další souběžnou část (C, D…): zatím nenápadné */
@@ -1072,22 +1082,22 @@ textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: 9px 12p
 .rstep span.icon-btn { visibility: hidden; }
 
 /* ---------- Recept v receptu ---------- */
-.ing-row.is-recipe .ing-name { gap: 8px; font-weight: 600; }
+.ing-row.is-recipe .ing-name { gap: var(--s2); font-weight: 600; }
 .ing-recipe-icon { flex: none; width: 18px; height: 18px; color: var(--accent); }
 .ing-recipe-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .recipe-tabs { transition: transform 200ms ease, opacity 160ms ease; }
 .recipe-tabs.is-away { transform: translateY(-24px); opacity: 0; pointer-events: none; }
-.item-slide .item-main:not(.has-stripe) { padding-right: 4px; }
+.item-slide .item-main:not(.has-stripe) { padding-right: var(--s1); }
 
 /* ---------- Recepty: mřížka čtverců s fotkou ---------- */
-.rgrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rgrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
 .rcard { position: relative; aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); }
 .rcard-main { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; text-align: left; color: var(--text); }
 .rcard-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .rcard-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); }
 .rcard-empty svg { width: 34%; height: 34%; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; }
-.rcard-name { position: absolute; top: 0; left: 0; right: 0; padding: 10px 40px 18px 12px; font-weight: 600; font-size: 16px; line-height: 1.2; overflow-wrap: anywhere; }
-.rcard-time { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 12px 9px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rcard-name { position: absolute; top: 0; left: 0; right: 0; padding: var(--s2) calc(var(--s5) * 2) var(--s4) var(--s3); font-weight: 600; font-size: var(--fs-text); line-height: 1.2; overflow-wrap: anywhere; }
+.rcard-time { position: absolute; left: 0; right: 0; bottom: 0; padding: var(--s4) var(--s3) var(--s2); font-size: var(--fs-small); font-weight: 600; font-variant-numeric: tabular-nums; }
 /* Na fotce je text bílý na ztmavení, ať se dá přečíst na jakémkoli obrázku */
 .rcard.has-photo .rcard-name, .rcard.has-photo .rcard-time { color: #fff; }
 .rcard.has-photo .rcard-name { background: linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0)); }
@@ -1100,41 +1110,203 @@ textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: 9px 12p
 .menu-item.is-danger { color: var(--danger); }
 
 /* Stránka receptu: fotka a čas */
-.recipe-photo { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--radius); margin: 0 0 8px; }
-.recipe-time { margin: 0 4px 4px; color: var(--text-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.recipe-photo { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--radius); margin: 0 0 var(--s2); }
+.recipe-time { margin: 0 var(--s1) var(--s1); color: var(--text-2); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Úprava receptu: fotka vlevo, časy vpravo */
-.recipe-meta { display: flex; gap: 12px; align-items: flex-start; margin: 4px 0 6px; }
+.recipe-meta { display: flex; gap: var(--s3); align-items: flex-start; margin: var(--s1) 0 var(--s2); }
 .photo-box { position: relative; flex: none; width: 112px; height: 112px; border-radius: var(--radius); overflow: hidden; background: var(--surface); border: 1px dashed var(--border); cursor: pointer; }
 .photo-slot { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); }
 .photo-slot svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .photo-slot img { width: 100%; height: 100%; object-fit: cover; }
-.photo-box input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
-.recipe-times { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
-.recipe-times .field { margin-bottom: 6px; }
+.photo-box input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: var(--fs-text); }
+.recipe-times { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--s2); }
+.recipe-times .field { margin-bottom: var(--s2); }
 .recipe-times .btn { grid-column: 1 / -1; justify-self: start; padding-left: 2px; }
 
 /* ---------- Domů: dlaždice modulů ---------- */
-.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-a.card.tile { display: flex; align-items: center; gap: 10px; margin: 0; min-height: 56px; padding: 12px 14px; }
-.tile .card-title { font-size: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+a.card.tile { display: flex; align-items: center; gap: var(--s2); margin: 0; min-height: 56px; padding: var(--s3) var(--s3); }
+.tile .card-title { font-size: var(--fs-text); }
 
 /* ---------- Administrativa a poznámky ---------- */
 .opt-cat { width: 142px; }
 .opt-date.opt-due { width: 132px; }
 .opt-date { position: relative; cursor: pointer; }
-.opt-date input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: 16px; -webkit-appearance: none; appearance: none; }
-textarea.doc-note { min-height: 0; margin-bottom: 12px; resize: none; overflow: hidden; }
+.opt-date input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: var(--fs-text); -webkit-appearance: none; appearance: none; }
+textarea.doc-note { min-height: 0; margin-bottom: var(--s3); resize: none; overflow: hidden; }
 textarea.note-body { min-height: 220px; resize: none; overflow: hidden; line-height: 1.45; }
 .note-preview { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-name.is-blank { color: var(--text-3); }
-.doc-files { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.doc-files { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s2); }
 .doc-file { position: relative; aspect-ratio: 3 / 4; border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); }
 .doc-file img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.doc-file .icon-btn { position: absolute; top: 2px; right: 2px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 20px; line-height: 1; }
+.doc-file .icon-btn { position: absolute; top: 2px; right: 2px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: var(--fs-section); line-height: 1; }
 .doc-file-wait { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, var(--surface) 50%, transparent 70%) 0 0 / 200% 100%; animation: shimmer 1.2s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 .doc-file-add { border-style: dashed; background: var(--surface); cursor: pointer; }
-.doc-file-add input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
+.doc-file-add input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: var(--fs-text); }
 .doc-full { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.92); display: grid; place-items: center; padding: var(--safe-top) 0 var(--safe-bottom); animation: fade-in 0.15s ease; }
 .doc-full img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+
+/* =====================================================================
+   DESIGN SYSTÉM (0.16.0)
+   Sjednocující vrstva: pravidla tady platí pro všechny obrazovky a přebíjejí
+   starší jednorázové styly výše. Popis je v CLAUDE.md, ukázka na #/ukazka.
+   ===================================================================== */
+
+/* ---------- Barvy s pevným významem ---------- */
+/* Akcentová jen pro hlavní akci a aktivní stav. Vedlejší akce, ikony karet,
+   počty a čísla kroků jsou neutrální. */
+.card-icon, .card.is-muted .card-icon { color: var(--text-2); }
+.btn-ghost { color: var(--text); font-weight: 600; }
+.back-btn, .back-link { color: var(--text); }
+.seg-count { color: var(--text-2); }
+.rstep-num { background: var(--surface-2); color: var(--text-2); }
+.rstep .rstep-split { color: var(--text-2); }
+.rstep-view.is-split { border-left-color: var(--border); }
+.hint-term, .skill-term { text-decoration-color: var(--text-3); }
+.chip::before { color: var(--text-2); }
+.stepper button { color: var(--text); }
+.opt.is-set { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.note-more { color: var(--text-2); }
+.sum-cell.is-total .sum-value { color: var(--text); }
+.pantry-count { background: var(--text); color: var(--bg); }
+.catalog-row.is-on .stepper-value { color: var(--text); }
+.item-who.is-me { background: var(--surface-2); color: var(--text-2); }
+
+/* Stavový text je šedý. Barvu má jen pruh osoby a termín po splatnosti. */
+.item-sub .is-part, .item-sub, .card-meta, .detail-state { color: var(--text-2); }
+
+/* Červená jen pro "po termínu" a mazání, vždy s ikonou (neplete se s růžovou Domi) */
+.is-late, .item-sub .is-late, .card-meta.is-late, .opt.is-late { color: var(--danger); font-weight: 600; }
+.opt.is-late { border-color: var(--danger); background: transparent; }
+.is-late::before, .btn-danger::before, .menu-item.is-danger::before, .item-bg::before {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  margin-right: var(--s1);
+  vertical-align: -0.14em;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+.is-late { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5.500l3.500 2'/%3E%3C/svg%3E"); }
+.btn-danger, .menu-item.is-danger, .item-bg { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h16M9 7V4.500h6V7M6.500 7l1 12.500h9l1-12.500M10 11v5M14 11v5'/%3E%3C/svg%3E"); }
+.btn-danger, .btn-ghost.btn-danger, .menu-item.is-danger { color: var(--danger); }
+
+/* Důležitost není barevná (červená je vyhrazená): 1 slabá, 2 střední, 3 plná */
+.prio-1 { background: transparent; color: var(--text-3); box-shadow: inset 0 0 0 1px var(--border); }
+.prio-2 { background: var(--surface-2); color: var(--text-2); }
+.prio-3 { background: var(--text); color: var(--bg); }
+
+/* ---------- Ikony: jedna sada, stejná čára ---------- */
+.card-icon svg, .btn svg, .tab svg, .empty-icon svg, .add-btn svg, .back-btn svg, .item-lock svg, .opt svg,
+.icon-btn svg, .notify-btn svg, .photo-slot svg, .rcard-empty svg, .ing-recipe-icon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.card-icon { width: 22px; height: 22px; }
+
+/* ---------- Hlavička stránky ---------- */
+/* Název, na podstránce vlevo šipka zpět, vpravo nejvýš jedno hlavní tlačítko (+) */
+.topbar-row { gap: var(--s2); }
+.topbar-back { flex: none; display: grid; place-items: center; width: 32px; height: 44px; margin-left: calc(var(--s2) * -1); color: var(--text); }
+.topbar-back svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.add-btn { width: 46px; min-height: 46px; height: 46px; border-radius: var(--radius-sm); }
+
+/* Vedlejší ovládání (řazení, výběr obchodu, přepínače) patří do řádku nad obsahem */
+.toolbar { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3); }
+.toolbar > .segmented { flex: 1; margin: 0; }
+.toolbar .btn { flex: none; }
+
+/* ---------- Karta, dlaždice, řádek seznamu ---------- */
+.card, .group, .rcard, .skill, .comment, .note-view, .rstep-view, .detail-head, .steps-box {
+  border-radius: var(--radius);
+}
+.card { padding: var(--s3) var(--s4); margin-bottom: var(--s3); }
+.card-title { font-size: var(--fs-text); font-weight: 600; }
+.card-head { gap: var(--s2); margin-bottom: var(--s1); }
+.card-meta { font-size: var(--fs-small); }
+/* Dlaždice modulů jsou stejná karta jako velké karty, jen ve dvou sloupcích */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); align-items: stretch; }
+a.card.tile { display: block; margin: 0; min-height: 0; padding: var(--s3) var(--s4); }
+.tile .card-head { margin-bottom: var(--s1); }
+.tile .card-title { font-size: var(--fs-text); }
+.tile .card-meta { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Řádek seznamu: všude stejná výška a odsazení */
+.item-main, .is-dense .item-main, .item-main.is-compact { min-height: 52px; padding: var(--s2) var(--s3); gap: var(--s3); }
+.item-main.has-stripe { padding-left: calc(var(--s3) + 9px); }
+.item-name { font-size: var(--fs-text); }
+.item-sub { font-size: var(--fs-small); }
+.section-label, .cat-head { font-size: var(--fs-small); font-weight: 600; letter-spacing: 0.02em; text-transform: none; color: var(--text-2); }
+.cat-head { padding: var(--s2) var(--s3) 0; line-height: 1.2; }
+
+/* ---------- Tlačítka, čipy, pole, přepínač ---------- */
+.btn, .chip, .chip-btn, .opt, .input, select.input, .segmented, .segmented button, .add-btn, .notify-btn,
+.icon-btn, .menu-item, .stepper button, .prio, .item-who, .toast, .photo-box, .doc-file {
+  border-radius: var(--radius-sm);
+}
+.btn, .chip, .chip-btn, .opt { font-size: var(--fs-text); }
+.opt, .opts-small .opt { font-size: var(--fs-small); min-height: 36px; }
+.chip, .chip-btn { min-height: 36px; padding: 0 var(--s3); }
+/* Segmentový přepínač: vybraný stav všude stejně, bez barev osob */
+.segmented button { font-size: var(--fs-text); color: var(--text-2); min-height: 38px; }
+.segmented button[aria-pressed="true"],
+.segmented button.who-1[aria-pressed="true"], .segmented button.who-2[aria-pressed="true"], .segmented button.who-both[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- Nabídka, spodní panel, toast: plné pozadí ---------- */
+.menu { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); opacity: 1; }
+.sheet { background: var(--bg); border-radius: var(--radius) var(--radius) 0 0; }
+.sheet-backdrop { background: rgba(0, 0, 0, 0.45); }
+.toast { background: var(--text); color: var(--bg); }
+.toast button { color: var(--bg); text-decoration: underline; }
+
+/* ---------- Prázdný stav: ikona, nadpis, jedna věta s příkladem ---------- */
+.empty { padding: calc(var(--s5) * 2) var(--s5) var(--s5); text-align: center; color: var(--text-2); }
+.empty-icon { width: 40px; height: 40px; margin: 0 auto var(--s2); color: var(--text-3); }
+.empty-title { margin: 0 0 var(--s1); font-size: var(--fs-text); font-weight: 600; color: var(--text); }
+.empty p:not(.empty-title) { margin: 0 auto; max-width: 280px; font-size: var(--fs-small); }
+
+/* ---------- Ukázka komponent (#/ukazka) ---------- */
+.demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
+.demo-swatch { width: 44px; height: 44px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+
+/* Záznam o zmeškaném kole opakovaného úkolu mezi komentáři */
+.comment.is-missed { padding: var(--s2) var(--s3); background: transparent; border: 1px dashed var(--border); color: var(--text-2); font-size: var(--fs-small); }
+
+/* Stavový řádek karty a dlaždice: šedý, velká karta nejvýš 2 řádky, dlaždice 1 */
+.card-line { margin: 0; color: var(--text-2); font-size: var(--fs-small); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tile .card-line { display: block; white-space: nowrap; text-overflow: ellipsis; }
+.card-head .card-meta { margin-left: auto; white-space: nowrap; }
+.card-head .card-title { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Řádek nad seznamem v režimu přesouvání odjede stejně jako tlačítko v liště */
+.toolbar { transition: transform 200ms ease, opacity 160ms ease; }
+.toolbar.is-away { transform: translateY(-24px); opacity: 0; pointer-events: none; }
+
+/* Hlavička má všude stejnou výšku, ať je na stránce tlačítko + nebo ne */
+.topbar-row { min-height: 46px; align-items: center; }
+/* Počet v přepínači je jen údaj, červená mu nepatří */
+.seg-count.is-alert { color: var(--text-2); }
+/* Dlaždice: užší okraje, ať se vejde i "Administrativa" */
+a.card.tile { padding: var(--s3); }
+.tile .card-icon { width: 20px; height: 20px; }
+.tile .card-title { letter-spacing: -0.01em; }
+
+/* Nabídka a bublina s vysvětlením stojí na plném podkladu, pod nimi nic neprosvítá */
+.menu, .hint-pop { background: var(--surface); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); animation: none; }
+.menu-item { background: var(--surface); }
+.menu-item[aria-pressed="true"], .menu-item:active { background: var(--surface-2); }

@@ -267,6 +267,8 @@ export async function renderTask(el, id, { subEl }) {
     const comments = await store.listComments(id);
     if (editing && commentsEl.contains(document.activeElement)) return;
     commentsEl.innerHTML = comments.length ? comments.map((c) => {
+      // Záznam o zmeškaném kole opakovaného úkolu (bez autora): jen šedý řádek
+      if (!c.author) return `<li class="comment is-missed">${escapeHtml(c.body)}</li>`;
       const edited = c.updatedAt - c.createdAt > 1000;
       const head = `<div class="comment-head">
           <span class="comment-author ${whoClass(c.author, members)}">${escapeHtml(c.author ?? '')}</span>

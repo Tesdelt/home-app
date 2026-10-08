@@ -2,11 +2,11 @@
 // smlouvy, doklady. Rozdělené na společné a osobní (osobní vidí jen majitel,
 // hlídá to databáze) a uvnitř podle kategorií.
 // Dokument má název, kategorii, platnost / záruku do, poznámku a naskenované
-// stránky (fotky). Ovládání jako jinde: + založí, ťuknutí otevře, potažení
-// doleva smaže.
+// stránky (fotky). Ovládání jako jinde: + otevře nový dokument (vznikne až
+// tlačítkem Přidat), ťuknutí otevře, potažení doleva smaže. Existující se ukládá sám.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, toast, undoToast, rowGestures, openMenu, holdKeyboard, scalePhoto } from '../ui.js';
+import { escapeHtml, ICONS, toast, undoToast, rowGestures, openMenu, holdKeyboard, scalePhoto, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 import { today, daysBetween } from '../dates.js';
 
@@ -18,6 +18,8 @@ const shortDate = (day) => {
 
 export const title = 'Administrativa';
 export const tab = 'domu';
+
+const NEW = 'novy';
 
 // Která část je otevřená, vydrží, dokud je appka otevřená
 let scope = 'shared';
@@ -38,9 +40,11 @@ export async function render(el, { params, extraEl }) {
   const root = document.createElement('div');
   el.append(root);
   root.innerHTML = `
-    <div class="segmented seg-bar tabs-only recipe-tabs" role="tablist">
-      <button type="button" role="tab" data-scope="shared">Společné</button>
-      <button type="button" role="tab" data-scope="private">Osobní</button>
+    <div class="toolbar">
+      <div class="segmented" role="tablist">
+        <button type="button" role="tab" data-scope="shared">Společné</button>
+        <button type="button" role="tab" data-scope="private">Osobní</button>
+      </div>
     </div>
     <div class="list-root"></div>`;
   const tabsEl = root.querySelector('.segmented');
@@ -51,11 +55,10 @@ export async function render(el, { params, extraEl }) {
   addBtn.className = 'add-btn';
   addBtn.setAttribute('aria-label', 'Přidat dokument');
   addBtn.innerHTML = ICONS.plus;
-  // Nový dokument vznikne hned a rovnou se píše jeho název
-  addBtn.addEventListener('click', async () => {
+  // Na stránce nového dokumentu se rovnou píše název
+  addBtn.addEventListener('click', () => {
     holdKeyboard();
-    const doc = await store.addDoc({ isPrivate: scope === 'private' });
-    navigate(`administrativa/${doc.id}`);
+    navigate(`administrativa/${NEW}`);
   });
   extraEl.append(addBtn);
 
@@ -77,7 +80,9 @@ export async function render(el, { params, extraEl }) {
     }).join('');
     listRoot.innerHTML = rows
       ? `<ul class="item-list group">${rows}</ul>`
-      : `<div class="empty"><div class="empty-icon">${ICONS.folder}</div><p class="empty-title">Zatím nic</p></div>`;
+      : (scope === 'private'
+        ? emptyState('lock', 'Zatím nic osobního', 'Dokumenty jen pro vás, třeba občanka, pas nebo pracovní smlouva.')
+        : emptyState('folder', 'Zatím žádné dokumenty', 'Patří sem účtenky se zárukou, smlouvy a doklady, třeba záruka na pračku do 2028.'));
   }
 
   tabsEl.addEventListener('click', (e) => {
@@ -110,7 +115,12 @@ async function renderDoc(el, id) {
   root.className = 'detail';
   el.append(root);
 
-  let doc = await store.getDoc(id);
+  // Nový dokument je do tlačítka Přidat jen v paměti (i se stránkami)
+  const draft = id === NEW;
+  let doc = draft
+    ? { title: '', category: 'ostatni', note: null, validUntil: null, files: [], privateTo: scope === 'private' ? 'me' : null }
+    : await store.getDoc(id);
+  let draftPages = [];
   const back = `<a class="back-btn" href="#/administrativa" aria-label="Zpět">${ICONS.back}</a>`;
   if (!doc) {
     root.innerHTML = `<div class="detail-head">${back}<span class="detail-name">Dokument už neexistuje</span></div>`;
@@ -124,7 +134,9 @@ async function renderDoc(el, id) {
     <div class="opts"></div>
     <textarea class="input doc-note" name="note" rows="2" placeholder="Poznámka" aria-label="Poznámka"></textarea>
     <div class="doc-files"></div>
-    <button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat</button>`;
+    ${draft
+    ? '<button type="button" class="btn btn-primary btn-block detail-create" data-action="create">Přidat</button>'
+    : '<button type="button" class="btn btn-ghost btn-danger btn-small detail-delete" data-action="delete">Smazat</button>'}`;
 
   const titleEl = root.querySelector('.detail-title');
   const noteEl = root.querySelector('.doc-note');
@@ -133,16 +145,26 @@ async function renderDoc(el, id) {
   const grow = (area) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
 
   async function draw() {
-    const fresh = await store.getDoc(id);
-    if (!fresh) {
-      navigate('administrativa');
+    if (!draft) {
+      const fresh = await store.getDoc(id);
+      if (!fresh) {
+        navigate('administrativa');
+        return;
+      }
+      doc = fresh;
+    }
+    if (draft) {
+      drawOpts();
       return;
     }
-    doc = fresh;
     if (document.activeElement !== titleEl) titleEl.value = doc.title ?? '';
     if (document.activeElement !== noteEl) noteEl.value = doc.note ?? '';
     grow(titleEl);
     grow(noteEl);
+    await drawOpts();
+  }
+
+  async function drawOpts() {
     // Malá tlačítka: kategorie, platnost (přes řádek leží pole s datem), zámek
     optsEl.innerHTML = `
       <button type="button" class="opt opt-cat" data-opt="category"><span class="opt-text">${escapeHtml(categoryName(doc.category))}</span></button>
@@ -152,7 +174,7 @@ async function renderDoc(el, id) {
       </label>
       <button type="button" class="opt opt-icon opt-lock${doc.privateTo ? ' is-set' : ''}" data-opt="private" aria-pressed="${Boolean(doc.privateTo)}" aria-label="Osobní dokument">${ICONS.lock}</button>`;
 
-    const files = await store.docFiles(doc);
+    const files = draft ? draftPages : await store.docFiles(doc);
     filesEl.innerHTML = `${files.map((f) => `<div class="doc-file" data-file="${escapeHtml(f.id)}">
         ${f.data ? `<img src="${f.data}" alt="">` : '<span class="doc-file-wait"></span>'}
         <button type="button" class="icon-btn" data-action="file-remove" aria-label="Odebrat stránku">×</button>
@@ -163,7 +185,11 @@ async function renderDoc(el, id) {
       </label>`;
   }
 
-  const save = (patch) => store.updateDoc(id, patch);
+  const save = (patch) => {
+    if (!draft) return store.updateDoc(id, patch);
+    doc = { ...doc, ...patch };
+    return draw();
+  };
   titleEl.addEventListener('input', () => grow(titleEl));
   noteEl.addEventListener('input', () => grow(noteEl));
   titleEl.addEventListener('keydown', (e) => {
@@ -171,8 +197,14 @@ async function renderDoc(el, id) {
     e.preventDefault();
     titleEl.blur();
   });
-  titleEl.addEventListener('change', () => save({ title: titleEl.value.replace(/\s+/g, ' ').trim() }));
-  noteEl.addEventListener('change', () => save({ note: noteEl.value.trim() || null }));
+  // Existující dokument se ukládá sám, název nejde smazat do prázdna
+  titleEl.addEventListener('change', () => {
+    const name = titleEl.value.replace(/\s+/g, ' ').trim();
+    if (draft) return;
+    if (name) save({ title: name });
+    else titleEl.value = doc.title ?? '';
+  });
+  noteEl.addEventListener('change', () => { if (!draft) save({ note: noteEl.value.trim() || null }); });
 
   optsEl.addEventListener('change', (e) => {
     if (e.target.name === 'validUntil') save({ validUntil: e.target.value || null });
@@ -180,7 +212,10 @@ async function renderDoc(el, id) {
   optsEl.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-opt]');
     if (!btn) return;
-    if (btn.dataset.opt === 'private') store.setDocPrivate(id, !doc.privateTo);
+    if (btn.dataset.opt === 'private') {
+      if (draft) save({ privateTo: doc.privateTo ? null : 'me' });
+      else store.setDocPrivate(id, !doc.privateTo);
+    }
     if (btn.dataset.opt === 'category') {
       openMenu(btn, (menu, close) => {
         menu.innerHTML = store.DOC_CATEGORIES
@@ -201,17 +236,42 @@ async function renderDoc(el, id) {
     e.target.value = '';
     for (const file of picked) {
       try {
-        await store.addDocFile(id, await scalePhoto(file));
+        const data = await scalePhoto(file);
+        if (draft) draftPages = [...draftPages, { id: `p${Date.now()}${draftPages.length}`, data }];
+        else await store.addDocFile(id, data);
       } catch {
         toast('Fotku se nepodařilo načíst');
       }
     }
+    if (draft) draw();
   });
+
+  async function create() {
+    const name = titleEl.value.replace(/\s+/g, ' ').trim();
+    if (!name) {
+      titleEl.focus();
+      return;
+    }
+    scope = doc.privateTo ? 'private' : 'shared';
+    await store.addDoc({
+      title: name, category: doc.category, note: noteEl.value.trim() || null, validUntil: doc.validUntil,
+      isPrivate: Boolean(doc.privateTo), pages: draftPages.map((p) => p.data),
+    });
+    navigate('administrativa');
+  }
 
   root.addEventListener('click', async (e) => {
     const action = e.target.closest('[data-action]')?.dataset.action;
+    if (action === 'create') {
+      create();
+      return;
+    }
     if (action === 'file-remove') {
-      await store.removeDocFile(id, e.target.closest('[data-file]').dataset.file);
+      const fileId = e.target.closest('[data-file]').dataset.file;
+      if (draft) {
+        draftPages = draftPages.filter((p) => p.id !== fileId);
+        draw();
+      } else await store.removeDocFile(id, fileId);
       return;
     }
     if (action === 'delete') {
@@ -232,13 +292,13 @@ async function renderDoc(el, id) {
   });
 
   await draw();
-  if (!doc.title) titleEl.focus();
+  if (draft) {
+    titleEl.focus();
+    return () => document.querySelector('.doc-full')?.remove();
+  }
   const unsubscribe = store.subscribe(draw);
   return () => {
     unsubscribe();
     document.querySelector('.doc-full')?.remove();
-    // Dokument založený omylem (bez názvu, poznámky i stránek) se zahodí.
-    // Rozhoduje, co je v polích: uložení posledního psaní může ještě dobíhat.
-    if (!titleEl.value.trim() && !noteEl.value.trim() && !(doc.files ?? []).length) store.removeDocs([id]);
   };
 }
