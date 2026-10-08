@@ -1028,3 +1028,37 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .menu-time { display: flex; align-items: center; }
 .menu-time .menu-pick { flex: 1; min-width: 0; }
 .menu-time .icon-btn { font-size: 22px; line-height: 1; color: var(--text-3); }
+
+/* ---------- Recept: postup po krocích (1, 2, případně 1A a 1B) ---------- */
+.rsteps { list-style: none; margin: 0; padding: 0; }
+.rstep-num {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.rstep-view { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; padding: 10px 14px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.rstep-view .rstep-text { padding-top: 3px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rstep-view.is-split { border-left: 3px solid var(--accent); }
+
+.rstep { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
+.rstep > .rstep-num { margin-top: 7px; }
+.rstep-body { flex: 1; min-width: 0; }
+.rstep-line { display: flex; align-items: flex-start; gap: 2px; }
+.rstep-line + .rstep-line { margin-top: 6px; }
+.rstep-line .rstep-num.is-b { margin: 7px 6px 0 0; background: var(--surface-2); color: var(--text-2); }
+textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: 9px 12px; font-size: 16px; line-height: 1.35; resize: none; overflow: hidden; }
+.rstep .icon-btn { font-size: 20px; line-height: 1; color: var(--text-3); width: 36px; height: 42px; }
+.rstep .rstep-split { font-size: 13px; font-weight: 700; color: var(--accent); }
+.rstep.is-held { position: relative; z-index: 2; background: var(--bg); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }

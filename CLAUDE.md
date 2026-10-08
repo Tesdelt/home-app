@@ -255,6 +255,10 @@ Hotovo (0.9.0):
 - Recepty (`#/recepty`, otevírají se z Více, tabulka `recipes`): název, ingredience a postup.
   Ingredience se v úpravě přidávají po jedné (pole s našeptávačem), každá má řádek s
   množstvím a jednotkou (ks, g, ml…; výchozí podle druhu věci) a řadí se přetažením.
+  Postup je po krocích (1, 2, 3…), krok může mít souběžnou část („mezitím“), pak se čísluje
+  1A a 1B. Ukládá se dál jako text ve sloupci `method`, krok na řádek, souběžná část jako
+  řádek začínající `|| ` (viz `parseMethod` / `formatMethod` v `recipes.js`), takže to
+  nevyžadovalo změnu databáze a starší recepty se rozpadly na kroky po řádcích.
   V seznamu receptů je záložka Skills: všechny vysvětlivky na jednom místě, u každé
   recepty, kde se používá (`listSkills` ve `store.js`, upravují se dál v receptu).
   K postupu jdou přidat vysvětlivky (`hints`: výraz + vysvětlení): v úpravě se označí text

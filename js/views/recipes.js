@@ -163,7 +163,7 @@ async function renderRecipe(el, id, fromPantry) {
           </button>
         </li>`).join('')}</ul>
         <button type="button" class="btn btn-primary btn-block" data-action="shop" style="margin-top: 12px"${picked.size ? '' : ' disabled'}>${ICONS.cart} Do nákupu (${picked.size})</button>` : ''}
-      ${recipe.method ? `<p class="section-label">Postup</p><div class="note-view is-open recipe-method">${methodHtml(recipe.method, recipe.hints)}</div>` : ''}`;
+      ${recipe.method ? `<p class="section-label">Postup</p>${stepsHtml(recipe.method, recipe.hints)}` : ''}`;
   }
 
   root.addEventListener('click', async (e) => {
@@ -258,6 +258,39 @@ function methodHtml(method, hints = []) {
   }).join('');
 }
 
+// Postup je uložený jako text, krok na řádek. Řádek začínající "|| " je
+// druhá větev předchozího kroku (dělá se mezitím): krok pak má části A a B.
+// Starší recepty se souvislým textem se tak samy rozpadnou na kroky po řádcích.
+const PARALLEL = '|| ';
+
+function parseMethod(method) {
+  const steps = [];
+  for (const line of String(method ?? '').split('\n').map((l) => l.trim()).filter(Boolean)) {
+    if (line.startsWith(PARALLEL.trim()) && steps.length && steps.at(-1).b === null) steps.at(-1).b = line.slice(2).trim();
+    else steps.push({ a: line, b: null });
+  }
+  return steps;
+}
+
+const oneLine = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
+
+function formatMethod(steps) {
+  return steps
+    .map((step) => ({ a: oneLine(step.a), b: step.b === null ? null : oneLine(step.b) }))
+    .filter((step) => step.a || step.b)
+    .map((step) => (step.b ? `${step.a}\n${PARALLEL}${step.b}` : step.a))
+    .join('\n');
+}
+
+// Postup v receptu: očíslované kroky, souběžné části jako 1A a 1B
+function stepsHtml(method, hints) {
+  const steps = parseMethod(method);
+  return `<ol class="rsteps">${steps.map((step, i) => (step.b === null
+    ? `<li class="rstep-view"><span class="rstep-num">${i + 1}</span><div class="rstep-text">${methodHtml(step.a, hints)}</div></li>`
+    : `<li class="rstep-view is-split"><span class="rstep-num">${i + 1}A</span><div class="rstep-text">${methodHtml(step.a, hints)}</div>
+        <span class="rstep-num">${i + 1}B</span><div class="rstep-text">${methodHtml(step.b, hints)}</div></li>`)).join('')}</ol>`;
+}
+
 async function renderEdit(el, id) {
   const { root, back } = page(el, id ? `recepty/${id}` : 'recepty');
   const recipe = id ? await store.getRecipe(id) : { name: '', ingredients: [], method: '', hints: [] };
@@ -286,7 +319,8 @@ async function renderEdit(el, id) {
       <div class="chips ing-chips"></div>
 
       <p class="section-label">Postup</p>
-      <textarea class="input" name="method" rows="6" autocapitalize="sentences" aria-label="Postup"></textarea>
+      <ol class="rsteps rsteps-edit"></ol>
+      <button type="button" class="btn btn-ghost btn-small step-add" data-action="rstep-add">${ICONS.plus} Krok</button>
       <div class="hint-bar">
         <button type="button" class="btn btn-small" data-action="hint-add">${ICONS.plus} Vysvětlení</button>
         <span class="hint-chips"></span>
@@ -302,15 +336,15 @@ async function renderEdit(el, id) {
   const listEl = root.querySelector('.ing-list');
   const entry = form.elements.entry;
   const hintChips = root.querySelector('.hint-chips');
-  const methodEl = form.elements.method;
+  const stepsEl = root.querySelector('.rsteps-edit');
+  // Kroky postupu: { key, a, b }, b = null znamená, že krok nemá souběžnou část
+  let steps = parseMethod(recipe.method).map((step) => ({ key: store.newId(), ...step }));
+  const methodText = () => formatMethod(steps);
   const grow = (area) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
 
   form.elements.name.value = recipe.name;
-  methodEl.value = recipe.method ?? '';
-  [form.elements.name, methodEl].forEach((area) => {
-    grow(area);
-    area.addEventListener('input', () => grow(area));
-  });
+  grow(form.elements.name);
+  form.elements.name.addEventListener('input', () => grow(form.elements.name));
   form.elements.name.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
@@ -408,10 +442,65 @@ async function renderEdit(el, id) {
 
   function drawHints() {
     hintChips.innerHTML = hints
-      .map((h, i) => `<button type="button" class="chip hint-chip${methodEl.value.toLowerCase().includes(h.term.toLowerCase()) ? '' : ' is-missing'}" data-hint="${i}">${escapeHtml(h.term)}</button>`)
+      .map((h, i) => `<button type="button" class="chip hint-chip${methodText().toLowerCase().includes(h.term.toLowerCase()) ? '' : ' is-missing'}" data-hint="${i}">${escapeHtml(h.term)}</button>`)
       .join('');
   }
-  methodEl.addEventListener('input', drawHints);
+  // ---------- Kroky postupu ----------
+  // Každý krok má své pole. Tlačítko +B přidá souběžnou část ("mezitím"),
+  // krok se pak čísluje 1A a 1B. Pořadí se mění podržením čísla a přetažením.
+
+  function drawSteps() {
+    stepsEl.innerHTML = steps.map((step, i) => `<li class="rstep" data-key="${step.key}">
+        <span class="rstep-num">${i + 1}${step.b === null ? '' : 'A'}</span>
+        <div class="rstep-body">
+          <div class="rstep-line">
+            <textarea class="input rstep-input" data-part="a" rows="1" autocapitalize="sentences" aria-label="Krok ${i + 1}">${escapeHtml(step.a)}</textarea>
+            ${step.b === null ? '<button type="button" class="icon-btn rstep-split" data-action="rstep-split" aria-label="Přidat souběžnou část">+B</button>' : ''}
+            <button type="button" class="icon-btn" data-action="rstep-remove" aria-label="Odebrat krok">×</button>
+          </div>
+          ${step.b === null ? '' : `<div class="rstep-line">
+            <span class="rstep-num is-b">${i + 1}B</span>
+            <textarea class="input rstep-input" data-part="b" rows="1" autocapitalize="sentences" aria-label="Krok ${i + 1}B">${escapeHtml(step.b)}</textarea>
+            <button type="button" class="icon-btn" data-action="rstep-unsplit" aria-label="Odebrat souběžnou část">×</button>
+          </div>`}
+        </div>
+      </li>`).join('');
+    stepsEl.querySelectorAll('textarea').forEach(grow);
+  }
+
+  const focusStep = (key, part = 'a') => stepsEl.querySelector(`[data-key="${key}"] [data-part="${part}"]`)?.focus();
+
+  function addStep(afterKey = null) {
+    const step = { key: store.newId(), a: '', b: null };
+    const at = afterKey ? steps.findIndex((s) => s.key === afterKey) + 1 : steps.length;
+    steps = [...steps.slice(0, at), step, ...steps.slice(at)];
+    drawSteps();
+    focusStep(step.key);
+  }
+
+  stepsEl.addEventListener('input', (e) => {
+    const step = steps.find((s) => s.key === e.target.closest('[data-key]')?.dataset.key);
+    if (!step || !e.target.dataset.part) return;
+    step[e.target.dataset.part] = e.target.value;
+    grow(e.target);
+    drawHints();
+  });
+  // Enter založí další krok hned za tímhle
+  stepsEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !e.target.dataset.part) return;
+    e.preventDefault();
+    addStep(e.target.closest('[data-key]').dataset.key);
+  });
+
+  dragSort(stepsEl, {
+    item: '.rstep',
+    handle: '.rstep-num:not(.is-b)',
+    attr: 'data-key',
+    onDrop: (keys) => {
+      steps = keys.map((key) => steps.find((s) => s.key === key)).filter(Boolean);
+      drawSteps();
+    },
+  });
 
   function openHint(index, term = '') {
     const existing = index === null ? null : hints[index];
@@ -459,10 +548,29 @@ async function renderEdit(el, id) {
     const action = e.target.closest('[data-action]')?.dataset.action;
     if (action === 'ing-add') submitEntry();
     if (action === 'hint-add') {
-      const selected = methodEl.value.slice(methodEl.selectionStart, methodEl.selectionEnd).replace(/\s+/g, ' ').trim();
+      // Označený text v kroku, do kterého se zrovna píše
+      const area = document.activeElement?.dataset?.part ? document.activeElement : null;
+      const selected = area ? area.value.slice(area.selectionStart, area.selectionEnd).replace(/\s+/g, ' ').trim() : '';
       openHint(null, selected);
     }
-    const rowEl = e.target.closest('[data-key]');
+    if (action === 'rstep-add') {
+      holdKeyboard();
+      addStep();
+    }
+    const stepEl = e.target.closest('.rstep');
+    if (stepEl) {
+      const step = steps.find((s) => s.key === stepEl.dataset.key);
+      if (action === 'rstep-remove') steps = steps.filter((s) => s !== step);
+      if (action === 'rstep-split') step.b = '';
+      if (action === 'rstep-unsplit') step.b = null;
+      if (action?.startsWith('rstep-')) {
+        drawSteps();
+        drawHints();
+        if (action === 'rstep-split') focusStep(step.key, 'b');
+        return;
+      }
+    }
+    const rowEl = e.target.closest('.ing-row');
     if (rowEl && action === 'ing-remove') {
       rows = rows.filter((r) => r.key !== rowEl.dataset.key);
       drawRows();
@@ -501,11 +609,12 @@ async function renderEdit(el, id) {
     // Rozepsaná ingredience v poli se nesmí ztratit
     if (entry.value.trim()) addRow(entry.value);
     const ingredients = rows.map((row) => ({ name: row.name, qty: joinQty(row) }));
-    const saved = await store.saveRecipe({ id, name, ingredients, method: methodEl.value, hints });
+    const saved = await store.saveRecipe({ id, name, ingredients, method: methodText(), hints });
     navigate(`recepty/${saved.id}`);
   });
 
   drawRows();
+  drawSteps();
   drawHints();
   refreshChips();
   return endSort;
