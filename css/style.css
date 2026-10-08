@@ -1062,3 +1062,8 @@ textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: 9px 12p
 .rstep .icon-btn { font-size: 20px; line-height: 1; color: var(--text-3); width: 36px; height: 42px; }
 .rstep .rstep-split { font-size: 13px; font-weight: 700; color: var(--accent); }
 .rstep.is-held { position: relative; z-index: 2; background: var(--bg); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
+
+/* Připravené pole pro další souběžnou část (C, D…): zatím nenápadné */
+.rstep-line.is-spare .rstep-num { opacity: 0.5; }
+.rstep-line.is-spare textarea { border-style: dashed; background: transparent; }
+.rstep span.icon-btn { visibility: hidden; }
