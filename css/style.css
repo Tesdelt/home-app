@@ -16,13 +16,13 @@
   --danger-soft: #F8E1E6;
 
   /* Čí to je: první člen (Domi, růžová), druhý člen (Tom, modrá), společné
-     (oranžová). Syté barvy, ať se od sebe na úzkém pruhu dobře liší. */
+     (světlejší zelená, ať nebije do očí a neplete se s hlavní barvou). */
   --who-1: #D6408F;
   --who-1-soft: #FBE1EF;
   --who-2: #2468C4;
   --who-2-soft: #DCE9FA;
-  --who-both: #E8780C;
-  --who-both-soft: #FCE7D2;
+  --who-both: #5FA86B;
+  --who-both-soft: #E3F2E5;
   --warn: #9A7400;
   --warn-soft: #F6ECC8;
 
@@ -59,8 +59,8 @@
     --who-1-soft: #3F1F31;
     --who-2: #5AA2FF;
     --who-2-soft: #172B45;
-    --who-both: #FF9A2E;
-    --who-both-soft: #40290F;
+    --who-both: #8FD19A;
+    --who-both-soft: #1F3324;
     --warn: #E2BD55;
     --warn-soft: #3A3117;
   }

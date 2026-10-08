@@ -75,7 +75,7 @@ Posluchače událostí věšet na vlastní prvky uvnitř pohledu, ne přímo na 
 - Celé UI česky. V textech jen krátká pomlčka `-`, nikdy dlouhá `—`.
 - Mobile-first, dotykové plochy aspoň 44 px, písmo v polích aspoň 16 px (iOS jinak zoomuje).
 - Barvy jen přes CSS proměnné z `:root`, ať funguje tmavý režim. Hlavní barva je teplá
-  (terakota), tyrkysová se nepoužívá. Barvy „čí to je“: Domi růžová, Tom modrá, společné oranžová. V řádcích
+  (terakota), tyrkysová se nepoužívá. Barvy „čí to je“: Domi růžová, Tom modrá, společné světlejší zelená. V řádcích
   je ukazuje jen širší pruh vlevo, kolečko s iniciálou tam není. Důležitost: šedá, okrová,
   malinová.
 - Žádné knihovny z CDN bez dobrého důvodu, appka musí fungovat offline.
