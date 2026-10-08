@@ -9,11 +9,8 @@
 // Tohle není pohled, ale pomocník pohledů: na data sahá jen přes store.js.
 
 import * as store from './store.js';
-import { categoryName } from './categories.js';
+import { categoryName, FOOD } from './categories.js';
 import { escapeHtml, openSheet } from './ui.js';
-
-// Kategorie jídla (bez drogerie, domácnosti a potřeb pro psa)
-export const FOOD = ['ovoce', 'zelenina', 'maso', 'pecivo', 'uzeniny', 'mlecne', 'trvanlive', 'sladke', 'slane', 'napoje', 'mrazene'];
 
 // chipsEl   prvek .chips, do kterého se řádek kreslí
 // input     pole, podle kterého se našeptává

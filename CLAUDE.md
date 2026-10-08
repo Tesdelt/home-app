@@ -34,7 +34,9 @@ js/config.js          adresa a veřejný klíč Supabase, zobrazovaná verze
 js/ui.js              escapeHtml, ikony, toast se Zpět, spodní panel, gesta na řádcích, formátování
 js/views/*.js         jednotlivé obrazovky
 js/views/task.js      stránka jednoho úkolu (#/ukoly/<id>): pole, kroky, komentáře
-js/views/wishes.js    wishlist a bucketlist (#/wishlist, #/bucketlist, z Více), jedno rozhraní
+js/views/wishes.js    wishlist a bucketlist (#/wishlist, #/bucketlist), jedno rozhraní
+js/views/docs.js      administrativa (#/administrativa): dokumenty podle kategorií, společné / osobní
+js/views/notes.js     info o domácnosti (#/info): poznámky
 js/views/recipes.js   recepty (#/recepty, z Více): seznam, recept, úprava, „co uvařit“
 js/views/login.js     přihlášení, „Nemáte přístup“, nabídka nahrát stará lokální data
 sw.js                 offline cache
@@ -135,7 +137,9 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   uhýbají), nic nesmí skákat po blocích. Totéž platí pro další pohyby v rozhraní. Rozbalené věci se zavírají dalším ťuknutím na ně, ne tlačítkem Hotovo.
 - Volby u malého tlačítka se otevírají jako nabídka přímo u něj (`openMenu` v `ui.js`),
   spodní panel (`openSheet`) je jen pro větší formuláře.
-- Spodní lišta max. 5 položek. Co se otevírá jen občas, patří do „Více“.
+- Spodní lišta max. 5 položek. Další moduly (recepty, administrativa, wishlist, bucketlist,
+  info o domácnosti a každý nový) mají dlaždici na Domů. „Více“ je jen nastavení aplikace
+  (účet, synchronizace, upozornění, záloha), moduly do něj nepatří.
 
 ## Stav a plán
 
@@ -221,6 +225,18 @@ Hotovo (0.6.0):
   a nabídka zůstává otevřená (iPhone hlásí změnu už při otevření kalendáře). Prázdná pole
   bez popisku do nabídek nepatří. Čas úkolu (`time`) má vlastní řádek Čas (stejný princip
   jako Vybrat) s křížkem na zrušení; čas bez dne znamená dnes.
+
+Hotovo (0.15.0):
+- Moduly se otevírají z dlaždic na Domů, Více je jen nastavení.
+- Administrativa (tabulky `documents`, `doc_files`): dokument má název, kategorii (záruky
+  a účtenky, smlouvy, doklady, ostatní), „platí do“, poznámku a naskenované stránky. Seznam
+  je rozdělený na Společné a Osobní; osobní má `private_to` a druhému se neposílá (RLS),
+  platí to i pro jeho stránky. Stránky se zmenšují na 1600 px (`scalePhoto`) a stahují se
+  líně jako fotky receptů. Jsou to citlivá data (skeny dokladů): nikdy je nedávat do logů,
+  do zálohy JSON ani do notifikací.
+- Info o domácnosti (tabulka `notes`): seznam poznámek s názvem a textem.
+- Wishlist a bucketlist mají zámek jako úkoly (soukromá položka, `private_to` v `wishes`).
+- Recepty nabízejí jen jídlo (`foodOnly` v `productSuggestions`, `FOOD` v `categories.js`).
 
 Hotovo (0.12.0):
 - Wishlist a bucketlist (z Více, tabulka `wishes`, sloupec `list`): položka má název, pro

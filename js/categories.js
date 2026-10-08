@@ -26,6 +26,10 @@ export const CATEGORIES = [
 
 export const DEFAULT_CATEGORY = 'ostatni';
 
+// Kategorie jídla (bez drogerie, domácnosti a potřeb pro psa). Recepty
+// nabízejí jen věci z nich.
+export const FOOD = ['ovoce', 'zelenina', 'maso', 'pecivo', 'uzeniny', 'mlecne', 'trvanlive', 'sladke', 'slane', 'napoje', 'mrazene'];
+
 // Obchody, které jsou v appce rovnou. Pořadí kategorií = jak se obchod
 // prochází. Úpravy a další obchody se ukládají do skladu shops (store.js).
 export const BUILTIN_SHOPS = [

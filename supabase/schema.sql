@@ -214,6 +214,54 @@ create table if not exists public.wishes (
 
 create index if not exists wishes_household_idx on public.wishes (household_id);
 
+-- 0.15.0: soukromá položka wishlistu (dárky), vidí ji jen ten, kdo ji založil
+alter table public.wishes add column if not exists private_to uuid references auth.users (id) on delete cascade;
+
+-- Administrativa: doklady, smlouvy, záruky. private_to = osobní dokument,
+-- který vidí jen jeho majitel. files = seznam id naskenovaných stránek.
+create table if not exists public.documents (
+  id           uuid primary key,
+  household_id uuid not null references public.households (id) on delete cascade,
+  title        text not null default '',
+  category     text not null default 'ostatni',
+  note         text,
+  valid_until  date,
+  files        jsonb not null default '[]',
+  private_to   uuid references auth.users (id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+
+create index if not exists documents_household_idx on public.documents (household_id);
+
+-- Naskenované stránky dokumentů (obrázek jako text). Stahují se jen na
+-- vyžádání. Osobní dokument má osobní i stránky.
+create table if not exists public.doc_files (
+  id           uuid primary key,
+  household_id uuid not null references public.households (id) on delete cascade,
+  doc_id       uuid not null,
+  data         text,
+  private_to   uuid references auth.users (id) on delete cascade,
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+
+create index if not exists doc_files_household_idx on public.doc_files (household_id);
+
+-- Info o domácnosti: poznámky (wifi, odečty, kontakty)
+create table if not exists public.notes (
+  id           uuid primary key,
+  household_id uuid not null references public.households (id) on delete cascade,
+  title        text not null default '',
+  body         text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+
+create index if not exists notes_household_idx on public.notes (household_id);
+
 -- Push notifikace: adresy, na které se telefonům posílají upozornění.
 -- Každý vidí a mění jen své vlastní odběry.
 create table if not exists public.push_subscriptions (
@@ -300,6 +348,16 @@ create trigger shops_keep_newer
   before update on public.shops
   for each row execute function private.keep_newer();
 
+drop trigger if exists documents_keep_newer on public.documents;
+create trigger documents_keep_newer before update on public.documents
+  for each row execute function private.keep_newer();
+drop trigger if exists doc_files_keep_newer on public.doc_files;
+create trigger doc_files_keep_newer before update on public.doc_files
+  for each row execute function private.keep_newer();
+drop trigger if exists notes_keep_newer on public.notes;
+create trigger notes_keep_newer before update on public.notes
+  for each row execute function private.keep_newer();
+
 drop trigger if exists recipe_photos_keep_newer on public.recipe_photos;
 create trigger recipe_photos_keep_newer
   before update on public.recipe_photos
@@ -334,6 +392,9 @@ revoke all on public.task_comments     from public, anon, authenticated;
 revoke all on public.recipes           from public, anon, authenticated;
 revoke all on public.wishes            from public, anon, authenticated;
 revoke all on public.recipe_photos     from public, anon, authenticated;
+revoke all on public.documents         from public, anon, authenticated;
+revoke all on public.doc_files         from public, anon, authenticated;
+revoke all on public.notes             from public, anon, authenticated;
 revoke all on public.push_subscriptions from public, anon, authenticated;
 revoke all on public.payment_reminders  from public, anon, authenticated;
 
@@ -348,6 +409,9 @@ grant select, insert, update, delete on public.task_comments    to authenticated
 grant select, insert, update, delete on public.recipes          to authenticated;
 grant select, insert, update, delete on public.wishes           to authenticated;
 grant select, insert, update, delete on public.recipe_photos    to authenticated;
+grant select, insert, update, delete on public.documents        to authenticated;
+grant select, insert, update, delete on public.doc_files        to authenticated;
+grant select, insert, update, delete on public.notes            to authenticated;
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 
 -- Servisní role (funkce send-reminders) dostane jen to, co k rozeslání
@@ -369,6 +433,9 @@ alter table public.task_comments     enable row level security;
 alter table public.recipes           enable row level security;
 alter table public.wishes            enable row level security;
 alter table public.recipe_photos     enable row level security;
+alter table public.documents         enable row level security;
+alter table public.doc_files         enable row level security;
+alter table public.notes             enable row level security;
 alter table public.push_subscriptions enable row level security;
 alter table public.payment_reminders  enable row level security;
 
@@ -431,6 +498,30 @@ create policy "clen cte a zapisuje fotky receptu" on public.recipe_photos
 drop policy if exists "clen cte a zapisuje prani" on public.wishes;
 create policy "clen cte a zapisuje prani" on public.wishes
   for all to authenticated
+  using (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())))
+  with check (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())));
+
+drop policy if exists "clen cte a zapisuje dokumenty" on public.documents;
+create policy "clen cte a zapisuje dokumenty" on public.documents
+  for all to authenticated
+  using (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())))
+  with check (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())));
+
+drop policy if exists "clen cte a zapisuje stranky dokumentu" on public.doc_files;
+create policy "clen cte a zapisuje stranky dokumentu" on public.doc_files
+  for all to authenticated
+  using (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())))
+  with check (household_id in (select private.my_household_ids())
+    and (private_to is null or private_to = (select auth.uid())));
+
+drop policy if exists "clen cte a zapisuje poznamky" on public.notes;
+create policy "clen cte a zapisuje poznamky" on public.notes
+  for all to authenticated
   using (household_id in (select private.my_household_ids()))
   with check (household_id in (select private.my_household_ids()));
 
@@ -453,7 +544,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops', 'task_comments', 'recipes', 'wishes'] loop
+  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops', 'task_comments', 'recipes', 'wishes', 'documents', 'notes'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

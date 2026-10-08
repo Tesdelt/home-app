@@ -1113,3 +1113,28 @@ textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: 9px 12p
 .recipe-times { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
 .recipe-times .field { margin-bottom: 6px; }
 .recipe-times .btn { grid-column: 1 / -1; justify-self: start; padding-left: 2px; }
+
+/* ---------- Domů: dlaždice modulů ---------- */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+a.card.tile { display: flex; align-items: center; gap: 10px; margin: 0; min-height: 56px; padding: 12px 14px; }
+.tile .card-title { font-size: 16px; }
+
+/* ---------- Administrativa a poznámky ---------- */
+.opt-cat { width: 142px; }
+.opt-date.opt-due { width: 132px; }
+.opt-date { position: relative; cursor: pointer; }
+.opt-date input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: 16px; -webkit-appearance: none; appearance: none; }
+textarea.doc-note { min-height: 0; margin-bottom: 12px; resize: none; overflow: hidden; }
+textarea.note-body { min-height: 220px; resize: none; overflow: hidden; line-height: 1.45; }
+.note-preview { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-name.is-blank { color: var(--text-3); }
+.doc-files { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.doc-file { position: relative; aspect-ratio: 3 / 4; border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); }
+.doc-file img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.doc-file .icon-btn { position: absolute; top: 2px; right: 2px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 20px; line-height: 1; }
+.doc-file-wait { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, var(--surface) 50%, transparent 70%) 0 0 / 200% 100%; animation: shimmer 1.2s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.doc-file-add { border-style: dashed; background: var(--surface); cursor: pointer; }
+.doc-file-add input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
+.doc-full { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.92); display: grid; place-items: center; padding: var(--safe-top) 0 var(--safe-bottom); animation: fade-in 0.15s ease; }
+.doc-full img { max-width: 100%; max-height: 100%; object-fit: contain; }

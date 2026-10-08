@@ -8,7 +8,7 @@
 
 import * as db from './db.js';
 import * as sync from './sync.js';
-import { guessCategory, normalize, CATEGORIES, BUILTIN_SHOPS } from './categories.js';
+import { guessCategory, normalize, CATEGORIES, BUILTIN_SHOPS, FOOD } from './categories.js';
 import { findProduct, searchProducts, productsIn } from './catalog.js';
 import { today, addDays, addInterval, nextDayOfMonth } from './dates.js';
 
@@ -104,12 +104,19 @@ async function removeByIds(store, ids) {
   return removed;
 }
 
-async function patchRow(store, id, patch) {
-  const row = await db.get(store, id);
-  if (!row || row.deleted) return null;
-  const next = { ...row, ...patch, updatedAt: Date.now() };
-  await save(store, [next]);
-  return next;
+// Úpravy řádků jdou jedna po druhé. Dvě úpravy téhož řádku těsně po sobě
+// (název a hned text) by si jinak navzájem přepsaly, co ta druhá nezměnila.
+let patching = Promise.resolve();
+function patchRow(store, id, patch) {
+  const run = async () => {
+    const row = await db.get(store, id);
+    if (!row || row.deleted) return null;
+    const next = { ...row, ...patch, updatedAt: Date.now() };
+    await save(store, [next]);
+    return next;
+  };
+  patching = patching.then(run, run);
+  return patching;
 }
 
 const liveItems = () => live('items');
@@ -255,14 +262,19 @@ export async function shoppingItem(name) {
 
 // Návrhy produktů bez ohledu na nákupní seznam (recepty, zásoby): při psaní
 // našeptávač z historie a katalogu, jinak nejčastěji kupované. Vrací názvy.
-export async function productSuggestions(query, limit = 6) {
+// foodOnly = jen jídlo (recepty nemají nabízet granule a prací prášek).
+export async function productSuggestions(query, limit = 6, { foodOnly = false } = {}) {
   const q = normalize(query);
-  const history = (await db.getAll('history')).sort((a, b) => b.count - a.count || b.lastAt - a.lastAt);
+  const isFood = (name, category) => FOOD.includes(findProduct(name)?.category ?? category ?? guessCategory(name));
+  const history = (await db.getAll('history'))
+    .filter((h) => !foodOnly || isFood(h.name, h.category))
+    .sort((a, b) => b.count - a.count || b.lastAt - a.lastAt);
   if (!q) return history.filter((h) => h.count > 0).slice(0, limit).map((h) => findProduct(h.name)?.name ?? h.name);
   const fromHistory = history
     .filter((h) => h.key.split(' ').some((w) => w.startsWith(q)) || h.key.startsWith(q))
     .map((h) => findProduct(h.name)?.name ?? h.name);
-  return [...new Set([...fromHistory, ...searchProducts(q, limit).map((p) => p.name)])].slice(0, limit);
+  const fromCatalog = searchProducts(q, limit * 2).filter((p) => !foodOnly || FOOD.includes(p.category)).map((p) => p.name);
+  return [...new Set([...fromHistory, ...fromCatalog])].slice(0, limit);
 }
 
 // ---------- Obchody ----------
@@ -530,11 +542,12 @@ export async function getWish(id) {
   return wish && !wish.deleted ? wish : null;
 }
 
-export async function addWish({ list, title, note = null, assignee = null, untilYear = null }) {
+// isPrivate = položku uvidím jen já (dárky). Hlídá to i databáze.
+export async function addWish({ list, title, note = null, assignee = null, untilYear = null, isPrivate = false }) {
   const clean = String(title).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
-  const wish = { id: db.newId(), list, title: clean, note, assignee, untilYear, done: false, doneAt: null, createdAt: now, updatedAt: now };
+  const wish = { id: db.newId(), list, title: clean, note, assignee, untilYear, privateTo: isPrivate ? await myUserId() : null, done: false, doneAt: null, createdAt: now, updatedAt: now };
   await save('wishes', [wish]);
   emit();
   return wish;
@@ -547,8 +560,109 @@ export async function updateWish(id, patch) {
 }
 
 export const setWishDone = (id, done) => updateWish(id, { done, doneAt: done ? Date.now() : null });
+export const setWishPrivate = async (id, isPrivate) => updateWish(id, { privateTo: isPrivate ? await myUserId() : null });
 export const removeWishes = (ids) => removeByIds('wishes', ids);
 export const restoreWishes = (wishes) => restore('wishes', wishes);
+
+// ---------- Administrativa: dokumenty ----------
+// Dokument: { id, title, category, note, validUntil, files, privateTo, createdAt, updatedAt }
+//   category    'zaruky' | 'smlouvy' | 'doklady' | 'ostatni'
+//   validUntil  "RRRR-MM-DD" (záruka do, platnost do), nebo null
+//   files       [{ id }] naskenované stránky, samotné obrázky jsou ve skladu docfiles
+//   privateTo   id uživatele = osobní dokument, vidí ho jen on; null = společný
+
+export const DOC_CATEGORIES = [['zaruky', 'Záruky a účtenky'], ['smlouvy', 'Smlouvy'], ['doklady', 'Doklady'], ['ostatni', 'Ostatní']];
+
+export async function listDocs() {
+  return (await live('documents')).sort((a, b) => (a.title || '').localeCompare(b.title || '', 'cs'));
+}
+
+export async function getDoc(id) {
+  const doc = await db.get('documents', id);
+  return doc && !doc.deleted ? doc : null;
+}
+
+export async function addDoc({ category = 'ostatni', isPrivate = false } = {}) {
+  const now = Date.now();
+  const doc = { id: db.newId(), title: '', category, note: null, validUntil: null, files: [], privateTo: isPrivate ? await myUserId() : null, createdAt: now, updatedAt: now };
+  await save('documents', [doc]);
+  emit();
+  return doc;
+}
+
+export async function updateDoc(id, patch) {
+  const next = await patchRow('documents', id, patch);
+  emit();
+  return next;
+}
+
+// Osobní / společný: stránky jdou s dokumentem
+export async function setDocPrivate(id, isPrivate) {
+  const privateTo = isPrivate ? await myUserId() : null;
+  const files = (await db.getAll('docfiles')).filter((f) => f.docId === id && !f.deleted);
+  const now = Date.now();
+  await save('docfiles', files.map((f) => ({ ...f, privateTo, updatedAt: now })));
+  return updateDoc(id, { privateTo });
+}
+
+export const removeDocs = (ids) => removeByIds('documents', ids);
+export const restoreDocs = (docs) => restore('documents', docs);
+
+export async function addDocFile(docId, data) {
+  const doc = await getDoc(docId);
+  if (!doc) return null;
+  const file = { id: db.newId(), docId, data, privateTo: doc.privateTo ?? null, updatedAt: Date.now() };
+  await save('docfiles', [file]);
+  return updateDoc(docId, { files: [...(doc.files ?? []), { id: file.id }] });
+}
+
+export async function removeDocFile(docId, fileId) {
+  const doc = await getDoc(docId);
+  const file = await db.get('docfiles', fileId);
+  if (file) await save('docfiles', [{ ...file, data: null, deleted: true, updatedAt: Date.now() }]);
+  if (doc) await updateDoc(docId, { files: (doc.files ?? []).filter((f) => f.id !== fileId) });
+}
+
+// Stránky dokumentu: [{ id, data }] (data = null, dokud se nestáhne).
+// Co telefon nemá, si na pozadí stáhne a pohled se překreslí sám.
+export async function docFiles(doc) {
+  const out = [];
+  for (const { id } of doc.files ?? []) {
+    const file = await db.get('docfiles', id);
+    if (!file?.data) sync.fetchOne('docfiles', id);
+    out.push({ id, data: file?.data ?? null });
+  }
+  return out;
+}
+
+// ---------- Info o domácnosti: poznámky ----------
+// Poznámka: { id, title, body, createdAt, updatedAt }
+
+export async function listNotes() {
+  return (await live('notes')).sort((a, b) => (a.title || '').localeCompare(b.title || '', 'cs'));
+}
+
+export async function getNote(id) {
+  const note = await db.get('notes', id);
+  return note && !note.deleted ? note : null;
+}
+
+export async function addNote() {
+  const now = Date.now();
+  const note = { id: db.newId(), title: '', body: null, createdAt: now, updatedAt: now };
+  await save('notes', [note]);
+  emit();
+  return note;
+}
+
+export async function updateNote(id, patch) {
+  const next = await patchRow('notes', id, patch);
+  emit();
+  return next;
+}
+
+export const removeNotes = (ids) => removeByIds('notes', ids);
+export const restoreNotes = (notes) => restore('notes', notes);
 
 // ---------- Jednorázové úpravy dat po aktualizaci appky ----------
 
@@ -1031,7 +1145,7 @@ export async function exportAll() {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Sklady s řádky podle id, které se synchronizují stejným způsobem
-const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes'];
+const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes', 'documents', 'notes'];
 
 export async function importAll(backup) {
   if (backup?.app !== 'home-app' || !backup.data) throw new Error('Tohle není záloha této aplikace.');
@@ -1042,7 +1156,7 @@ export async function importAll(backup) {
     const rows = Array.isArray(backup.data[store]) ? backup.data[store] : [];
     const keep = [];
     for (const row of rows) {
-      if (!row?.id || !(row.name || row.title || row.body)) continue;
+      if (!row?.id) continue;
       // Server bere jen UUID, starší id z náhradního generátoru dostane nové
       if (!UUID.test(row.id)) {
         keep.push({ ...row, id: db.newId(), deleted: false });

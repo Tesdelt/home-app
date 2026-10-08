@@ -14,7 +14,7 @@ import { escapeHtml, ICONS, toast, undoToast, openMenu, openSheet, dragSort, hol
 import { navigate } from '../router.js';
 
 export const title = 'Recepty';
-export const tab = 'vice';
+export const tab = 'domu';
 
 const NEW = 'novy';
 const PANTRY = 'zasoby';
@@ -497,7 +497,7 @@ async function renderEdit(el, id) {
   const refreshChips = productChips(root.querySelector('.ing-chips'), {
     input: entry,
     foodOnly: true,
-    quick: (typed) => store.productSuggestions(typed ? parseEntry(typed).name : '', 6),
+    quick: (typed) => store.productSuggestions(typed ? parseEntry(typed).name : '', 6, { foodOnly: true }),
     onPick: (name) => {
       // Množství napsané za názvem se použije i s vybraným názvem
       const qty = entry.value.trim() ? parseEntry(entry.value).qty : '';
@@ -854,7 +854,7 @@ async function renderPantry(el) {
   const refreshChips = productChips(root.querySelector('.pantry-chips'), {
     input,
     foodOnly: true,
-    quick: async (typed) => (await store.productSuggestions(typed, 8)).filter((name) => !store.hasIngredient(have, name)).slice(0, 6),
+    quick: async (typed) => (await store.productSuggestions(typed, 8, { foodOnly: true })).filter((name) => !store.hasIngredient(have, name)).slice(0, 6),
     onPick: async (name) => {
       input.value = '';
       await add(name);

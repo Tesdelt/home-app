@@ -55,6 +55,7 @@ function makeView({ list, title, route, icon }) {
         <button type="button" class="item-main has-stripe" aria-pressed="${wish.done}">
           <span class="check-tap"><span class="check">${ICONS.check}</span></span>
           <span class="item-text"><span class="item-name">${escapeHtml(wish.title)}</span>${note}</span>
+          ${wish.privateTo ? `<span class="item-lock" title="Soukromé">${ICONS.lock}</span>` : ''}
         </button>
       </li>`;
     }
@@ -117,7 +118,7 @@ function makeView({ list, title, route, icon }) {
     el.append(root);
 
     const draft = id === NEW;
-    let wish = draft ? { title: '', note: null, assignee: null, untilYear: null, done: false } : await store.getWish(id);
+    let wish = draft ? { title: '', note: null, assignee: null, untilYear: null, done: false, privateTo: null } : await store.getWish(id);
     const back = `<a class="back-btn" href="#/${route}" aria-label="Zpět">${ICONS.back}</a>`;
     if (!wish) {
       root.innerHTML = `<div class="detail-head">${back}<span class="detail-name">Položka už neexistuje</span></div>`;
@@ -159,7 +160,7 @@ function makeView({ list, title, route, icon }) {
         return;
       }
       const { note, assignee, untilYear } = wish;
-      await store.addWish({ list, title: text.charAt(0).toLocaleUpperCase('cs') + text.slice(1), note, assignee, untilYear });
+      await store.addWish({ list, title: text.charAt(0).toLocaleUpperCase('cs') + text.slice(1), note, assignee, untilYear, isPrivate: Boolean(wish.privateTo) });
       navigate(route);
     }
 
@@ -171,7 +172,8 @@ function makeView({ list, title, route, icon }) {
       // Malá tlačítka: vždy stejná, ve stejném pořadí a šířce
       optsEl.innerHTML = `
         <button type="button" class="opt opt-who ${whoClass(wish.assignee, members)}" data-opt="who"><span class="legend-dot"></span><span class="opt-text">${escapeHtml(whoName(wish.assignee))}</span></button>
-        <button type="button" class="opt opt-due" data-opt="horizon"><span class="opt-text">${escapeHtml(horizonLabel(wish.untilYear))}</span></button>`;
+        <button type="button" class="opt opt-due" data-opt="horizon"><span class="opt-text">${escapeHtml(horizonLabel(wish.untilYear))}</span></button>
+        <button type="button" class="opt opt-icon opt-lock${wish.privateTo ? ' is-set' : ''}" data-opt="private" aria-pressed="${Boolean(wish.privateTo)}" aria-label="Soukromé">${ICONS.lock}</button>`;
     }
 
     // Podrobnosti: text, který se ťuknutím změní v pole
@@ -238,6 +240,11 @@ function makeView({ list, title, route, icon }) {
     optsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-opt]');
       if (!btn) return;
+      // Zámek: položku uvidím jen já (dárky)
+      if (btn.dataset.opt === 'private') {
+        if (draft) save({ privateTo: wish.privateTo ? null : 'me' });
+        else store.setWishPrivate(id, !wish.privateTo);
+      }
       if (btn.dataset.opt === 'who') {
         const options = [['', 'Kdokoliv', 'who-any'], ...members.map((m) => [m, m, whoClass(m, members)]), [store.BOTH, 'Oba', 'who-both']];
         openMenu(btn, (menu, close) => {
@@ -285,7 +292,7 @@ function makeView({ list, title, route, icon }) {
     return store.subscribe(draw);
   }
 
-  return { title, tab: 'vice', render };
+  return { title, tab: 'domu', render };
 }
 
 export const wishlist = makeView({ list: 'wish', title: 'Wishlist', route: 'wishlist', icon: 'gift' });

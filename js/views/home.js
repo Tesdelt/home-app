@@ -61,6 +61,18 @@ export async function render(el, { subEl }) {
       <p class="card-meta${late ? ' is-late' : ''}" style="margin: 0">${payments.length ? (soon.length ? `Zaplatit: ${soonText}` : 'V příštích 7 dnech nic k zaplacení.') : 'Žádné platby.'}</p>
     </a>`;
 
+    // Další moduly: dlaždice po dvou. Nové moduly se přidávají sem, ne do Více.
+    const tiles = [
+      ['recepty', 'recipe', 'Recepty'],
+      ['administrativa', 'folder', 'Administrativa'],
+      ['wishlist', 'gift', 'Wishlist'],
+      ['bucketlist', 'star', 'Bucketlist'],
+      ['info', 'house', 'Domácnost'],
+    ];
+    out += `<div class="tiles">${tiles.map(([route, icon, name]) => `<a class="card tile" href="#/${route}">
+        <span class="card-icon">${ICONS[icon]}</span><span class="card-title">${name}</span>
+      </a>`).join('')}</div>`;
+
     root.innerHTML = out;
   }
 
