@@ -216,8 +216,8 @@ Hotovo (0.6.0):
 - Nabídka termínu: Dnes, Zítra, Za týden, Bez termínu a řádek Vybrat (přes něj leží
   neviditelné pole s datem, ťuknutí otevře kalendář telefonu). Výběr z kalendáře se uloží hned
   a nabídka zůstává otevřená (iPhone hlásí změnu už při otevření kalendáře). Prázdná pole
-  bez popisku do nabídek nepatří. Čas úkolu (`time`) se zatím v appce nenastavuje, uložené
-  časy se dál zobrazují a řadí.
+  bez popisku do nabídek nepatří. Čas úkolu (`time`) má vlastní řádek Čas (stejný princip
+  jako Vybrat) s křížkem na zrušení; čas bez dne znamená dnes.
 
 Hotovo (0.12.0):
 - Wishlist a bucketlist (z Více, tabulka `wishes`, sloupec `list`): položka má název, pro
@@ -248,7 +248,7 @@ Hotovo (0.9.1), úpravy po testování:
   (třídy `opt-who`, `opt-prio`, `opt-due`, `opt-icon`, `opt-steps`).
   Opakování je jen ikona, žádné textové popisky k ikonám nepřidávat.
 - Úkol může mít volitelný čas (`time` „HH:MM“, sloupec `due_time`), je vidět v seznamu
-  i na Domů a řadí úkoly v rámci dne. Nastavování z nabídky termínu bylo v 0.11.4 odebráno.
+  i na Domů a řadí úkoly v rámci dne. Nastavuje se řádkem Čas v nabídce termínu.
 - V Úkolech není podtitulek „Na dnes: X“, počet je v záložce.
 
 Hotovo (0.9.0):

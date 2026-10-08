@@ -1023,3 +1023,8 @@ textarea.step-note { min-height: 40px; padding: 8px 12px; font-size: 16px; resiz
 .chip.skill-recipe { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; font-size: 14px; color: var(--text-2); text-decoration: none; background: var(--surface-2); border-color: transparent; }
 .chip.skill-recipe::before { content: none; }
 .skill-note + .skill-recipes + .skill-note { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+/* Řádek Čas v nabídce termínu: stejný jako Vybrat, vedle něj křížek na zrušení */
+.menu-time { display: flex; align-items: center; }
+.menu-time .menu-pick { flex: 1; min-width: 0; }
+.menu-time .icon-btn { font-size: 22px; line-height: 1; color: var(--text-3); }
