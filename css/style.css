@@ -23,6 +23,16 @@
   --who-2-soft: #DCE9FA;
   --who-both: #5FA86B;
   --who-both-soft: #E3F2E5;
+  /* Barvy ikon modulů na Domů. Teplé, bez modré, růžové, zelené a červené
+     (ty patří osobám a stavu po termínu). */
+  --mod-ukoly: #C98600;
+  --mod-nakup: #C2622D;
+  --mod-penize: #9A7A1E;
+  --mod-recepty: #DE7C3A;
+  --mod-administrativa: #7A5A44;
+  --mod-wishlist: #8660B4;
+  --mod-bucketlist: #D9A400;
+  --mod-info: #8E6886;
   --warn: #9A7400;
   --warn-soft: #F6ECC8;
 
@@ -71,6 +81,14 @@
     --who-2-soft: #172B45;
     --who-both: #8FD19A;
     --who-both-soft: #1F3324;
+    --mod-ukoly: #F0B33C;
+    --mod-nakup: #E58A57;
+    --mod-penize: #C9A94E;
+    --mod-recepty: #F5A066;
+    --mod-administrativa: #B8977F;
+    --mod-wishlist: #B596E0;
+    --mod-bucketlist: #F2CB45;
+    --mod-info: #C19DB9;
     --warn: #E2BD55;
     --warn-soft: #3A3117;
   }
@@ -1310,3 +1328,22 @@ a.card.tile { padding: var(--s3); }
 .menu, .hint-pop { background: var(--surface); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); animation: none; }
 .menu-item { background: var(--surface); }
 .menu-item[aria-pressed="true"], .menu-item:active { background: var(--surface-2); }
+
+/* ---------- Domů: jednotná mřížka dlaždic ---------- */
+/* Všechny moduly stejně velké ve 2 sloupcích. Řádky si rozdělí výšku mezi
+   hlavičkou a spodní lištou, takže se na telefonu neposouvá. */
+.home { height: 100%; }
+.home .tiles { height: 100%; max-height: 660px; grid-auto-rows: minmax(0, 1fr); }
+a.card.tile { display: flex; flex-direction: column; justify-content: space-between; min-height: 84px; padding: var(--s3) var(--s4); }
+.tile .card-icon { width: 28px; height: 28px; }
+.tile .card-icon svg { width: 100%; height: 100%; }
+.tile .card-title { flex: none; margin: var(--s2) 0 0; font-size: var(--fs-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .card-line { font-size: var(--fs-small); }
+.mod-ukoly .card-icon { color: var(--mod-ukoly); }
+.mod-nakup .card-icon { color: var(--mod-nakup); }
+.mod-penize .card-icon { color: var(--mod-penize); }
+.mod-recepty .card-icon { color: var(--mod-recepty); }
+.mod-administrativa .card-icon { color: var(--mod-administrativa); }
+.mod-wishlist .card-icon { color: var(--mod-wishlist); }
+.mod-bucketlist .card-icon { color: var(--mod-bucketlist); }
+.mod-info .card-icon { color: var(--mod-info); }

@@ -88,15 +88,16 @@ export async function render(el, { extraEl }) {
     <p class="section-label">Pole</p>
     <label class="field"><span>Název</span><input class="input" placeholder="Nájem"></label>
 
-    <p class="section-label">Karta a dlaždice</p>
-    <a class="card" href="#/ukazka">
-      <div class="card-head"><span class="card-icon">${ICONS.tasks}</span><h2 class="card-title">Úkoly</h2><span class="card-meta">na dnes 2</span></div>
-      <p class="card-line"><span class="is-late">Zalít kytky včera</span>, Vynést odpad 18:00</p>
-    </a>
+    <p class="section-label">Dlaždice modulů</p>
     <div class="tiles" style="margin-bottom: var(--s3)">
-      <a class="card tile" href="#/ukazka"><div class="card-head"><span class="card-icon">${ICONS.recipe}</span><h2 class="card-title">Recepty</h2></div><p class="card-line">12 receptů</p></a>
-      <a class="card tile" href="#/ukazka"><div class="card-head"><span class="card-icon">${ICONS.folder}</span><h2 class="card-title">Administrativa</h2></div><p class="card-line"><span class="is-late">1 končí do 30 dní</span></p></a>
-      <a class="card tile" href="#/ukazka"><div class="card-head"><span class="card-icon">${ICONS.star}</span><h2 class="card-title">Bucketlist</h2></div><p class="card-line">Zatím prázdné</p></a>
+      <a class="card tile mod-ukoly" href="#/ukazka"><span class="card-icon">${ICONS.tasks}</span><h2 class="card-title">Úkoly</h2><p class="card-line"><span class="is-late">1 po termínu</span></p></a>
+      <a class="card tile mod-nakup" href="#/ukazka"><span class="card-icon">${ICONS.cart}</span><h2 class="card-title">Nákup</h2><p class="card-line">6 položek</p></a>
+      <a class="card tile mod-penize" href="#/ukazka"><span class="card-icon">${ICONS.wallet}</span><h2 class="card-title">Peníze</h2><p class="card-line">1 k zaplacení</p></a>
+      <a class="card tile mod-recepty" href="#/ukazka"><span class="card-icon">${ICONS.recipe}</span><h2 class="card-title">Recepty</h2><p class="card-line">12 receptů</p></a>
+      <a class="card tile mod-administrativa" href="#/ukazka"><span class="card-icon">${ICONS.folder}</span><h2 class="card-title">Administrativa</h2><p class="card-line">1 končí do 30 dní</p></a>
+      <a class="card tile mod-wishlist" href="#/ukazka"><span class="card-icon">${ICONS.gift}</span><h2 class="card-title">Wishlist</h2><p class="card-line">3 přání</p></a>
+      <a class="card tile mod-bucketlist" href="#/ukazka"><span class="card-icon">${ICONS.star}</span><h2 class="card-title">Bucketlist</h2><p class="card-line">Prázdné</p></a>
+      <a class="card tile mod-info" href="#/ukazka"><span class="card-icon">${ICONS.house}</span><h2 class="card-title">Byt</h2><p class="card-line">2 poznámky</p></a>
     </div>
 
     <p class="section-label">Řádky seznamu</p>

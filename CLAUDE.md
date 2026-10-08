@@ -163,6 +163,10 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
     zelená, kdokoliv neutrální (`whoClass()` z `ui.js`).
   - `--danger` (červená) jen pro „po termínu“ a mazání, **vždy s ikonou** (třída `.is-late`
     přidá hodiny, `.btn-danger` a `.menu-item.is-danger` koš), ať se neplete s růžovou Domi.
+  - každý modul má vlastní barvu ikony na Domů (`--mod-*`, třída `.mod-<trasa>`): Úkoly
+    jantarová, Nákup terakota, Peníze tmavě zlatá, Recepty světle oranžová, Administrativa
+    hnědá, Wishlist fialová, Bucketlist žlutá, Byt šedofialová. Nikdy modrá, růžová, zelená
+    ani červená. Nový modul dostane další teplý odstín, který ještě není použitý.
   - ostatní stavový text je šedý (`--text-2`): opakování, „hotovo Tom, zbývá Domi“, počty.
     Důležitost úkolu je v odstínech šedé, ne barevně.
 
@@ -172,9 +176,11 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   tlačítko `.add-btn` (+). Šipku u modulů z Domů kreslí `app.js` sám podle `tab` pohledu,
   stránka položky má vlastní `.detail-head` se šipkou. Vedlejší ovládání (řazení, výběr
   obchodu, přepínač záložek, „Co uvařit“) patří do řádku `.toolbar` nad obsahem, ne do hlavičky.
-- **Karta** `.card` a **dlaždice** `.card.tile` (stejná komponenta, dlaždice ve dvou sloupcích
-  `.tiles`): `.card-head` s ikonou, názvem a počtem vpravo, pod tím jeden stavový řádek
-  `.card-line`. Prázdný modul má „Zatím prázdné“.
+- **Karta** `.card` (Nastavení, souhrn plateb) a **dlaždice modulu** `.card.tile` na Domů.
+  Domů je jednotná mřížka `.tiles`: všechny moduly jako stejně velké dlaždice ve 2 sloupcích,
+  žádné velké karty, vše se vejde na iPhone bez posouvání. V dlaždici je jen barevná ikona,
+  název a jedna základní informace `.card-line` („3 na dnes“, „6 položek“, „1 k zaplacení“),
+  žádné výpisy položek. Po termínu je „1 po termínu“ červeně s ikonou, prázdný modul „Prázdné“.
 - **Řádek seznamu** `.item` > `.item-main` v `ul.item-list.group`: všude stejná výška a odsazení,
   vlevo pruh v barvě osoby (`.has-stripe` + `whoClass`), `.item-name`, šedý `.item-sub`,
   nadpis skupiny `li.cat-head`. Gesta přes `rowGestures`.
@@ -369,8 +375,8 @@ Hotovo (0.16.0), úklid vzhledu a UX bez nových funkcí:
 - Design systém (viz sekce výš): tokeny pro písmo, rozestupy a zaoblení, barvy s pevným
   významem, sjednocené komponenty, stránka `#/ukazka`.
 - Záložka „Více“ se jmenuje „Nastavení“ (ozubené kolo), modul „Domácnost“ je „Byt“.
-- Domů: karta Úkoly počítá a vypisuje totéž (po termínu a na dnes, po termínu první a
-  červeně s ikonou), každá dlaždice má jeden stavový řádek.
+- Domů (0.16.1): jednotná mřížka osmi stejných dlaždic ve 2 sloupcích bez posouvání,
+  v každé barevná ikona, název a jedna informace.
 - Prázdné stavy ve všech modulech mají jednu větu s příkladem.
 - Dokumenty a poznámky se zakládají až tlačítkem Přidat, recepty a platby se po založení
   ukládají samy.
