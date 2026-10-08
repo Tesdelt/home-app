@@ -168,7 +168,8 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
     hnědá, Wishlist fialová, Bucketlist žlutá, Byt šedofialová. Nikdy modrá, růžová, zelená
     ani červená. Nový modul dostane další teplý odstín, který ještě není použitý.
   - ostatní stavový text je šedý (`--text-2`): opakování, „hotovo Tom, zbývá Domi“, počty.
-    Důležitost úkolu je v odstínech šedé, ne barevně.
+  - důležitost úkolu (číslo v řádku): 1 šedá, 2 žlutá (`--warn`), 3 červená. Je to jediná
+    výjimka, kde je červená bez ikony.
 
 ### Komponenty
 
