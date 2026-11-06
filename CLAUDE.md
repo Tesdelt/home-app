@@ -493,6 +493,11 @@ Hotovo (0.23.0):
   od nejbližšího známého (`balances()` v `moneycharts.js`). Bez jediného známého zůstatku
   se řada jmenuje „Pohyb celkem“ a jde od nuly. Barva `--text` (neutrální).
 
+Hotovo (0.23.1):
+- Grafy: graf zabere výšku, která zbude mezi volbami a souhrnem nad spodní lištou (stránka
+  se neposouvá, při otočení telefonu se překreslí). Pod grafem je u každé řady rozmezí za
+  období („0 - 11 834 Kč“) a vpravo Dohromady (součet), u Zůstatku Na konci.
+
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
 2. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).

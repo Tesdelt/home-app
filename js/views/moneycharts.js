@@ -23,6 +23,12 @@ const PALETTE = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)'];
 const PERIODS = [['3', '3 měsíce'], ['6', '6 měsíců'], ['12', '12 měsíců'], ['year', 'Letos'], ['all', 'Vše']];
 const DEFAULTS = { series: [{ g: 'flow', c: 'outgo' }], period: '12', from: null, to: null, type: 'bars' };
 
+// "0 - 11 834 Kč" (krátká pomlčka, jednotka jen na konci)
+const range = (min, max) => {
+  const num = (v) => Math.round(v).toLocaleString('cs-CZ');
+  return min === max ? money(max) : `${num(min)} - ${num(max)} Kč`;
+};
+
 const keyOf = (s) => JSON.stringify([s.g, s.c, s.i ?? null]);
 const totalOf = (value) => Number(typeof value === 'object' && value ? value.total : value) || 0;
 
@@ -203,13 +209,25 @@ export async function renderCharts(el, segment) {
     const byMonth = new Map(rows.map((r) => [r.month, r]));
     const balance = balances(rows).map;
     const valueAt = (m, s) => (s.g === 'flow' && s.c === 'balance' ? balance.get(m) ?? 0 : valueOf(byMonth.get(m), s));
-    endChart = drawChart(chartEl, {
-      months,
-      series: series.map((s) => ({ label: s.label, color: s.color, values: months.map((m) => valueAt(m, s)) })),
-      type: prefs.type,
-      format: money,
-    });
-    legendEl.innerHTML = series.map((s) => `<span class="chart-legend-item"><span class="chart-key" style="background: ${s.color}"></span>${escapeHtml(s.label)}</span>`).join('');
+    // Pod grafem souhrn každé řady za období: rozmezí od-do a dohromady
+    // (u zůstatku místo součtu stav na konci období)
+    const data = series.map((s) => ({ ...s, values: months.map((m) => valueAt(m, s)) }));
+    legendEl.innerHTML = data.map((s) => {
+      const min = Math.min(...s.values);
+      const max = Math.max(...s.values);
+      const isBalance = s.g === 'flow' && s.c === 'balance';
+      const total = isBalance ? s.values[s.values.length - 1] : s.values.reduce((a, b) => a + b, 0);
+      return `<div class="chart-stat">
+        <span class="chart-key" style="background: ${s.color}"></span>
+        <span class="chart-stat-name">${escapeHtml(s.label)}<span class="chart-stat-range">${escapeHtml(range(min, max))}</span></span>
+        <span class="chart-stat-total"><span class="chart-stat-label">${isBalance ? 'Na konci' : 'Dohromady'}</span>${escapeHtml(money(total))}</span>
+      </div>`;
+    }).join('');
+
+    // Graf zabere výšku, která zbude mezi volbami a souhrnem nad spodní lištou
+    const view = document.getElementById('view');
+    const free = view.getBoundingClientRect().bottom - chartEl.getBoundingClientRect().top - legendEl.offsetHeight - 40;
+    endChart = drawChart(chartEl, { months, series: data, type: prefs.type, format: money, height: free });
   }
 
   async function load() {
@@ -309,8 +327,17 @@ export async function renderCharts(el, segment) {
   await loadPrefs();
   await load();
   const unsubscribe = store.subscribe(load);
+  // Otočení telefonu: graf se přizpůsobí nové šířce a výšce
+  let resizeTimer = null;
+  const onResize = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(draw, 150);
+  };
+  window.addEventListener('resize', onResize);
   return () => {
     unsubscribe();
+    window.removeEventListener('resize', onResize);
+    clearTimeout(resizeTimer);
     if (endChart) endChart();
   };
 }

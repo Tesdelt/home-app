@@ -1418,8 +1418,13 @@ a.opt { display: inline-flex; align-items: center; justify-content: center; text
 .chart-tip-row { display: flex; align-items: center; gap: var(--s2); color: var(--text-2); }
 .chart-tip-row b { margin-left: auto; padding-left: var(--s3); color: var(--text); font-variant-numeric: tabular-nums; }
 .chart-key { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; }
-.chart-legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: var(--s3) 0 0; font-size: var(--fs-small); color: var(--text-2); }
-.chart-legend-item { display: inline-flex; align-items: center; gap: var(--s2); }
+.chart-legend { margin: var(--s3) 0 0; border-top: 1px solid var(--border); }
+/* Souhrn řady pod grafem: název a rozmezí vlevo, dohromady vpravo */
+.chart-stat { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) 0; border-bottom: 1px solid var(--border); }
+.chart-stat-name { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: var(--fs-text); }
+.chart-stat-range { font-size: var(--fs-small); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.chart-stat-total { display: flex; flex-direction: column; align-items: flex-end; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chart-stat-label { font-size: var(--fs-small); font-weight: 400; color: var(--text-2); }
 /* Nabídka Co: nadpisy skupin, kategorie s rozbalením na položky */
 .menu-head { margin: var(--s2) var(--s3) var(--s1); font-size: var(--fs-small); font-weight: 600; color: var(--text-2); }
 .menu-row { display: flex; align-items: stretch; }

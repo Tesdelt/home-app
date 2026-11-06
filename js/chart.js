@@ -10,6 +10,7 @@
 //   series: [{ label, color: 'var(--flow-out)', values: [čísla podle months] }],
 //   type: 'bars' | 'line',
 //   format: (číslo) => text do štítku,
+//   height: výška v px (výchozí 220, menší se nepoužije),
 // })
 // Vrací funkci na úklid (odebere posluchače na dokumentu).
 
@@ -19,7 +20,7 @@ const SVG = 'http://www.w3.org/2000/svg';
 const MONTH_SHORT = ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'];
 const MONTH_LONG = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
 
-const HEIGHT = 220;
+const MIN_HEIGHT = 220;
 const PAD = { top: 12, right: 8, bottom: 36, left: 48 };
 
 const monthParts = (month) => month.split('-').map(Number);
@@ -52,7 +53,8 @@ function node(name, attrs = {}) {
   return el;
 }
 
-export function drawChart(el, { months, series, type = 'bars', format = String }) {
+export function drawChart(el, { months, series, type = 'bars', format = String, height = MIN_HEIGHT }) {
+  const HEIGHT = Math.max(MIN_HEIGHT, Math.round(height));
   el.classList.add('chart');
   el.replaceChildren();
   const width = Math.max(240, el.clientWidth || 340);
