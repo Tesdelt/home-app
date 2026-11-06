@@ -84,3 +84,16 @@ export function nextDayOfMonth(dayOfMonth, from = today()) {
   const next = new Date(y, m, 1);
   return dayStr(new Date(next.getFullYear(), next.getMonth(), clamp(next.getFullYear(), next.getMonth() + 1)));
 }
+
+// Měsíce jako text "RRRR-MM": posun o n měsíců a všechny měsíce od-do včetně
+export function shiftMonth(month, n) {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
+export function monthRange(from, to) {
+  const out = [];
+  for (let m = from; m <= to && out.length < 600; m = shiftMonth(m, 1)) out.push(m);
+  return out;
+}

@@ -298,6 +298,34 @@ alter table public.money_months add column if not exists moves jsonb not null de
 -- Graf Zůstatek se od něj odvíjí, chybějící měsíce dopočítá z pohybů.
 alter table public.money_months add column if not exists balance numeric(12, 2);
 
+-- Peníze: měsíční limity kategorií výdajů (category = název kategorie ze Skutečnosti)
+create table if not exists public.money_budgets (
+  id            uuid primary key default gen_random_uuid(),
+  household_id  uuid not null references public.households (id) on delete cascade,
+  account       text not null,
+  category      text not null,
+  monthly_limit numeric(12, 2) not null default 0,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  deleted       boolean not null default false,
+  unique (household_id, account, category)
+);
+create index if not exists money_budgets_household_idx on public.money_budgets (household_id);
+
+-- Peníze: cíle spoření, plní se odshora (sort) z posledního známého zůstatku
+create table if not exists public.money_goals (
+  id           uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households (id) on delete cascade,
+  account      text not null,
+  name         text not null default '',
+  target       numeric(12, 2) not null default 0,
+  sort         integer not null default 0,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+create index if not exists money_goals_household_idx on public.money_goals (household_id);
+
 -- Push notifikace: adresy, na které se telefonům posílají upozornění.
 -- Každý vidí a mění jen své vlastní odběry.
 create table if not exists public.push_subscriptions (
@@ -396,6 +424,12 @@ create trigger notes_keep_newer before update on public.notes
 drop trigger if exists money_months_keep_newer on public.money_months;
 create trigger money_months_keep_newer before update on public.money_months
   for each row execute function private.keep_newer();
+drop trigger if exists money_budgets_keep_newer on public.money_budgets;
+create trigger money_budgets_keep_newer before update on public.money_budgets
+  for each row execute function private.keep_newer();
+drop trigger if exists money_goals_keep_newer on public.money_goals;
+create trigger money_goals_keep_newer before update on public.money_goals
+  for each row execute function private.keep_newer();
 
 drop trigger if exists recipe_photos_keep_newer on public.recipe_photos;
 create trigger recipe_photos_keep_newer
@@ -435,6 +469,8 @@ revoke all on public.documents         from public, anon, authenticated;
 revoke all on public.doc_files         from public, anon, authenticated;
 revoke all on public.notes             from public, anon, authenticated;
 revoke all on public.money_months      from public, anon, authenticated;
+revoke all on public.money_budgets     from public, anon, authenticated;
+revoke all on public.money_goals       from public, anon, authenticated;
 revoke all on public.push_subscriptions from public, anon, authenticated;
 revoke all on public.payment_reminders  from public, anon, authenticated;
 
@@ -453,6 +489,8 @@ grant select, insert, update, delete on public.documents        to authenticated
 grant select, insert, update, delete on public.doc_files        to authenticated;
 grant select, insert, update, delete on public.notes            to authenticated;
 grant select, insert, update on public.money_months             to authenticated;
+grant select, insert, update, delete on public.money_budgets    to authenticated;
+grant select, insert, update, delete on public.money_goals      to authenticated;
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 
 -- Servisní role (funkce send-reminders) dostane jen to, co k rozeslání
@@ -478,6 +516,8 @@ alter table public.documents         enable row level security;
 alter table public.doc_files         enable row level security;
 alter table public.notes             enable row level security;
 alter table public.money_months      enable row level security;
+alter table public.money_budgets     enable row level security;
+alter table public.money_goals       enable row level security;
 alter table public.push_subscriptions enable row level security;
 alter table public.payment_reminders  enable row level security;
 
@@ -567,6 +607,18 @@ create policy "clen cte a zapisuje poznamky" on public.notes
   using (household_id in (select private.my_household_ids()))
   with check (household_id in (select private.my_household_ids()));
 
+drop policy if exists "clen cte a zapisuje limity" on public.money_budgets;
+create policy "clen cte a zapisuje limity" on public.money_budgets
+  for all to authenticated
+  using (household_id in (select private.my_household_ids()))
+  with check (household_id in (select private.my_household_ids()));
+
+drop policy if exists "clen cte a zapisuje cile" on public.money_goals;
+create policy "clen cte a zapisuje cile" on public.money_goals
+  for all to authenticated
+  using (household_id in (select private.my_household_ids()))
+  with check (household_id in (select private.my_household_ids()));
+
 drop policy if exists "clen cte a zapisuje skutecnost" on public.money_months;
 create policy "clen cte a zapisuje skutecnost" on public.money_months
   for all to authenticated
@@ -592,7 +644,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops', 'task_comments', 'recipes', 'wishes', 'documents', 'notes', 'money_months'] loop
+  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops', 'task_comments', 'recipes', 'wishes', 'documents', 'notes', 'money_months', 'money_budgets', 'money_goals'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

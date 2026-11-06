@@ -211,6 +211,9 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   knihoven, sloupce (víc řad vedle sebe, záporné pod nulou) nebo křivka s jemnou plochou.
   Dotyk / tažení ukáže svislou čáru a štítek s hodnotami, zůstane po puštění, ťuknutí mimo
   ho schová. Osa X zkratky měsíců (u ledna a na začátku i rok), osa Y 3-4 čáry („20 tis.“).
+- **Pruh naplnění** `.budget-bar` (> `span` se šířkou v %) pod názvem v řádku seznamu:
+  výchozí `--text-2`, `.is-near` (nad 90 %) a `.is-over` (nad 100 %) `--warn`, `.is-goal`
+  `--flow-move`. Částka vedle ve tvaru „X / Y Kč“ (`.item-amount.is-budget`).
 - **Toast** `toast` / `undoToast` (se Zpět).
 - **Ikony** jen ze sady `ICONS` v `ui.js`: čárové, viewBox 24, tloušťka 1.8, bez výplně.
 
@@ -515,6 +518,25 @@ Hotovo (0.24.1):
 - Grafy: starší uložené volby se Zůstatkem a dalšími řadami se při načtení srovnají na
   samotný Zůstatek; karta se ukazuje jen u samotného Zůstatku a pod číslem má „k <poslední
   den posledního měsíce> · změna za období“. U Zůstatku pod grafem „průměr X Kč“ bez „/ měsíc“.
+
+Hotovo (0.25.0):
+- Limity kategorií výdajů (tabulka `money_budgets`, sklad `budgets`; account jako u
+  money_months, category = název kategorie výdajů ze Skutečnosti, monthly_limit).
+  `listBudgets(account)`, `setBudget(account, category, limit)` (prázdné = smazat). Podržení
+  řádku výdaje ve Skutečnosti otevře panel „Měsíční limit“, ukládá se sám. Řádek s limitem
+  má „3 294 / 4 000 Kč“ a pod názvem `.budget-bar` (do 90 % šedý, nad 90 % `--warn`, nad
+  limitem `--warn` a částka tučně; nikdy červeně).
+- Plán v kartě Skutečnosti = pravidelné platby segmentu za měsíc + součet limitů segmentu.
+  Pod Utraceno šedě „z toho nad limity X Kč“, když je nějaký limit překročený.
+- Cíle spoření (tabulka `money_goals`, sklad `goals`; name, target, sort).
+  `listGoals`, `addGoal`, `updateGoal`, `removeGoals` / `restoreGoals`, `reorderGoals`.
+  Sekce Cíle v segmentu nad Skutečností (jen když má segment cíl nebo zůstatek): plní se
+  odshora z posledního zůstatku (`moneyBalances` ve `store.js`, sdílí ho i grafy), řádek
+  s pruhem `--flow-move` a „52 000 / 114 000 Kč“. Pod nimi odhad z průměrné měsíční změny
+  zůstatku za posledních 6 měsíců s daty („při tomhle tempu: Auto v březnu 2027“, nebo
+  „zůstatek … ubývá v průměru o X Kč měsíčně“). Upravit = panel s cíli (pole se ukládají
+  sama, pořadí přetažením za úchyt, potažení smaže se Zpět, dole Přidat).
+- Data na začátek (limity, cíle) zapisuje Claude přes SQL, dál je edituje appka.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

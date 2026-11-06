@@ -1449,3 +1449,23 @@ a.opt { display: inline-flex; align-items: center; justify-content: center; text
 .chart-pick .menu-sum { flex: none; font-size: var(--fs-small); font-weight: 400; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .chart-menu { min-width: 260px; }
 .chart-menu .menu-item[aria-pressed="true"] { background: transparent; }
+
+/* ---------- Pruh naplnění (.budget-bar): limity kategorií a cíle ---------- */
+.budget-bar { display: block; height: 4px; margin-top: var(--s1); border-radius: 2px; background: var(--surface-2); overflow: hidden; }
+.budget-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--text-2); }
+.budget-bar.is-near > span, .budget-bar.is-over > span { background: var(--warn); }
+.budget-bar.is-goal > span { background: var(--flow-move); }
+.item-amount.is-budget { font-weight: 400; font-size: var(--fs-small); color: var(--text-2); }
+.item-amount.is-budget.is-over { font-weight: 700; color: var(--text); }
+.sum-sub { display: block; margin-top: 2px; font-size: var(--fs-small); color: var(--text-2); }
+/* Cíle */
+.goals { margin-bottom: var(--s2); }
+.goals-hint { margin: 0 0 var(--s4); font-size: var(--fs-small); color: var(--text-2); }
+.goal-row .item-main { gap: var(--s2); padding-right: var(--s2); }
+.goal-row .input { min-height: 40px; }
+.goal-row .item-slide { display: flex; align-items: center; background: var(--surface); }
+.goal-row .item-slide .item-main { flex: 1; min-width: 0; }
+.goal-row .order-grip { padding: 0 var(--s3); }
+.goal-target { flex: none; width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+.goal-add { margin-top: var(--s3); }
+.goal-add .input:first-child { flex: 1; min-width: 0; }

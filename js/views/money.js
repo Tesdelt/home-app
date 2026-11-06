@@ -4,8 +4,8 @@
 // dole Zaplacené. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold } from '../ui.js';
-import { today, dueLabel } from '../dates.js';
+import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold, dragSort } from '../ui.js';
+import { today, dueLabel, shiftMonth } from '../dates.js';
 import { renderCharts } from './moneycharts.js';
 
 export const title = 'Peníze';
@@ -56,6 +56,21 @@ function categoriesOf(map) {
     .sort(byAbs);
 }
 
+// "v březnu 2027" (6. pád měsíce pro odhad naplnění cíle)
+const MONTHS_IN = ['lednu', 'únoru', 'březnu', 'dubnu', 'květnu', 'červnu', 'červenci', 'srpnu', 'září', 'říjnu', 'listopadu', 'prosinci'];
+const monthIn = (month) => {
+  const [y, m] = month.split('-').map(Number);
+  return `${MONTHS_IN[m - 1]} ${y}`;
+};
+const num = (v) => Math.round(v).toLocaleString('cs-CZ');
+
+// Pruh naplnění (.budget-bar): podíl 0-1, stav is-near (nad 90 %) / is-over (nad 100 %)
+function budgetBar(part, extra = '') {
+  const pct = Math.max(0, Math.min(1, part)) * 100;
+  const state = part > 1 ? ' is-over' : part > 0.9 ? ' is-near' : '';
+  return `<span class="budget-bar${state}${extra}"><span style="width: ${pct.toFixed(1)}%"></span></span>`;
+}
+
 // Měsíčně / ročně v souhrnu a vybraný měsíc skutečnosti vydrží, dokud je appka
 // otevřená. Rozbalená kategorie se nepamatuje, po návratu je vše sbalené.
 let yearly = false;
@@ -70,6 +85,7 @@ export async function render(el, { params, extraEl, subEl }) {
   root.innerHTML = `
     <div class="toolbar"><div class="segmented" role="tablist"></div></div>
     <div class="summary-root"></div>
+    <div class="goals-root"></div>
     <div class="actual-root"></div>
     <div class="list-root"></div>`;
 
@@ -77,6 +93,8 @@ export async function render(el, { params, extraEl, subEl }) {
   const summaryRoot = root.querySelector('.summary-root');
   const listRoot = root.querySelector('.list-root');
   const actualRoot = root.querySelector('.actual-root');
+  const goalsRoot = root.querySelector('.goals-root');
+  let budgets = new Map(); // kategorie výdajů -> měsíční limit (vybraný segment)
   let months = [];
   let openCat = null; // nejvýš jedna rozbalená kategorie skutečnosti
   let openPayCat = null; // a nejvýš jedna rozbalená kategorie plateb
@@ -168,11 +186,14 @@ export async function render(el, { params, extraEl, subEl }) {
     const token = ++renderToken;
     members = await store.listMembers();
     segment = validSegment(segment);
-    const [payments, summary, due, monthRows] = await Promise.all([
+    const [payments, summary, due, monthRows, budgetRows, goals] = await Promise.all([
       store.listPayments(), store.paymentsSummary(segment), store.duePayments(7), store.listMoneyMonths(segment),
+      store.listBudgets(segment), store.listGoals(segment),
     ]);
     if (token !== renderToken) return;
     months = monthRows;
+    budgets = new Map(budgetRows.map((b) => [b.category, b.monthlyLimit]));
+    drawGoals(goals);
     drawActual(summary);
     const inSeg = (p) => store.inPaymentSegment(p, segment, members);
 
@@ -236,11 +257,19 @@ export async function render(el, { params, extraEl, subEl }) {
       ['move', 'Přesuny', categoriesOf(row.moves)],
     ];
     const saved = Object.values(row.moves ?? {}).reduce((sum, v) => sum + (Number(typeof v === 'object' && v ? v.total : v) || 0), 0);
-    // Řádek kategorie; klíč má předponu skupiny, název se může opakovat
+    // Limity: plán = pravidelné platby + součet limitů, nad limity = co je přes
+    const limitSum = [...budgets.values()].reduce((a, b) => a + b, 0);
+    const overLimits = categoriesOf(row.categories)
+      .reduce((sum, [name, amount]) => sum + (budgets.has(name) ? Math.max(0, amount - budgets.get(name)) : 0), 0);
+    // Řádek kategorie; klíč má předponu skupiny, název se může opakovat.
+    // Výdaj s limitem má "3 294 / 4 000 Kč" a pod názvem pruh naplnění.
     const fold = (group) => ([name, amount, items]) => {
       const key = `${group}:${name}`;
+      const limit = group === 'out' ? budgets.get(name) : null;
+      const over = limit && amount > limit;
+      const value = limit ? `${num(amount)} / ${money(limit)}` : money(amount);
       return `<li class="item fold money-cat${items.length ? ' has-items' : ''}${key === openCat ? ' is-open' : ''}" data-fold="${escapeHtml(key)}">
-          <button type="button" class="item-main fold-head" aria-expanded="${key === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span></span><span class="item-amount">${money(amount)}</span></button>
+          <button type="button" class="item-main fold-head" aria-expanded="${key === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span>${limit ? budgetBar(amount / limit) : ''}</span><span class="item-amount${limit ? ' is-budget' : ''}${over ? ' is-over' : ''}">${value}</span></button>
           <div class="fold-body"><ul class="money-shops">${items.map(([who, value]) => `<li class="money-shop"><span>${escapeHtml(who)}</span><span>${money(value)}</span></li>`).join('')}</ul></div>
         </li>`;
     };
@@ -259,15 +288,178 @@ export async function render(el, { params, extraEl, subEl }) {
       <section class="card summary flow-card">
         <div class="sum-row">
           <div class="sum-cell"><span class="sum-label">Přišlo</span><span class="sum-value flow-in">${money(row.income)}</span></div>
-          <div class="sum-cell"><span class="sum-label">Utraceno</span><span class="sum-value flow-out">${money(row.outgo)}</span></div>
+          <div class="sum-cell"><span class="sum-label">Utraceno</span><span class="sum-value flow-out">${money(row.outgo)}</span>${overLimits > 0 ? `<span class="sum-sub">z toho nad limity ${money(overLimits)}</span>` : ''}</div>
           <div class="sum-cell"><span class="sum-label">Odloženo</span><span class="sum-value flow-move">${money(saved)}</span></div>
         </div>
-        <span class="sum-note">Plán ${money(summary.total)}</span>
+        <span class="sum-note">Plán ${money(summary.total + limitSum)}</span>
       </section>
       ${lists ? `<ul class="item-list group money-cats">${lists}</ul>` : ''}`;
   }
 
+  // ---------- Cíle spoření ----------
+  // Plní se odshora z posledního známého zůstatku. Pod nimi odhad podle průměrné
+  // měsíční změny zůstatku za posledních 6 měsíců s daty.
+  function drawGoals(goals) {
+    const { map, anchored } = store.moneyBalances(months);
+    if (!goals.length && !anchored) {
+      goalsRoot.innerHTML = '';
+      return;
+    }
+    const asc = [...months].sort((a, b) => a.month.localeCompare(b.month));
+    const last = asc[asc.length - 1]?.month;
+    let left = anchored && last ? map.get(last) : 0;
+    const filled = goals.map((g) => {
+      const have = Math.max(0, Math.min(g.target, left));
+      left -= g.target;
+      return { ...g, have };
+    });
+
+    // Průměrná měsíční změna zůstatku za posledních 6 měsíců s daty
+    const recent = asc.slice(-6).map((r) => r.month).filter((m) => map.has(shiftMonth(m, -1)));
+    const avg = recent.length ? recent.reduce((sum, m) => sum + map.get(m) - map.get(shiftMonth(m, -1)), 0) / recent.length : null;
+    let hint = '';
+    if (avg != null && anchored) {
+      if (avg > 0) {
+        const next = filled.find((g) => g.have < g.target);
+        if (next) hint = `při tomhle tempu: ${next.name} v ${monthIn(shiftMonth(last, Math.ceil((next.target - next.have) / avg)))}`;
+      } else {
+        hint = `zůstatek za posledních 6 měsíců ubývá v průměru o ${money(Math.abs(avg))} měsíčně`;
+      }
+    }
+    goalsRoot.innerHTML = `
+      <div class="toolbar actual-bar">
+        <p class="section-label">Cíle</p>
+        <button type="button" class="opt" data-action="goals"><span class="opt-text">Upravit</span></button>
+      </div>
+      ${filled.length ? `<ul class="item-list group goals">${filled.map((g) => `<li class="item goal">
+          <div class="item-main"><span class="item-text"><span class="item-name">${escapeHtml(g.name)}</span>${budgetBar(g.target ? g.have / g.target : 0, ' is-goal')}</span>
+          <span class="item-amount is-budget">${num(g.have)} / ${money(g.target)}</span></div>
+        </li>`).join('')}</ul>` : ''}
+      ${hint ? `<p class="goals-hint">${escapeHtml(hint)}</p>` : ''}`;
+  }
+
+  // Panel s cíli: název a částka se ukládají samy, pořadí přetažením za úchyt,
+  // potažení doleva smaže (Zpět), dole nový cíl tlačítkem Přidat
+  function openGoals() {
+    openSheet('Cíle', (body) => {
+      body.innerHTML = `<ul class="item-list group goal-list"></ul>
+        <form class="add-form goal-add" autocomplete="off">
+          <input class="input" name="name" placeholder="Rezerva" aria-label="Název" autocapitalize="sentences">
+          <input class="input goal-target" name="target" inputmode="numeric" placeholder="100 000" aria-label="Částka">
+          <button type="submit" class="btn btn-primary">Přidat</button>
+        </form>`;
+      const listEl = body.querySelector('.goal-list');
+      const form = body.querySelector('.goal-add');
+      const parse = (text) => Number(String(text).replace(/\s/g, '').replace(',', '.')) || 0;
+      const paint = async () => {
+        const goals = await store.listGoals(segment);
+        listEl.hidden = !goals.length;
+        listEl.innerHTML = goals.map((g) => `<li class="item goal-row" data-id="${escapeHtml(g.id)}">
+            <div class="item-bg" aria-hidden="true">Smazat</div>
+            <div class="item-slide">
+              <div class="item-main">
+                <input class="input" name="name" value="${escapeHtml(g.name)}" aria-label="Název" autocapitalize="sentences">
+                <input class="input goal-target" name="target" value="${escapeHtml(num(g.target))}" inputmode="numeric" aria-label="Částka">
+              </div>
+              <span class="order-grip" aria-hidden="true">≡</span>
+            </div>
+          </li>`).join('');
+      };
+      listEl.addEventListener('change', (e) => {
+        const li = e.target.closest('[data-id]');
+        if (!li) return;
+        if (e.target.name === 'name' && e.target.value.trim()) store.updateGoal(li.dataset.id, { name: e.target.value.trim() });
+        if (e.target.name === 'target') store.updateGoal(li.dataset.id, { target: parse(e.target.value) });
+      });
+      rowGestures(listEl, {
+        onTap: () => {},
+        onPress: () => {},
+        onSwipe: async (id) => {
+          const removed = await store.removeGoals([id]);
+          await paint();
+          if (removed.length) undoToast(`${removed[0].name}: smazáno`, async () => { await store.restoreGoals(removed); paint(); });
+        },
+      });
+      dragSort(listEl, {
+        item: '.goal-row',
+        handle: '.order-grip',
+        attr: 'data-id',
+        onDrop: async (ids) => {
+          await store.reorderGoals(ids);
+          paint();
+        },
+      });
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = form.elements.name.value.trim();
+        if (!name) {
+          form.elements.name.focus();
+          return;
+        }
+        await store.addGoal(segment, { name, target: parse(form.elements.target.value) });
+        form.reset();
+        form.elements.name.focus();
+        paint();
+      });
+      paint();
+    });
+  }
+
+  // ---------- Limit kategorie výdajů ----------
+  // Podržení řádku výdaje otevře panel s měsíčním limitem, ukládá se sám
+  function openBudget(category) {
+    holdKeyboard();
+    openSheet(category, (body) => {
+      const current = budgets.get(category);
+      body.innerHTML = `<label class="field"><span>Měsíční limit</span>
+        <input class="input" name="limit" inputmode="numeric" value="${current ? escapeHtml(num(current)) : ''}"></label>`;
+      const input = body.querySelector('input');
+      let timer = null;
+      const commit = () => store.setBudget(segment, category, input.value);
+      input.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(commit, 500);
+      });
+      input.addEventListener('change', () => {
+        clearTimeout(timer);
+        commit();
+      });
+      input.focus();
+    });
+  }
+
+  // Hlavička rozbalovacího řádku nemá rowGestures, podržení se hlídá tady
+  let press = null;
+  let swallowClick = false;
+  actualRoot.addEventListener('pointerdown', (e) => {
+    const head = e.target.closest('.money-cat[data-fold^="out:"] > .fold-head');
+    if (!head) return;
+    const category = head.closest('.fold').dataset.fold.slice(4);
+    press = { x: e.clientX, y: e.clientY, timer: setTimeout(() => { press = null; swallowClick = true; openBudget(category); }, 500) };
+  });
+  actualRoot.addEventListener('pointermove', (e) => {
+    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) {
+      clearTimeout(press.timer);
+      press = null;
+    }
+  });
+  const endPress = () => {
+    if (press) clearTimeout(press.timer);
+    press = null;
+  };
+  actualRoot.addEventListener('pointerup', endPress);
+  actualRoot.addEventListener('pointercancel', endPress);
+  actualRoot.addEventListener('contextmenu', (e) => { if (e.target.closest('.fold-head')) e.preventDefault(); });
+
   root.addEventListener('click', async (e) => {
+    if (swallowClick) {
+      swallowClick = false;
+      return;
+    }
+    if (e.target.closest('[data-action="goals"]')) {
+      openGoals();
+      return;
+    }
     // Kategorie (Skutečnost i platby) se rozbalí na místě, viz toggleFold
     const head = e.target.closest('.fold-head');
     if (head) {

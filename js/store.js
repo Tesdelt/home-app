@@ -10,7 +10,7 @@ import * as db from './db.js';
 import * as sync from './sync.js';
 import { guessCategory, normalize, CATEGORIES, BUILTIN_SHOPS, FOOD } from './categories.js';
 import { findProduct, searchProducts, productsIn } from './catalog.js';
-import { today, addDays, addInterval, nextDayOfMonth } from './dates.js';
+import { today, addDays, addInterval, nextDayOfMonth, monthRange } from './dates.js';
 
 const listeners = new Set();
 const channel = 'BroadcastChannel' in self ? new BroadcastChannel('home-app') : null;
@@ -1220,6 +1220,119 @@ export async function listMoneyMonths(account) {
     .sort((a, b) => b.month.localeCompare(a.month));
 }
 
+// ---------- Zůstatek ----------
+// balance v money_months je zůstatek všech účtů segmentu dohromady ke konci měsíce
+// (u Toma Plus účet + spořák). Přesuny mezi nimi (INTERNAL_MOVES) ho nemění.
+export const INTERNAL_MOVES = ['Na spořák', 'Ze spořáku'];
+const moneyTotal = (value) => Number(typeof value === 'object' && value ? value.total : value) || 0;
+
+// Změna zůstatku za měsíc: příjmy - výdaje - přesuny mimo zůstatek
+export function balanceChange(row) {
+  if (!row) return 0;
+  const moves = Object.entries(row.moves ?? {})
+    .filter(([name]) => !INTERNAL_MOVES.includes(name))
+    .reduce((sum, [, v]) => sum + moneyTotal(v), 0);
+  return (Number(row.income) || 0) - (Number(row.outgo) || 0) - moves;
+}
+
+// Zůstatek na konci každého měsíce od prvního do posledního s daty: Map(month -> částka).
+// Kde je z výpisu známý (balance), platí ten, ostatní měsíce se dopočítají z pohybů
+// od nejbližšího známého (dopředu od předchozího, před prvním známým zpětně).
+// Bez jediného známého zůstatku je to jen pohyb celkem od nuly (anchored = false).
+// rows = řádky listMoneyMonths v libovolném pořadí.
+export function moneyBalances(rows) {
+  const sorted = [...rows].sort((a, b) => a.month.localeCompare(b.month));
+  if (!sorted.length) return { map: new Map(), anchored: false };
+  const byMonth = new Map(sorted.map((r) => [r.month, r]));
+  const months = monthRange(sorted[0].month, sorted[sorted.length - 1].month);
+  const known = months.map((m) => {
+    const b = byMonth.get(m)?.balance;
+    return b == null ? null : Number(b);
+  });
+  const values = new Array(months.length).fill(null);
+  const firstKnown = known.findIndex((b) => b != null);
+  if (firstKnown < 0) {
+    let sum = 0;
+    months.forEach((m, i) => { sum += balanceChange(byMonth.get(m)); values[i] = sum; });
+    return { map: new Map(months.map((m, i) => [m, values[i]])), anchored: false };
+  }
+  for (let i = firstKnown; i < months.length; i += 1) {
+    values[i] = known[i] ?? values[i - 1] + balanceChange(byMonth.get(months[i]));
+  }
+  for (let i = firstKnown - 1; i >= 0; i -= 1) {
+    values[i] = values[i + 1] - balanceChange(byMonth.get(months[i + 1]));
+  }
+  return { map: new Map(months.map((m, i) => [m, values[i]])), anchored: true };
+}
+
+// ---------- Limity kategorií výdajů ----------
+// Limit: { id, account, category, monthlyLimit }. account jako u money_months.
+
+export async function listBudgets(account) {
+  const members = await listMembers();
+  return (await live('budgets')).filter((b) => inPaymentSegment({ payer: b.account }, account, members));
+}
+
+// Nastaví měsíční limit kategorie, prázdný nebo nulový limit smaže
+export async function setBudget(account, category, limit) {
+  const value = Number(String(limit ?? '').replace(/\s/g, '').replace(',', '.'));
+  const existing = (await live('budgets')).find((b) => b.account === account && b.category === category);
+  if (!(value > 0)) {
+    if (existing) await markDeleted('budgets', [existing]);
+    emit();
+    return null;
+  }
+  const now = Date.now();
+  const budget = {
+    id: existing?.id ?? db.newId(), account, category, monthlyLimit: Math.round(value * 100) / 100,
+    createdAt: existing?.createdAt ?? now, updatedAt: now,
+  };
+  await save('budgets', [budget]);
+  emit();
+  return budget;
+}
+
+// ---------- Cíle spoření ----------
+// Cíl: { id, account, name, target, sort }. Plní se odshora z posledního zůstatku.
+
+export async function listGoals(account) {
+  const members = await listMembers();
+  return (await live('goals'))
+    .filter((g) => inPaymentSegment({ payer: g.account }, account, members))
+    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.createdAt - b.createdAt);
+}
+
+export async function addGoal(account, { name, target = 0 }) {
+  const clean = String(name ?? '').trim();
+  if (!clean) throw new Error('Prázdný název');
+  const goals = await listGoals(account);
+  const now = Date.now();
+  const goal = {
+    id: db.newId(), account, name: clean, target: Number(target) || 0,
+    sort: goals.reduce((max, g) => Math.max(max, g.sort ?? 0), 0) + 1, createdAt: now, updatedAt: now,
+  };
+  await save('goals', [goal]);
+  emit();
+  return goal;
+}
+
+export async function updateGoal(id, patch) {
+  const next = await patchRow('goals', id, patch);
+  emit();
+  return next;
+}
+
+export const removeGoals = (ids) => removeByIds('goals', ids);
+export const restoreGoals = (goals) => restore('goals', goals);
+
+// Nové pořadí cílů (ids odshora)
+export async function reorderGoals(ids) {
+  const now = Date.now();
+  const goals = (await live('goals')).filter((g) => ids.includes(g.id));
+  await save('goals', goals.map((g) => ({ ...g, sort: ids.indexOf(g.id) + 1, updatedAt: now })));
+  emit();
+}
+
 // Smaže zaplacené (jednorázové) a doplacené (na dobu) platby, se segmentem jen v něm
 export async function clearDonePayments(segment = null) {
   const members = await listMembers();
@@ -1242,7 +1355,7 @@ export async function exportAll() {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Sklady s řádky podle id, které se synchronizují stejným způsobem
-const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes', 'documents', 'notes', 'moneymonths'];
+const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes', 'documents', 'notes', 'moneymonths', 'budgets', 'goals'];
 
 export async function importAll(backup) {
   if (backup?.app !== 'home-app' || !backup.data) throw new Error('Tohle není záloha této aplikace.');

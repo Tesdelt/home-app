@@ -142,6 +142,18 @@ export async function render(el, { extraEl }) {
         <div class="fold-body"><ul class="money-shops"></ul></div></li>
     </ul>
 
+    <p class="section-label">Pruh naplnění: limity (do 90 %, nad 90 %, nad limitem) a cíle</p>
+    <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Potraviny</span><span class="budget-bar"><span style="width: 62%"></span></span></span><span class="item-amount is-budget">2 517 / 4 000 Kč</span></div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Restaurace a kavárny</span><span class="budget-bar is-near"><span style="width: 95%"></span></span></span><span class="item-amount is-budget">2 850 / 3 000 Kč</span></div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Oblečení</span><span class="budget-bar is-over"><span style="width: 100%"></span></span></span><span class="item-amount is-budget is-over">11 834 / 3 000 Kč</span></div></li>
+    </ul>
+    <ul class="item-list group goals">
+      <li class="item goal"><div class="item-main"><span class="item-text"><span class="item-name">Rezerva</span><span class="budget-bar is-goal"><span style="width: 100%"></span></span></span><span class="item-amount is-budget">60 000 / 60 000 Kč</span></div></li>
+      <li class="item goal"><div class="item-main"><span class="item-text"><span class="item-name">Auto</span><span class="budget-bar is-goal"><span style="width: 46%"></span></span></span><span class="item-amount is-budget">52 000 / 114 000 Kč</span></div></li>
+    </ul>
+    <p class="goals-hint">při tomhle tempu: Auto v březnu 2027</p>
+
     <p class="section-label">Peníze: kategorie plateb, sbalená a rozbalená</p>
     <ul class="item-list group" style="margin-bottom: var(--s3)">
       <li class="cat-head">Pravidelné</li>

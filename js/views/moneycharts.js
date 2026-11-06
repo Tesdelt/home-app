@@ -9,6 +9,9 @@
 import * as store from '../store.js';
 import { escapeHtml, ICONS, openMenu, money, emptyState } from '../ui.js';
 import { drawChart } from '../chart.js';
+import { shiftMonth, monthRange } from '../dates.js';
+
+const balances = (rows) => store.moneyBalances(rows);
 
 const SHARED = 'Společné';
 const MAX_SERIES = 3;
@@ -22,39 +25,18 @@ const FLOWS = [
 ];
 const GROUPS = [['out', 'Výdaje', 'categories'], ['in', 'Příjmy', 'incomes'], ['move', 'Přesuny', 'moves']];
 const PALETTE = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)'];
-// Přesuny uvnitř zůstatku (Plus účet <-> spořák): zůstatek nemění
-const INTERNAL_MOVES = ['Na spořák', 'Ze spořáku'];
 const PERIODS = [['3', '3 měsíce'], ['6', '6 měsíců'], ['12', '12 měsíců'], ['year', 'Letos'], ['all', 'Vše']];
 const DEFAULTS = { series: [{ g: 'flow', c: 'outgo' }], period: '12', from: null, to: null, type: 'bars' };
 
 const keyOf = (s) => JSON.stringify([s.g, s.c, s.i ?? null]);
 const totalOf = (value) => Number(typeof value === 'object' && value ? value.total : value) || 0;
 
-// "2026-03" + n měsíců
-function shiftMonth(month, n) {
-  const [y, m] = month.split('-').map(Number);
-  const d = new Date(y, m - 1 + n, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-function monthRange(from, to) {
-  const out = [];
-  for (let m = from; m <= to && out.length < 600; m = shiftMonth(m, 1)) out.push(m);
-  return out;
-}
 const shortMonth = (month) => {
   const [y, m] = month.split('-').map(Number);
   return `${['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'][m - 1]} ${y}`;
 };
 
 const movesOf = (row) => Object.values(row?.moves ?? {}).reduce((sum, v) => sum + totalOf(v), 0);
-// Změna zůstatku za měsíc. balance je zůstatek všech účtů segmentu dohromady
-// (u Toma Plus účet + spořák), takže přesuny mezi nimi (INTERNAL_MOVES) ho
-// nemění: příjmy - výdaje - ostatní přesuny.
-const netOf = (row) => {
-  if (!row) return 0;
-  const moves = Object.entries(row.moves ?? {}).filter(([name]) => !INTERNAL_MOVES.includes(name)).reduce((sum, [, v]) => sum + totalOf(v), 0);
-  return (Number(row.income) || 0) - (Number(row.outgo) || 0) - moves;
-};
 const isBalance = (s) => s.g === 'flow' && s.c === 'balance';
 const monthShort = (month) => ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'][Number(month.split('-')[1]) - 1];
 // Poslední den měsíce: "2026-10" -> "31. 10. 2026"
@@ -63,34 +45,6 @@ const lastDay = (month) => {
   return `${new Date(y, m, 0).getDate()}. ${m}. ${y}`;
 };
 const signed = (v) => `${v > 0 ? '+' : ''}${money(v)}`;
-
-// Zůstatek na konci každého měsíce od prvního do posledního s daty: { month: částka }.
-// Kde je z výpisu známý (balance), platí ten, ostatní měsíce se dopočítají z pohybů
-// od nejbližšího známého (dopředu od předchozího, před prvním známým zpětně).
-// Bez jediného známého zůstatku je to jen pohyb celkem od nuly (anchored = false).
-function balances(rows) {
-  if (!rows.length) return { map: new Map(), anchored: false };
-  const byMonth = new Map(rows.map((r) => [r.month, r]));
-  const months = monthRange(rows[0].month, rows[rows.length - 1].month);
-  const known = months.map((m) => {
-    const b = byMonth.get(m)?.balance;
-    return b == null ? null : Number(b);
-  });
-  const values = new Array(months.length).fill(null);
-  const firstKnown = known.findIndex((b) => b != null);
-  if (firstKnown < 0) {
-    let sum = 0;
-    months.forEach((m, i) => { sum += netOf(byMonth.get(m)); values[i] = sum; });
-    return { map: new Map(months.map((m, i) => [m, values[i]])), anchored: false };
-  }
-  for (let i = firstKnown; i < months.length; i += 1) {
-    values[i] = known[i] ?? values[i - 1] + netOf(byMonth.get(months[i]));
-  }
-  for (let i = firstKnown - 1; i >= 0; i -= 1) {
-    values[i] = values[i + 1] - netOf(byMonth.get(months[i + 1]));
-  }
-  return { map: new Map(months.map((m, i) => [m, values[i]])), anchored: true };
-}
 
 // Hodnota řady v jednom měsíci (měsíc bez řádku = 0)
 function valueOf(row, s) {

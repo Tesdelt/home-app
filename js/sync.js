@@ -327,6 +327,53 @@ const SPECS = {
     pullFilter: (query) => query.eq('deleted', false),
     removeMissing: true,
   },
+  // Peníze: měsíční limity kategorií výdajů
+  budgets: {
+    table: 'money_budgets',
+    conflict: 'id',
+    keyOf: (row) => row.id,
+    stamp: (local) => local.updatedAt ?? 0,
+    toRemote: (b, householdId) => ({
+      id: b.id,
+      household_id: householdId,
+      account: b.account,
+      category: b.category,
+      monthly_limit: b.monthlyLimit ?? 0,
+      created_at: iso(b.createdAt ?? b.updatedAt ?? Date.now()),
+      updated_at: iso(b.updatedAt ?? Date.now()),
+      deleted: Boolean(b.deleted),
+    }),
+    fromRemote: (r) => ({
+      id: r.id, account: r.account, category: r.category, monthlyLimit: Number(r.monthly_limit) || 0,
+      createdAt: ms(r.created_at), updatedAt: ms(r.updated_at),
+    }),
+    pullFilter: (query) => query.eq('deleted', false),
+    removeMissing: true,
+  },
+  // Peníze: cíle spoření
+  goals: {
+    table: 'money_goals',
+    conflict: 'id',
+    keyOf: (row) => row.id,
+    stamp: (local) => local.updatedAt ?? 0,
+    toRemote: (g, householdId) => ({
+      id: g.id,
+      household_id: householdId,
+      account: g.account,
+      name: g.name ?? '',
+      target: g.target ?? 0,
+      sort: g.sort ?? 0,
+      created_at: iso(g.createdAt ?? g.updatedAt ?? Date.now()),
+      updated_at: iso(g.updatedAt ?? Date.now()),
+      deleted: Boolean(g.deleted),
+    }),
+    fromRemote: (r) => ({
+      id: r.id, account: r.account, name: r.name ?? '', target: Number(r.target) || 0, sort: r.sort ?? 0,
+      createdAt: ms(r.created_at), updatedAt: ms(r.updated_at),
+    }),
+    pullFilter: (query) => query.eq('deleted', false),
+    removeMissing: true,
+  },
   // Skutečnost z výpisů: řádky zapisuje zvenku Claude přes SQL, appka je jen čte
   moneymonths: {
     table: 'money_months',
