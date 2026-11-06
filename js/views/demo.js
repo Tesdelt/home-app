@@ -2,11 +2,14 @@
 // jedné stránce. Není v menu, slouží ke kontrole vzhledu ve světlém i tmavém
 // režimu. Nesahá na data, všechno je tu napevno. Popis je v CLAUDE.md.
 
-import { ICONS, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money } from '../ui.js';
+import { ICONS, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor } from '../ui.js';
 import { drawChart } from '../chart.js';
 
 export const title = 'Ukázka';
 export const tab = 'vice';
+
+// Pruh limitu s barvou podle naplnění (jako v Penězích)
+const bar = (part) => `<span class="budget-bar${part > 1 ? ' is-over' : ''}"><span style="width: ${Math.min(1, part) * 100}%; background: ${budgetColor(part)}"></span></span>`;
 
 const row = ({ who = 'who-any', name, sub = '', done = false, prio = 0, lock = false, amount = '' }) => `<li class="item ${who}${done ? ' is-done' : ''}">
     <div class="item-slide">
@@ -142,11 +145,14 @@ export async function render(el, { extraEl }) {
         <div class="fold-body"><ul class="money-shops"></ul></div></li>
     </ul>
 
-    <p class="section-label">Pruh naplnění: limity (do 90 %, nad 90 %, nad limitem) a cíle</p>
+    <p class="section-label">Pruh naplnění: limity (barva podle naplnění) a cíle</p>
     <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Potraviny</span><span class="budget-bar"><span style="width: 62%"></span></span></span><span class="item-amount">2 517 <span class="budget-of">/ 4 000 Kč</span></span></div></li>
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Restaurace a kavárny</span><span class="budget-bar is-near"><span style="width: 95%"></span></span></span><span class="item-amount">2 850 <span class="budget-of">/ 3 000 Kč</span></span></div></li>
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Oblečení</span><span class="budget-bar is-over"><span style="width: 100%"></span></span></span><span class="item-amount">11 834 <span class="budget-of">/ 3 000 Kč</span></span></div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Trafika</span>${bar(0.0500)}</span><span class="item-amount">150 <span class="budget-of">/ 3 000 Kč</span></span></div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Potraviny</span>${bar(0.3250)}</span><span class="item-amount">1 300 <span class="budget-of">/ 4 000 Kč</span></span></div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Drogerie</span>${bar(0.5200)}</span><span class="item-amount">520 <span class="budget-of">/ 1 000 Kč</span></span></div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Restaurace a kavárny</span>${bar(0.8000)}</span><span class="item-amount">2 400 <span class="budget-of">/ 3 000 Kč</span></span></div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Doprava</span>${bar(0.9500)}</span><span class="item-amount">1 900 <span class="budget-of">/ 2 000 Kč</span></span></div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Oblečení</span>${bar(3.9447)}</span><span class="item-amount">11 834 <span class="budget-of">/ 3 000 Kč</span></span></div></li>
     </ul>
     <ul class="item-list group goals">
       <li class="item goal"><div class="item-main"><span class="item-text"><span class="item-name">Rezerva</span><span class="budget-bar is-goal"><span style="width: 100%"></span></span></span><span class="item-amount">60 000 <span class="budget-of">/ 60 000 Kč</span></span></div></li>

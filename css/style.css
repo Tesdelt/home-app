@@ -43,6 +43,12 @@
   --chart-1: #7B5BA6;
   --chart-2: #8A5A3C;
   --chart-3: #5F7387;
+  /* Pruh limitu: body barevného přechodu podle naplnění (budgetColor v ui.js) */
+  --bar-0: #B4AFA5;
+  --bar-1: #6FA65C;
+  --bar-2: #D9B42C;
+  --bar-3: #E2802F;
+  --bar-4: #CF3326;
   --warn: #9A7400;
   --warn-soft: #F6ECC8;
 
@@ -104,6 +110,11 @@
     --chart-1: #B39BD9;
     --chart-2: #C29070;
     --chart-3: #9FB1C4;
+    --bar-0: #5F5C56;
+    --bar-1: #86C072;
+    --bar-2: #E6C74A;
+    --bar-3: #F0954A;
+    --bar-4: #FF6B5C;
     --warn: #E2BD55;
     --warn-soft: #3A3117;
   }
@@ -1453,7 +1464,6 @@ a.opt { display: inline-flex; align-items: center; justify-content: center; text
 /* ---------- Pruh naplnění (.budget-bar): limity kategorií a cíle ---------- */
 .budget-bar { display: block; height: 4px; margin-top: var(--s1); border-radius: 2px; background: var(--surface-2); overflow: hidden; }
 .budget-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--text-2); }
-.budget-bar.is-near > span, .budget-bar.is-over > span { background: var(--warn); }
 .budget-bar.is-goal > span { background: var(--flow-move); }
 /* „3 294 / 4 000 Kč“: velikost a tučnost jako ostatní částky, část za lomítkem šedě a obyčejně */
 .item-amount .budget-of { color: var(--text-2); font-weight: 400; }

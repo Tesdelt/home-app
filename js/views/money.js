@@ -4,7 +4,7 @@
 // dole Zaplacené. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold, dragSort } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold, dragSort, budgetColor } from '../ui.js';
 import { today, dueLabel, shiftMonth } from '../dates.js';
 import { renderCharts } from './moneycharts.js';
 
@@ -64,11 +64,12 @@ const monthIn = (month) => {
 };
 const num = (v) => Math.round(v).toLocaleString('cs-CZ');
 
-// Pruh naplnění (.budget-bar): podíl 0-1, stav is-near (nad 90 %) / is-over (nad 100 %)
+// Pruh naplnění (.budget-bar): podíl 0-1 (i víc). U limitu barva podle naplnění
+// (budgetColor), u cíle (extra ' is-goal') pevná barva z CSS.
 function budgetBar(part, extra = '') {
   const pct = Math.max(0, Math.min(1, part)) * 100;
-  const state = part > 1 ? ' is-over' : part > 0.9 ? ' is-near' : '';
-  return `<span class="budget-bar${state}${extra}"><span style="width: ${pct.toFixed(1)}%"></span></span>`;
+  const color = extra.includes('is-goal') ? '' : `; background: ${budgetColor(part)}`;
+  return `<span class="budget-bar${part > 1 ? ' is-over' : ''}${extra}"><span style="width: ${pct.toFixed(1)}%${color}"></span></span>`;
 }
 
 // Měsíčně / ročně v souhrnu a vybraný měsíc skutečnosti vydrží, dokud je appka

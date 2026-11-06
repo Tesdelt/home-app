@@ -201,6 +201,23 @@ export function rowGestures(listEl, { onTap, onPress, onSwipe }) {
   return endGesture;
 }
 
+// ---------- Pruh naplnění limitu ----------
+// Barva podle toho, kolik z limitu je pryč: šedá, v první třetině přechází do
+// zelené, od poloviny do žluté, ke konci do oranžové a těsně před limitem
+// a nad ním červená. Mezi body se barvy plynule míchají (color-mix), takže
+// přechod nemá ostré skoky. Body jsou tokeny --bar-0 až --bar-4 (světlý i tmavý).
+const BAR_STOPS = [[0, 0], [0.33, 1], [0.5, 2], [0.8, 3], [0.95, 4]];
+
+export function budgetColor(part) {
+  const p = Math.max(0, part);
+  if (p >= BAR_STOPS[BAR_STOPS.length - 1][0]) return 'var(--bar-4)';
+  const i = BAR_STOPS.findIndex(([at]) => at > p);
+  const [from, a] = BAR_STOPS[i - 1];
+  const [to, b] = BAR_STOPS[i];
+  const t = Math.round(((p - from) / (to - from)) * 100);
+  return `color-mix(in oklab, var(--bar-${b}) ${t}%, var(--bar-${a}))`;
+}
+
 // ---------- Rozbalovací řádky ----------
 // Řádek li.fold má hlavičku .fold-head a tělo .fold-body, které se rozbalí plynule
 // (CSS). V jednom seznamu je rozbalený nejvýš jeden: ťuknutí na jiný předchozí

@@ -211,9 +211,12 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   knihoven, sloupce (víc řad vedle sebe, záporné pod nulou) nebo křivka s jemnou plochou.
   Dotyk / tažení ukáže svislou čáru a štítek s hodnotami, zůstane po puštění, ťuknutí mimo
   ho schová. Osa X zkratky měsíců (u ledna a na začátku i rok), osa Y 3-4 čáry („20 tis.“).
-- **Pruh naplnění** `.budget-bar` (> `span` se šířkou v %) pod názvem v řádku seznamu:
-  výchozí `--text-2`, `.is-near` (nad 90 %) a `.is-over` (nad 100 %) `--warn`, `.is-goal`
-  `--flow-move`. Částka vedle ve tvaru „X / Y Kč“ stejně velká a tučná jako ostatní
+- **Pruh naplnění** `.budget-bar` (> `span` se šířkou v %) pod názvem v řádku seznamu.
+  U limitu barva podle naplnění z `budgetColor(podíl)` v `ui.js`: šedá (`--bar-0`), do třetiny
+  přechází do zelené (`--bar-1`), od poloviny žlutá (`--bar-2`), ke konci oranžová (`--bar-3`),
+  od 95 % a nad limitem červená (`--bar-4`). Mezi body se barvy plynule míchají
+  (`color-mix`). Výslovné přání Toma, jediná výjimka z pravidel pro zelenou a červenou.
+  Cíl `.is-goal` má pevně `--flow-move`. Částka vedle ve tvaru „X / Y Kč“ stejně velká a tučná jako ostatní
   částky (`.item-amount`), část „/ Y Kč“ ve spanu `.budget-of` šedě (`--text-2`) a obyčejně.
   Překročený limit částku nezvýrazňuje, stačí okrový pruh.
 - **Toast** `toast` / `undoToast` (se Zpět).
@@ -543,6 +546,9 @@ Hotovo (0.25.0):
 Hotovo (0.25.1):
 - Částka u kategorie s limitem a u cíle je stejně velká a tučná jako ostatní částky, část
   „/ 4 000 Kč“ šedě a obyčejně (`.budget-of`). Překročení ukazuje jen okrový pruh.
+
+Hotovo (0.25.2):
+- Pruh limitu mění barvu plynule podle naplnění: šedá, zelená, žlutá, oranžová, červená.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
