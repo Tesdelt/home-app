@@ -112,8 +112,14 @@ export async function render(el, { extraEl }) {
       ${row({ who: 'who-2', name: 'Hotový úkol', sub: 'Tom 9:12', done: true })}
     </ul>
 
-    <p class="section-label">Skutečnost: kategorie, jedna rozbalená</p>
+    <p class="section-label">Skutečnost: příjmy a výdaje, jedna rozbalená</p>
     <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
+      <li class="cat-head">Příjmy</li>
+      <li class="item fold money-cat has-items" data-fold="w"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Práce</span></span><span class="item-amount">45 000 Kč</span></button>
+        <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Zaměstnavatel</span><span>45 000 Kč</span></li></ul></div></li>
+      <li class="item fold money-cat" data-fold="x"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Ostatní příjmy</span></span><span class="item-amount">1 200 Kč</span></button>
+        <div class="fold-body"><ul class="money-shops"></ul></div></li>
+      <li class="cat-head">Výdaje</li>
       <li class="item fold money-cat has-items" data-fold="r"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Restaurace a kavárny</span></span><span class="item-amount">6 707 Kč</span></button>
         <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Piazza</span><span>2 799 Kč</span></li></ul></div></li>
       <li class="item fold money-cat has-items is-open" data-fold="p"><button type="button" class="item-main fold-head" aria-expanded="true"><span class="item-text"><span class="item-name">Potraviny</span></span><span class="item-amount">3 294 Kč</span></button>

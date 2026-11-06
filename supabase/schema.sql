@@ -287,6 +287,9 @@ create table if not exists public.money_months (
 );
 
 create index if not exists money_months_household_idx on public.money_months (household_id);
+-- Rozpad příjmů ve stejném tvaru jako categories:
+-- { "Práce": { "total": 45000, "items": { "Firma s.r.o.": 45000 } }, ... }
+alter table public.money_months add column if not exists incomes jsonb not null default '{}'::jsonb;
 
 -- Push notifikace: adresy, na které se telefonům posílají upozornění.
 -- Každý vidí a mění jen své vlastní odběry.

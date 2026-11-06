@@ -36,11 +36,11 @@ const monthName = (month) => {
   return `${MONTHS[m - 1] ?? month} ${y}`;
 };
 
-// Kategorie skutečnosti: [[název, částka, [[obchodník, součet], ...]], ...] od největší.
-// Hodnota kategorie je { total, items }, starší zápis jen číslo (bez items).
-function categoriesOf(row) {
+// Kategorie skutečnosti (výdaje i příjmy): [[název, částka, [[obchodník, součet], ...]], ...]
+// od největší. Hodnota kategorie je { total, items }, starší zápis jen číslo (bez items).
+function categoriesOf(map) {
   const sorted = (entries) => entries.map(([name, value]) => [name, Number(value) || 0]).sort((a, b) => b[1] - a[1]);
-  return Object.entries(row.categories ?? {})
+  return Object.entries(map ?? {})
     .map(([name, value]) => {
       const total = typeof value === 'object' && value ? value.total : value;
       const items = typeof value === 'object' && value ? sorted(Object.entries(value.items ?? {})) : [];
@@ -218,7 +218,21 @@ export async function render(el, { extraEl }) {
       return;
     }
     const row = months.find((m) => m.month === pickedMonth) ?? months[0];
-    const cats = categoriesOf(row);
+    const outs = categoriesOf(row.categories);
+    const ins = categoriesOf(row.incomes);
+    // Řádek kategorie; klíč má předponu skupiny, název se může v obou opakovat
+    const fold = (group) => ([name, amount, items]) => {
+      const key = `${group}:${name}`;
+      return `<li class="item fold money-cat${items.length ? ' has-items' : ''}${key === openCat ? ' is-open' : ''}" data-fold="${escapeHtml(key)}">
+          <button type="button" class="item-main fold-head" aria-expanded="${key === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span></span><span class="item-amount">${money(amount)}</span></button>
+          <div class="fold-body"><ul class="money-shops">${items.map(([who, value]) => `<li class="money-shop"><span>${escapeHtml(who)}</span><span>${money(value)}</span></li>`).join('')}</ul></div>
+        </li>`;
+    };
+    // Příjmy a Výdaje jsou v jednom seznamu, takže rozbalená je nejvýš jedna
+    // kategorie napříč oběma. Bez rozpadu příjmů zůstanou jen výdaje bez nadpisu.
+    const lists = ins.length
+      ? `<li class="cat-head">Příjmy</li>${ins.map(fold('in')).join('')}${outs.length ? `<li class="cat-head">Výdaje</li>${outs.map(fold('out')).join('')}` : ''}`
+      : outs.map(fold('out')).join('');
     actualRoot.innerHTML = `
       <div class="toolbar actual-bar">
         <p class="section-label">Skutečnost</p>
@@ -231,10 +245,7 @@ export async function render(el, { extraEl }) {
         </div>
         <span class="sum-note">Přišlo ${money(row.income)}</span>
       </section>
-      ${cats.length ? `<ul class="item-list group money-cats">${cats.map(([name, amount, items]) => `<li class="item fold money-cat${items.length ? ' has-items' : ''}${name === openCat ? ' is-open' : ''}" data-fold="${escapeHtml(name)}">
-          <button type="button" class="item-main fold-head" aria-expanded="${name === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span></span><span class="item-amount">${money(amount)}</span></button>
-          <div class="fold-body"><ul class="money-shops">${items.map(([who, value]) => `<li class="money-shop"><span>${escapeHtml(who)}</span><span>${money(value)}</span></li>`).join('')}</ul></div>
-        </li>`).join('')}</ul>` : ''}`;
+      ${lists ? `<ul class="item-list group money-cats">${lists}</ul>` : ''}`;
   }
 
   root.addEventListener('click', async (e) => {

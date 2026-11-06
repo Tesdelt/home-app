@@ -419,6 +419,8 @@ Hotovo (0.18.0):
   `categories` ve tvaru `{ "Potraviny": { "total": 3294.1, "items": { "Albert": 2823,
   "Lidl": 36.3 } }, ... }`. `items` jsou součty za obchodníka nebo protiúčet, ne jednotlivé
   platby (0.18.1; starší sloupec `shops`, pokud v databázi vznikl, se nepoužívá a nemaže).
+  Sloupec `incomes` (0.20.0) je rozpad příjmů ve stejném tvaru (`{ "Práce": { "total":
+  45000, "items": { ... } } }`), prázdné `{}` = bez rozpadu.
   Unikátní je (household_id, account, month).
 - **Kdo do ní píše:** appka řádky jen čte a zobrazuje. Zapisuje je zvenku Claude přes SQL
   z výpisů z banky, které mu Tom dá (`insert ... on conflict (household_id, account, month)
@@ -444,6 +446,12 @@ Hotovo (0.19.0):
   obyčejný řádek. Zaplatit a Zaplacené zůstávají po platbách, kategorie je šedě v `item-sub`.
 - Rozbalovací řádky jsou společná komponenta (viz Design systém), sdílí je Skutečnost
   i kategorie plateb.
+
+Hotovo (0.20.0):
+- Skutečnost: pod kartou skupiny „Příjmy“ (z `incomes`) a „Výdaje“ (z `categories`) jako
+  `li.cat-head` v jednom seznamu, stejné rozbalovací řádky (`toggleFold`), rozbalená nejvýš
+  jedna kategorie napříč oběma. Částky příjmů bez znaménka a bez barvy. Prázdné `incomes`
+  = skupina Příjmy se nezobrazí a výdaje zůstanou bez nadpisu jako dřív.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
