@@ -426,6 +426,10 @@ Hotovo (0.18.0):
   `categories` = rozpad výdajů, `incomes` = rozpad příjmů, `moves` = přesuny mezi vlastními
   účty a do spoření. Všechny tři rozpady mají stejný tvar (`{ "Práce": { "total": 45000,
   "items": { ... } } }`), přesun z úspor zpět má záporný `total`. Prázdné `{}` = bez skupiny.
+  Položky `items` můžou být záporné (`"Bydlení": { "total": 10400, "items": { "Nájem": 19600,
+  "Podíl spolubydlící": -9200 } }`): zobrazí se s mínusem, neutrálně, kladné od největší
+  a záporné na konec. `total` je vždy součet položek a zapisuje ho Claude, appka ho
+  nepřepočítává.
   Unikátní je (household_id, account, month).
 - **Kdo do ní píše:** appka řádky jen čte a zobrazuje. Zapisuje je zvenku Claude přes SQL
   z výpisů z banky, které mu Tom dá (`insert ... on conflict (household_id, account, month)

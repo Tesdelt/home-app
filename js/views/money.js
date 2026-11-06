@@ -39,9 +39,13 @@ const monthName = (month) => {
 // Kategorie skutečnosti (příjmy, výdaje, přesuny): [[název, částka, [[obchodník, součet], ...]], ...]
 // od největší podle absolutní hodnoty (přesun z úspor zpět je záporný).
 // Hodnota kategorie je { total, items }, starší zápis jen číslo (bez items).
+// Položky (items) můžou být záporné (např. podíl spolubydlící u nájmu): kladné
+// od největší, záporné na konec. Total kategorie je součet položek z dat, appka
+// ho nepřepočítává.
 const byAbs = (a, b) => Math.abs(b[1]) - Math.abs(a[1]);
+const plusFirst = (a, b) => (a[1] < 0) - (b[1] < 0) || byAbs(a, b);
 function categoriesOf(map) {
-  const sorted = (entries) => entries.map(([name, value]) => [name, Number(value) || 0]).sort(byAbs);
+  const sorted = (entries) => entries.map(([name, value]) => [name, Number(value) || 0]).sort(plusFirst);
   return Object.entries(map ?? {})
     .map(([name, value]) => {
       const total = typeof value === 'object' && value ? value.total : value;

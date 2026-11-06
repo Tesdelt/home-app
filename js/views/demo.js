@@ -131,7 +131,7 @@ export async function render(el, { extraEl }) {
       <li class="item fold money-cat has-items" data-fold="r"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Restaurace a kavárny</span></span><span class="item-amount">6 707 Kč</span></button>
         <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Piazza</span><span>2 799 Kč</span></li></ul></div></li>
       <li class="item fold money-cat has-items is-open" data-fold="p"><button type="button" class="item-main fold-head" aria-expanded="true"><span class="item-text"><span class="item-name">Potraviny</span></span><span class="item-amount">3 294 Kč</span></button>
-        <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Albert</span><span>2 823 Kč</span></li><li class="money-shop"><span>Prima pekárna</span><span>305 Kč</span></li><li class="money-shop"><span>Lidl</span><span>36 Kč</span></li></ul></div></li>
+        <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Albert</span><span>2 823 Kč</span></li><li class="money-shop"><span>Prima pekárna</span><span>305 Kč</span></li><li class="money-shop"><span>Lidl</span><span>36 Kč</span></li><li class="money-shop"><span>Vratka zálohy</span><span>-20 Kč</span></li></ul></div></li>
       <li class="item fold money-cat" data-fold="o"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Ostatní</span></span><span class="item-amount">120 Kč</span></button>
         <div class="fold-body"><ul class="money-shops"></ul></div></li>
       <li class="cat-head"><span class="flow-dot flow-move"></span>Přesuny</li>
