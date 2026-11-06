@@ -1434,3 +1434,18 @@ a.opt { display: inline-flex; align-items: center; justify-content: center; text
 .menu-expand.is-open::after { transform: rotate(225deg); }
 .menu-sub { padding-left: var(--s5); font-size: var(--fs-small); }
 .menu-item:disabled { opacity: 0.4; }
+
+/* Grafy: čárkovaná čára průměru / plánu, karta zůstatku, nabídka Co */
+.chart-ref { stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.75; }
+.chart-ref-label { font-size: var(--fs-small); font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+.chart-balance { margin: var(--s2) 0 0; padding: var(--s3) var(--s4); }
+.chart-balance-value { display: block; font-size: var(--fs-title); font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.chart-balance-change { display: block; font-size: var(--fs-small); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.chart-stat-range { white-space: normal; }
+.chart-pick { display: flex; align-items: center; gap: var(--s2); }
+.chart-pick .menu-check { flex: none; width: 18px; height: 18px; color: var(--accent); }
+.chart-pick .menu-check svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.chart-pick .menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.chart-pick .menu-sum { flex: none; font-size: var(--fs-small); font-weight: 400; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.chart-menu { min-width: 260px; }
+.chart-menu .menu-item[aria-pressed="true"] { background: transparent; }

@@ -438,8 +438,10 @@ Hotovo (0.18.0):
   "Podíl spolubydlící": -9200 } }`): zobrazí se s mínusem, neutrálně, kladné od největší
   a záporné na konec. `total` je vždy součet položek a zapisuje ho Claude, appka ho
   nepřepočítává.
-  `balance` (0.23.0) je konečný zůstatek účtu k poslednímu dni měsíce z výpisu, nebo null.
-  Zapisuje ho Claude z výpisu spolu se součty (stačí i jen u některých měsíců).
+  `balance` je zůstatek všech účtů segmentu dohromady ke konci měsíce (u Toma Plus účet
+  + spořák), nebo null. Zapisuje ho Claude z výpisů spolu se součty (stačí i jen u některých
+  měsíců). Měsíce bez něj appka dopočítá: income - outgo - součet moves BEZ kategorií
+  „Na spořák“ a „Ze spořáku“ (přesuny uvnitř zůstatku, `INTERNAL_MOVES` v `moneycharts.js`).
   Unikátní je (household_id, account, month).
 - **Kdo do ní píše:** appka řádky jen čte a zobrazuje. Zapisuje je zvenku Claude přes SQL
   z výpisů z banky, které mu Tom dá (`insert ... on conflict (household_id, account, month)
@@ -497,6 +499,17 @@ Hotovo (0.23.1):
 - Grafy: graf zabere výšku, která zbude mezi volbami a souhrnem nad spodní lištou (stránka
   se neposouvá, při otočení telefonu se překreslí). Pod grafem je u každé řady rozmezí za
   období („0 - 11 834 Kč“) a vpravo Dohromady (součet), u Zůstatku Na konci.
+
+Hotovo (0.24.0):
+- Grafy: Zůstatek je výlučná volba (zruší ostatní řady a naopak), vždy křivka s plochou
+  (přepínač typu se schová) a nad grafem karta s posledním zůstatkem a změnou za období.
+- Nabídka Co: sekce Hlavní, Výdaje, Příjmy, Přesuny; kategorie a položky řazené podle
+  součtu za vybrané období (vpravo šedě), vybrané s fajfkou, při třech ostatní tlumené.
+- S jednou řadou čárkovaný průměr („průměr“), u Utraceno čárkovaný plán („plán“,
+  pravidelné platby segmentu za měsíc); `lines` v `drawChart`.
+- Pod grafem u řady šedě „průměr X / měsíc · nejvíc … · nejméně …“, vpravo Dohromady.
+- Hlavička jako u ostatních podstránek: šipka zpět na Peníze, název Grafy, segment jako
+  podtitul (bez karty).
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

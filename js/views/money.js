@@ -61,9 +61,9 @@ function categoriesOf(map) {
 let yearly = false;
 let pickedMonth = null;
 
-export async function render(el, { params, extraEl }) {
+export async function render(el, { params, extraEl, subEl }) {
   // #/penize/grafy/<segment> jsou grafy Skutečnosti
-  if (params?.[0] === 'grafy') return renderCharts(el, params[1] || store.SPLIT);
+  if (params?.[0] === 'grafy') return renderCharts(el, params[1] || store.SPLIT, { subEl });
 
   const root = document.createElement('div');
   el.append(root);

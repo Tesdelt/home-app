@@ -1,12 +1,14 @@
 // Peníze, Grafy (#/penize/grafy/<segment>): vývoj Skutečnosti po měsících.
 // Nad grafem řádek voleb: Co (nejvýš 3 řady: Přišlo, Utraceno, Odloženo nebo
-// kategorie či jedna její položka), Období a Typ (sloupce / křivka).
+// kategorie či jedna její položka; Zůstatek je výlučná volba a vždy křivka),
+// Období a Typ (sloupce / křivka). S jednou řadou je v grafu čárkovaný průměr,
+// u Utraceno i plán (pravidelné platby segmentu za měsíc).
 // Volby si pamatuje každý telefon zvlášť, pro každý segment zvlášť (meta
 // moneyChart). Kreslí sdílený js/chart.js.
 
 import * as store from '../store.js';
 import { escapeHtml, ICONS, openMenu, money, emptyState } from '../ui.js';
-import { drawChart, monthLabel } from '../chart.js';
+import { drawChart } from '../chart.js';
 
 const SHARED = 'Společné';
 const MAX_SERIES = 3;
@@ -20,14 +22,10 @@ const FLOWS = [
 ];
 const GROUPS = [['out', 'Výdaje', 'categories'], ['in', 'Příjmy', 'incomes'], ['move', 'Přesuny', 'moves']];
 const PALETTE = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)'];
+// Přesuny uvnitř zůstatku (Plus účet <-> spořák): zůstatek nemění
+const INTERNAL_MOVES = ['Na spořák', 'Ze spořáku'];
 const PERIODS = [['3', '3 měsíce'], ['6', '6 měsíců'], ['12', '12 měsíců'], ['year', 'Letos'], ['all', 'Vše']];
 const DEFAULTS = { series: [{ g: 'flow', c: 'outgo' }], period: '12', from: null, to: null, type: 'bars' };
-
-// "0 - 11 834 Kč" (krátká pomlčka, jednotka jen na konci)
-const range = (min, max) => {
-  const num = (v) => Math.round(v).toLocaleString('cs-CZ');
-  return min === max ? money(max) : `${num(min)} - ${num(max)} Kč`;
-};
 
 const keyOf = (s) => JSON.stringify([s.g, s.c, s.i ?? null]);
 const totalOf = (value) => Number(typeof value === 'object' && value ? value.total : value) || 0;
@@ -48,10 +46,18 @@ const shortMonth = (month) => {
   return `${['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'][m - 1]} ${y}`;
 };
 
-// Celkový pohyb účtu za měsíc: všechno, co přišlo, minus všechno, co odešlo
-// (výdaje i přesuny; přesun z úspor zpět je záporný, takže se přičte)
 const movesOf = (row) => Object.values(row?.moves ?? {}).reduce((sum, v) => sum + totalOf(v), 0);
-const netOf = (row) => (row ? (Number(row.income) || 0) - (Number(row.outgo) || 0) - movesOf(row) : 0);
+// Změna zůstatku za měsíc. balance je zůstatek všech účtů segmentu dohromady
+// (u Toma Plus účet + spořák), takže přesuny mezi nimi (INTERNAL_MOVES) ho
+// nemění: příjmy - výdaje - ostatní přesuny.
+const netOf = (row) => {
+  if (!row) return 0;
+  const moves = Object.entries(row.moves ?? {}).filter(([name]) => !INTERNAL_MOVES.includes(name)).reduce((sum, [, v]) => sum + totalOf(v), 0);
+  return (Number(row.income) || 0) - (Number(row.outgo) || 0) - moves;
+};
+const isBalance = (s) => s.g === 'flow' && s.c === 'balance';
+const monthShort = (month) => ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'][Number(month.split('-')[1]) - 1];
+const signed = (v) => `${v > 0 ? '+' : ''}${money(v)}`;
 
 // Zůstatek na konci každého měsíce od prvního do posledního s daty: { month: částka }.
 // Kde je z výpisu známý (balance), platí ten, ostatní měsíce se dopočítají z pohybů
@@ -95,16 +101,18 @@ function valueOf(row, s) {
   return Number(value?.items?.[s.i]) || 0;
 }
 
-export async function renderCharts(el, segment) {
-  document.getElementById('app').classList.add('no-topbar');
+export async function renderCharts(el, segment, { subEl }) {
+  // Hlavička jako u ostatních podstránek: šipka zpět na Peníze, název Grafy,
+  // segment jako šedý podtitul
+  document.getElementById('screen-title').textContent = 'Grafy';
+  document.getElementById('topbar-back').href = '#/penize';
+  document.title = 'Grafy · Domácnost';
+  subEl.textContent = segment === store.SPLIT ? SHARED : segment;
+  subEl.hidden = false;
   const root = document.createElement('div');
-  root.className = 'detail';
   el.append(root);
 
-  const name = segment === store.SPLIT ? SHARED : segment;
   root.innerHTML = `
-    <div class="detail-head"><a class="back-btn" href="#/penize" aria-label="Zpět">${ICONS.back}</a>
-      <span class="detail-name">Grafy · ${escapeHtml(name)}</span></div>
     <div class="toolbar chart-bar">
       <button type="button" class="opt" data-action="what"><span class="opt-text"></span></button>
       <button type="button" class="opt" data-action="period"><span class="opt-text"></span></button>
@@ -113,6 +121,7 @@ export async function renderCharts(el, segment) {
         <button type="button" data-type="line">Křivka</button>
       </div>
     </div>
+    <div class="chart-balance-root"></div>
     <div class="chart-root"></div>
     <div class="chart-legend"></div>`;
 
@@ -120,8 +129,11 @@ export async function renderCharts(el, segment) {
   const periodBtn = root.querySelector('[data-action="period"]');
   const chartEl = root.querySelector('.chart-root');
   const legendEl = root.querySelector('.chart-legend');
+  const balanceEl = root.querySelector('.chart-balance-root');
+  const typeEl = root.querySelector('[data-name="type"]');
 
   let rows = [];
+  let plan = 0;
   let prefs = { ...DEFAULTS };
   let endChart = null;
 
@@ -135,18 +147,29 @@ export async function renderCharts(el, segment) {
     await store.setLocal('moneyChart', { ...all, [segment]: prefs });
   }
 
-  // Všechny kategorie a položky, které se v datech segmentu vyskytují
+  // Všechny kategorie a položky, které se v datech segmentu vyskytují, se součtem
+  // za vybrané období; řazené od největšího
   function catalog() {
+    const inPeriod = new Set(periodMonths());
     return GROUPS.map(([g, label, field]) => {
       const cats = new Map();
       for (const row of rows) {
+        const counted = inPeriod.has(row.month);
         for (const [cat, value] of Object.entries(row[field] ?? {})) {
-          const items = cats.get(cat) ?? new Set();
-          Object.keys((typeof value === 'object' && value?.items) || {}).forEach((item) => items.add(item));
-          cats.set(cat, items);
+          const entry = cats.get(cat) ?? { cat, sum: 0, items: new Map() };
+          if (counted) entry.sum += totalOf(value);
+          for (const [item, amount] of Object.entries((typeof value === 'object' && value?.items) || {})) {
+            entry.items.set(item, (entry.items.get(item) ?? 0) + (counted ? Number(amount) || 0 : 0));
+          }
+          cats.set(cat, entry);
         }
       }
-      return { g, label, cats: [...cats].map(([cat, items]) => ({ cat, items: [...items].sort((a, b) => a.localeCompare(b, 'cs')) })).sort((a, b) => a.cat.localeCompare(b.cat, 'cs')) };
+      const bySum = (a, b) => Math.abs(b.sum) - Math.abs(a.sum) || a.cat.localeCompare(b.cat, 'cs');
+      return {
+        g,
+        label,
+        cats: [...cats.values()].map((c) => ({ ...c, items: [...c.items].map(([item, sum]) => ({ cat: item, sum })).sort(bySum) })).sort(bySum),
+      };
     }).filter((group) => group.cats.length);
   }
 
@@ -184,6 +207,13 @@ export async function renderCharts(el, segment) {
     return months;
   }
 
+  // "za 12 měsíců", "od začátku roku", "za celé období"
+  function changeLabel() {
+    if (prefs.period === 'year') return 'od začátku roku';
+    if (prefs.period === 'all') return 'za celé období';
+    return `za ${periodLabel()}`;
+  }
+
   function periodLabel() {
     if (prefs.period === 'custom') {
       const months = periodMonths();
@@ -194,44 +224,73 @@ export async function renderCharts(el, segment) {
 
   function draw() {
     const series = decorate(prefs.series);
+    const balanceOnly = series.some(isBalance);
     whatBtn.querySelector('.opt-text').textContent = `${series[0].label}${series.length > 1 ? ` +${series.length - 1}` : ''}`;
     periodBtn.querySelector('.opt-text').textContent = periodLabel();
+    // Zůstatek je vždy křivka, přepínač typu se schová
+    typeEl.hidden = balanceOnly;
     root.querySelectorAll('[data-type]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.type === prefs.type));
     if (endChart) endChart();
     endChart = null;
 
     const months = periodMonths();
     if (!months.length) {
+      balanceEl.innerHTML = '';
       chartEl.innerHTML = emptyState('chart', 'Žádná data', 'V tomhle období nejsou žádné měsíce, třeba zkuste období Vše.');
       legendEl.innerHTML = '';
       return;
     }
     const byMonth = new Map(rows.map((r) => [r.month, r]));
     const balance = balances(rows).map;
-    const valueAt = (m, s) => (s.g === 'flow' && s.c === 'balance' ? balance.get(m) ?? 0 : valueOf(byMonth.get(m), s));
-    // Pod grafem souhrn každé řady za období: rozmezí od-do a dohromady
-    // (u zůstatku místo součtu stav na konci období)
+    const valueAt = (m, s) => (isBalance(s) ? balance.get(m) ?? 0 : valueOf(byMonth.get(m), s));
     const data = series.map((s) => ({ ...s, values: months.map((m) => valueAt(m, s)) }));
+
+    // Zůstatek: nahoře velké číslo posledního zůstatku a změna za období
+    if (balanceOnly) {
+      const values = data[0].values;
+      const last = values[values.length - 1];
+      const before = balance.get(shiftMonth(months[0], -1));
+      const change = last - (before ?? values[0]);
+      balanceEl.innerHTML = `<section class="card chart-balance">
+          <span class="chart-balance-value">${escapeHtml(money(last))}</span>
+          <span class="chart-balance-change">${escapeHtml(signed(change))} ${escapeHtml(changeLabel())}</span>
+        </section>`;
+    } else {
+      balanceEl.innerHTML = '';
+    }
+
+    // Pod grafem souhrn každé řady: průměr, nejvíc a nejméně, vpravo dohromady
+    // (u zůstatku stav na konci období)
     legendEl.innerHTML = data.map((s) => {
-      const min = Math.min(...s.values);
-      const max = Math.max(...s.values);
-      const isBalance = s.g === 'flow' && s.c === 'balance';
-      const total = isBalance ? s.values[s.values.length - 1] : s.values.reduce((a, b) => a + b, 0);
+      const avg = s.values.reduce((a, b) => a + b, 0) / s.values.length;
+      const hi = s.values.indexOf(Math.max(...s.values));
+      const lo = s.values.indexOf(Math.min(...s.values));
+      const total = isBalance(s) ? s.values[s.values.length - 1] : s.values.reduce((a, b) => a + b, 0);
+      const facts = `průměr ${money(avg)} / měsíc · nejvíc ${monthShort(months[hi])} ${money(s.values[hi])} · nejméně ${monthShort(months[lo])} ${money(s.values[lo])}`;
       return `<div class="chart-stat">
         <span class="chart-key" style="background: ${s.color}"></span>
-        <span class="chart-stat-name">${escapeHtml(s.label)}<span class="chart-stat-range">${escapeHtml(range(min, max))}</span></span>
-        <span class="chart-stat-total"><span class="chart-stat-label">${isBalance ? 'Na konci' : 'Dohromady'}</span>${escapeHtml(money(total))}</span>
+        <span class="chart-stat-name">${escapeHtml(s.label)}<span class="chart-stat-range">${escapeHtml(facts)}</span></span>
+        <span class="chart-stat-total"><span class="chart-stat-label">${isBalance(s) ? 'Na konci' : 'Dohromady'}</span>${escapeHtml(money(total))}</span>
       </div>`;
     }).join('');
+
+    // Čárkované čáry: průměr u jediné řady, plán u Utraceno
+    const lines = [];
+    if (data.length === 1) {
+      const avg = data[0].values.reduce((a, b) => a + b, 0) / data[0].values.length;
+      lines.push({ value: avg, color: data[0].color, label: 'průměr' });
+    }
+    if (plan && data.some((s) => s.g === 'flow' && s.c === 'outgo')) lines.push({ value: plan, color: 'var(--text-2)', label: 'plán' });
 
     // Graf zabere výšku, která zbude mezi volbami a souhrnem nad spodní lištou
     const view = document.getElementById('view');
     const free = view.getBoundingClientRect().bottom - chartEl.getBoundingClientRect().top - legendEl.offsetHeight - 40;
-    endChart = drawChart(chartEl, { months, series: data, type: prefs.type, format: money, height: free });
+    endChart = drawChart(chartEl, { months, series: data, type: balanceOnly ? 'line' : prefs.type, format: money, height: free, lines });
   }
 
   async function load() {
     rows = (await store.listMoneyMonths(segment)).slice().sort((a, b) => a.month.localeCompare(b.month));
+    plan = (await store.paymentsSummary(segment)).total;
     draw();
   }
 
@@ -243,15 +302,19 @@ export async function renderCharts(el, segment) {
       const paint = () => {
         const chosen = new Set(prefs.series.map(keyOf));
         const full = chosen.size >= MAX_SERIES;
-        const item = (s, label, extra = '') => {
+        // Vybraná řada má fajfku, při třech vybraných jsou ostatní tlumené.
+        // Zůstatek je výlučný, jde vybrat vždy (ostatní řady zruší).
+        const item = (s, label, sum = null, extra = '') => {
           const on = chosen.has(keyOf(s));
-          return `<button type="button" class="menu-item${extra}" data-series="${escapeHtml(keyOf(s))}" aria-pressed="${on}"${full && !on ? ' disabled' : ''}>${escapeHtml(label)}</button>`;
+          const blocked = full && !on && !isBalance(s);
+          return `<button type="button" class="menu-item chart-pick${extra}" data-series="${escapeHtml(keyOf(s))}" aria-pressed="${on}"${blocked ? ' disabled' : ''}>
+            <span class="menu-check">${on ? ICONS.check : ''}</span><span class="menu-label">${escapeHtml(label)}</span>${sum == null ? '' : `<span class="menu-sum">${escapeHtml(money(sum))}</span>`}</button>`;
         };
-        menu.innerHTML = FLOWS.map((f) => item(f, f.label)).join('')
-          + catalog().map(({ g, label, cats }) => `<p class="menu-head">${label}</p>${cats.map(({ cat, items }) => {
+        menu.innerHTML = `<p class="menu-head">Hlavní</p>${FLOWS.map((f) => item(f, f.label)).join('')}`
+          + catalog().map(({ g, label, cats }) => `<p class="menu-head">${label}</p>${cats.map(({ cat, sum, items }) => {
             const open = expanded.has(`${g}:${cat}`);
-            return `<div class="menu-row">${item({ g, c: cat }, cat)}${items.length ? `<button type="button" class="icon-btn menu-expand${open ? ' is-open' : ''}" data-expand="${escapeHtml(`${g}:${cat}`)}" aria-label="Položky" aria-expanded="${open}"></button>` : ''}</div>
-              ${open ? items.map((it) => item({ g, c: cat, i: it }, it, ' menu-sub')).join('') : ''}`;
+            return `<div class="menu-row">${item({ g, c: cat }, cat, sum)}${items.length ? `<button type="button" class="icon-btn menu-expand${open ? ' is-open' : ''}" data-expand="${escapeHtml(`${g}:${cat}`)}" aria-label="Položky" aria-expanded="${open}"></button>` : ''}</div>
+              ${open ? items.map((it) => item({ g, c: cat, i: it.cat }, it.cat, it.sum, ' menu-sub')).join('') : ''}`;
           }).join('')}`).join('');
       };
       paint();
@@ -271,7 +334,11 @@ export async function renderCharts(el, segment) {
         const has = prefs.series.some((s) => keyOf(s) === key);
         // Aspoň jedna řada zůstane vždy
         if (has && prefs.series.length === 1) return;
-        prefs.series = has ? prefs.series.filter((s) => keyOf(s) !== key) : [...prefs.series, i == null ? { g, c } : { g, c, i }];
+        const picked = i == null ? { g, c } : { g, c, i };
+        // Zůstatek je výlučný: jeho výběr zruší ostatní řady a naopak
+        if (has) prefs.series = prefs.series.filter((s) => keyOf(s) !== key);
+        else if (isBalance(picked) || prefs.series.some(isBalance)) prefs.series = [picked];
+        else prefs.series = [...prefs.series, picked];
         paint();
         draw();
         await savePrefs();

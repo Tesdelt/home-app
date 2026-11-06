@@ -159,9 +159,15 @@ export async function render(el, { extraEl }) {
       ${row({ who: 'who-2', name: 'Telefon', sub: 'út 9. 12. · Komunikace', amount: '400 Kč' })}
     </ul>
 
-    <p class="section-label">Graf: sloupce (záporné pod nulou) a křivka</p>
+    <p class="section-label">Graf: sloupce s plánem, křivka s průměrem, zůstatek</p>
     <div class="demo-chart-bars"></div>
-    <div class="demo-chart-line" style="margin-bottom: var(--s3)"></div>
+    <div class="demo-chart-line"></div>
+    <section class="card chart-balance"><span class="chart-balance-value">126 480 Kč</span><span class="chart-balance-change">+18 200 Kč za 12 měsíců</span></section>
+    <div class="chart-legend" style="margin-bottom: var(--s3)">
+      <div class="chart-stat"><span class="chart-key" style="background: var(--chart-1)"></span>
+        <span class="chart-stat-name">Oblečení<span class="chart-stat-range">průměr 1 949 Kč / měsíc · nejvíc zář 11 834 Kč · nejméně led 0 Kč</span></span>
+        <span class="chart-stat-total"><span class="chart-stat-label">Dohromady</span>23 390 Kč</span></div>
+    </div>
 
     <p class="section-label">Ikony</p>
     <div class="demo-row">${Object.keys(ICONS).map((name) => `<span class="card-icon" title="${name}">${ICONS[name]}</span>`).join('')}</div>
@@ -176,10 +182,11 @@ export async function render(el, { extraEl }) {
     { label: 'Utraceno', color: 'var(--flow-out)', values: [41000, 58000, 47285, 35836, 44890, 37013] },
     { label: 'Odloženo', color: 'var(--flow-move)', values: [5000, -12000, 4930, 3200, 23222, 5832] },
   ];
-  const endBars = drawChart(root.querySelector('.demo-chart-bars'), { months, series: flows, type: 'bars', format: money });
+  const endBars = drawChart(root.querySelector('.demo-chart-bars'), { months, series: flows, type: 'bars', format: money, lines: [{ value: 42000, color: 'var(--text-2)', label: 'plán' }] });
   const endLine = drawChart(root.querySelector('.demo-chart-line'), {
     months,
-    series: [{ label: 'Potraviny', color: 'var(--chart-1)', values: [3900, 5200, 4083, 2134, 4822, 4338] }, { label: 'Restaurace', color: 'var(--chart-2)', values: [2100, 3400, 2240, 2471, 3588, 1567] }],
+    series: [{ label: 'Potraviny', color: 'var(--chart-1)', values: [3900, 5200, 4083, 2134, 4822, 4338] }],
+    lines: [{ value: 4080, color: 'var(--chart-1)', label: 'průměr' }],
     type: 'line',
     format: money,
   });

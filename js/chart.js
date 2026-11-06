@@ -11,6 +11,8 @@
 //   type: 'bars' | 'line',
 //   format: (číslo) => text do štítku,
 //   height: výška v px (výchozí 220, menší se nepoužije),
+//   lines: [{ value, color, label }] čárkované vodorovné čáry (průměr, plán)
+//          s malým popiskem u pravého okraje,
 // })
 // Vrací funkci na úklid (odebere posluchače na dokumentu).
 
@@ -53,7 +55,7 @@ function node(name, attrs = {}) {
   return el;
 }
 
-export function drawChart(el, { months, series, type = 'bars', format = String, height = MIN_HEIGHT }) {
+export function drawChart(el, { months, series, type = 'bars', format = String, height = MIN_HEIGHT, lines = [] }) {
   const HEIGHT = Math.max(MIN_HEIGHT, Math.round(height));
   el.classList.add('chart');
   el.replaceChildren();
@@ -63,7 +65,7 @@ export function drawChart(el, { months, series, type = 'bars', format = String, 
   const n = months.length;
 
   // Rozsah osy Y vždy včetně nuly
-  const all = series.flatMap((s) => s.values);
+  const all = [...series.flatMap((s) => s.values), ...lines.map((l) => l.value)];
   let min = Math.min(0, ...all);
   let max = Math.max(0, ...all);
   if (min === max) max = 1;
@@ -123,6 +125,14 @@ export function drawChart(el, { months, series, type = 'bars', format = String, 
         svg.append(node('rect', { x: x + 0.5, y: top, width: Math.max(1, barW - 1), height: h, rx: Math.min(3, barW / 3), style: `fill: ${s.color}` }));
       });
     });
+  }
+
+  // Čárkované vodorovné čáry (průměr, plán) s popiskem vpravo nad čarou
+  for (const l of lines) {
+    svg.append(node('line', { x1: PAD.left, x2: width - PAD.right, y1: y(l.value), y2: y(l.value), class: 'chart-ref', style: `stroke: ${l.color}` }));
+    const label = node('text', { x: width - PAD.right, y: y(l.value) - 4, class: 'chart-label chart-ref-label', 'text-anchor': 'end', style: `fill: ${l.color}` });
+    label.textContent = l.label;
+    svg.append(label);
   }
 
   // Kurzor: svislá čára na vybraném měsíci a štítek nad grafem
