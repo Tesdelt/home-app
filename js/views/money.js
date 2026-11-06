@@ -6,6 +6,7 @@
 import * as store from '../store.js';
 import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold } from '../ui.js';
 import { today, dueLabel } from '../dates.js';
+import { renderCharts } from './moneycharts.js';
 
 export const title = 'Peníze';
 
@@ -60,7 +61,10 @@ function categoriesOf(map) {
 let yearly = false;
 let pickedMonth = null;
 
-export async function render(el, { extraEl }) {
+export async function render(el, { params, extraEl }) {
+  // #/penize/grafy/<segment> jsou grafy Skutečnosti
+  if (params?.[0] === 'grafy') return renderCharts(el, params[1] || store.SPLIT);
+
   const root = document.createElement('div');
   el.append(root);
   root.innerHTML = `
@@ -250,6 +254,7 @@ export async function render(el, { extraEl }) {
       <div class="toolbar actual-bar">
         <p class="section-label">Skutečnost</p>
         <button type="button" class="opt" data-action="month"><span class="opt-text">${escapeHtml(monthName(row.month))}</span></button>
+        ${months.length >= 2 ? `<a class="opt opt-icon" href="#/penize/grafy/${encodeURIComponent(segment)}" aria-label="Grafy">${ICONS.chart}</a>` : ''}
       </div>
       <section class="card summary flow-card">
         <div class="sum-row">

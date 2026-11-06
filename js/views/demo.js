@@ -2,7 +2,8 @@
 // jedné stránce. Není v menu, slouží ke kontrole vzhledu ve světlém i tmavém
 // režimu. Nesahá na data, všechno je tu napevno. Popis je v CLAUDE.md.
 
-import { ICONS, toast, undoToast, openSheet, openMenu, emptyState, toggleFold } from '../ui.js';
+import { ICONS, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money } from '../ui.js';
+import { drawChart } from '../chart.js';
 
 export const title = 'Ukázka';
 export const tab = 'vice';
@@ -30,7 +31,7 @@ export async function render(el, { extraEl }) {
 
   const root = document.createElement('div');
   el.append(root);
-  const swatches = ['bg', 'surface', 'surface-2', 'border', 'text', 'text-2', 'text-3', 'accent', 'accent-soft', 'danger', 'who-1', 'who-2', 'who-both', 'flow-in', 'flow-out', 'flow-move'];
+  const swatches = ['bg', 'surface', 'surface-2', 'border', 'text', 'text-2', 'text-3', 'accent', 'accent-soft', 'danger', 'who-1', 'who-2', 'who-both', 'flow-in', 'flow-out', 'flow-move', 'chart-1', 'chart-2', 'chart-3'];
   root.innerHTML = `
     <p class="section-label">Písmo</p>
     <section class="card">
@@ -158,11 +159,30 @@ export async function render(el, { extraEl }) {
       ${row({ who: 'who-2', name: 'Telefon', sub: 'út 9. 12. · Komunikace', amount: '400 Kč' })}
     </ul>
 
+    <p class="section-label">Graf: sloupce (záporné pod nulou) a křivka</p>
+    <div class="demo-chart-bars"></div>
+    <div class="demo-chart-line" style="margin-bottom: var(--s3)"></div>
+
     <p class="section-label">Ikony</p>
     <div class="demo-row">${Object.keys(ICONS).map((name) => `<span class="card-icon" title="${name}">${ICONS[name]}</span>`).join('')}</div>
 
     <p class="section-label">Prázdný stav</p>
     <section class="card">${emptyState('gift', 'Zatím žádná přání', 'Patří sem věci, které by udělaly radost, třeba nová sluchátka.')}</section>`;
+
+  // Ukázkové grafy (napevno, bez dat)
+  const months = ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04'];
+  const flows = [
+    { label: 'Přišlo', color: 'var(--flow-in)', values: [52000, 61000, 65854, 11900, 61560, 63954] },
+    { label: 'Utraceno', color: 'var(--flow-out)', values: [41000, 58000, 47285, 35836, 44890, 37013] },
+    { label: 'Odloženo', color: 'var(--flow-move)', values: [5000, -12000, 4930, 3200, 23222, 5832] },
+  ];
+  const endBars = drawChart(root.querySelector('.demo-chart-bars'), { months, series: flows, type: 'bars', format: money });
+  const endLine = drawChart(root.querySelector('.demo-chart-line'), {
+    months,
+    series: [{ label: 'Potraviny', color: 'var(--chart-1)', values: [3900, 5200, 4083, 2134, 4822, 4338] }, { label: 'Restaurace', color: 'var(--chart-2)', values: [2100, 3400, 2240, 2471, 3588, 1567] }],
+    type: 'line',
+    format: money,
+  });
 
   root.addEventListener('click', (e) => {
     if (e.target.closest('a[href="#/ukazka"]')) e.preventDefault();
@@ -191,4 +211,8 @@ export async function render(el, { extraEl }) {
       });
     }
   });
+  return () => {
+    endBars();
+    endLine();
+  };
 }

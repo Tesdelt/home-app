@@ -38,6 +38,8 @@ js/views/wishes.js    wishlist a bucketlist (#/wishlist, #/bucketlist), jedno ro
 js/views/docs.js      administrativa (#/administrativa): dokumenty podle kategorií, společné / osobní
 js/views/notes.js     Byt (#/info): poznámky o bytě
 js/views/demo.js      skrytá ukázka všech komponent (#/ukazka), viz Design systém
+js/views/moneycharts.js  Peníze, grafy Skutečnosti (#/penize/grafy/<segment>)
+js/chart.js           ručně kreslené SVG grafy (sloupce, křivka, štítek po dotyku), bez knihoven
 js/views/recipes.js   recepty (#/recepty, z Domů): seznam, recept, úprava, „co uvařit“
 js/views/login.js     přihlášení, „Nemáte přístup“, nabídka nahrát stará lokální data
 sw.js                 offline cache
@@ -174,6 +176,8 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   - Peníze, Skutečnost: `--flow-in` (Příjmy, olivová), `--flow-out` (Výdaje, vínová),
     `--flow-move` (Přesuny, šedá = `--text-2`). Jen u čísla v kartě a jako tečka `.flow-dot`
     před nadpisem skupiny; řádky a částky v seznamu zůstávají neutrální.
+  - grafy: řady Přišlo / Utraceno / Odloženo mají barvy toků, ostatní řady paletu
+    `--chart-1` (švestková), `--chart-2` (hnědá), `--chart-3` (břidlicová), v tomto pořadí.
   - ostatní stavový text je šedý (`--text-2`): opakování, „hotovo Tom, zbývá Domi“, počty.
   - důležitost úkolu (číslo v řádku): 1 šedá, 2 žlutá (`--warn`), 3 červená. Je to jediná
     výjimka, kde je červená bez ikony.
@@ -203,6 +207,10 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   plynulé rozbalení, v jednom seznamu nejvýš jeden rozbalený, další ťuknutí zavře, šipka
   jen s `.has-items`. Rozbalení se nikde nepamatuje. `rowGestures` hlavičky ignoruje.
   Používá Skutečnost i kategorie plateb; každé další rozbalování v seznamu přes něj.
+- **Graf** `drawChart(el, { months, series, type, format })` z `js/chart.js`: SVG bez
+  knihoven, sloupce (víc řad vedle sebe, záporné pod nulou) nebo křivka s jemnou plochou.
+  Dotyk / tažení ukáže svislou čáru a štítek s hodnotami, zůstane po puštění, ťuknutí mimo
+  ho schová. Osa X zkratky měsíců (u ledna a na začátku i rok), osa Y 3-4 čáry („20 tis.“).
 - **Toast** `toast` / `undoToast` (se Zpět).
 - **Ikony** jen ze sady `ICONS` v `ui.js`: čárové, viewBox 24, tloušťka 1.8, bez výplně.
 
@@ -467,6 +475,15 @@ Hotovo (0.21.0):
   z úspor), pod ní šedě Plán. Pod kartou skupiny Příjmy, Výdaje, Přesuny (nadpis s tečkou
   v barvě skupiny), řazené podle absolutní hodnoty, prázdná skupina se nezobrazí,
   rozbalená nejvýš jedna kategorie napříč všemi.
+
+Hotovo (0.22.0):
+- Peníze, Grafy (`#/penize/grafy/<segment>`, `js/views/moneycharts.js`): otevírají se ikonou
+  grafu vedle volby měsíce ve Skutečnosti, jen když má segment aspoň 2 měsíce dat. Volby nad
+  grafem: Co (nejvýš 3 řady: Přišlo, Utraceno, Odloženo, kategorie výdajů / příjmů / přesunů
+  nebo jedna jejich položka), Období (3 / 6 / 12 měsíců, Letos, Vše, Vybrat od-do), Typ
+  (Sloupce / Křivka). Telefon si je pamatuje pro každý segment (meta `moneyChart`). Výchozí
+  Utraceno za 12 měsíců ve sloupcích. Měsíc bez dat je 0, chybějící měsíce na začátku a konci
+  období se vynechají.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
