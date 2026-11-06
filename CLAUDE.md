@@ -168,7 +168,7 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
     hnědá, Wishlist fialová, Bucketlist žlutá, Byt šedofialová. Nikdy modrá, růžová, zelená
     ani červená. Nový modul dostane další teplý odstín, který ještě není použitý.
   - Peníze, skutečnost: kategorie jsou běžné řádky seznamu bez pruhu osoby, bez barev
-    a ikon, obchody šedé podřádky `.money-shop` (ukázka na `#/ukazka`).
+    a ikon, `items` šedé podřádky `.money-shop` (ukázka na `#/ukazka`).
   - Peníze: přepínač segmentů jsou jména členů a „Společné“ (bez barev osob). Barevný pruh
     plateb v seznamu se nemění: člen jeho barvou, Společné zelenou.
   - ostatní stavový text je šedý (`--text-2`): opakování, „hotovo Tom, zbývá Domi“, počty.
@@ -412,10 +412,10 @@ Hotovo (0.18.0):
   `listMoneyMonths(account)` ve `store.js`, od nejnovějšího měsíce). Řádek = jeden účet za
   jeden měsíc: `account` (jméno člena nebo `'split'` = Společné, jako `payer` u plateb),
   `month` „RRRR-MM“, `income` (celkem přišlo), `outgo` (celkem odešlo, kladné číslo),
-  `categories` (`{ "Potraviny": 3294.1, ... }`) a `shops` (jen obchody s potravinami a
-  drogerií; buď rovně `{ "Albert": 2823 }`, pak patří k Potravinám, nebo podle kategorie
-  `{ "Potraviny": { ... }, "Drogerie a lékárna": { ... } }`). Unikátní je
-  (household_id, account, month).
+  `categories` ve tvaru `{ "Potraviny": { "total": 3294.1, "items": { "Albert": 2823,
+  "Lidl": 36.3 } }, ... }`. `items` jsou součty za obchodníka nebo protiúčet, ne jednotlivé
+  platby (0.18.1; starší sloupec `shops`, pokud v databázi vznikl, se nepoužívá a nemaže).
+  Unikátní je (household_id, account, month).
 - **Kdo do ní píše:** appka řádky jen čte a zobrazuje. Zapisuje je zvenku Claude přes SQL
   z výpisů z banky, které mu Tom dá (`insert ... on conflict (household_id, account, month)
   do update set ..., updated_at = now()`; bez novějšího `updated_at` trigger `keep_newer`
@@ -423,7 +423,9 @@ Hotovo (0.18.0):
 - V každém segmentu Peněz je pod souhrnem sekce „Skutečnost“ (jen když segment má aspoň
   jeden měsíc): volba měsíce (`.opt` + `openMenu`, výchozí nejnovější), karta Plán
   (pravidelné platby segmentu za měsíc) / Skutečně odešlo, šedě Přišlo, pod ní kategorie od
-  největší. Potraviny a Drogerie a lékárna se ťuknutím rozbalí na obchody.
+  největší, vše sbalené. Ťuknutí kategorii plynule rozbalí na šedé podřádky `items` od
+  největší; rozbalená je vždy nejvýš jedna (jiná ji zavře, další ťuknutí taky). Šipka jen
+  u kategorie s `items`. Rozbalení se nikde nepamatuje.
 - Jde do zálohy JSON. Domů se nemění.
 
 Další kroky:

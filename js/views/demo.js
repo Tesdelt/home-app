@@ -112,13 +112,14 @@ export async function render(el, { extraEl }) {
       ${row({ who: 'who-2', name: 'Hotový úkol', sub: 'Tom 9:12', done: true })}
     </ul>
 
-    <p class="section-label">Skutečnost: kategorie s rozbalenými obchody</p>
+    <p class="section-label">Skutečnost: kategorie, jedna rozbalená</p>
     <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Bydlení</span></span><span class="item-amount">18 000 Kč</span></div></li>
-      <li class="item money-cat is-open">
-        <button type="button" class="item-main" aria-expanded="true"><span class="item-text"><span class="item-name">Potraviny</span></span><span class="item-amount">3 294 Kč</span></button>
-        <ul class="money-shops"><li class="money-shop"><span>Albert</span><span>2 823 Kč</span></li><li class="money-shop"><span>Lidl</span><span>436 Kč</span></li><li class="money-shop"><span>Pekárna</span><span>35 Kč</span></li></ul>
-      </li>
+      <li class="item money-cat has-items"><button type="button" class="item-main"><span class="item-text"><span class="item-name">Restaurace a kavárny</span></span><span class="item-amount">6 707 Kč</span></button>
+        <div class="money-shops-wrap"><ul class="money-shops"><li class="money-shop"><span>Piazza</span><span>2 799 Kč</span></li></ul></div></li>
+      <li class="item money-cat has-items is-open"><button type="button" class="item-main" aria-expanded="true"><span class="item-text"><span class="item-name">Potraviny</span></span><span class="item-amount">3 294 Kč</span></button>
+        <div class="money-shops-wrap"><ul class="money-shops"><li class="money-shop"><span>Albert</span><span>2 823 Kč</span></li><li class="money-shop"><span>Prima pekárna</span><span>305 Kč</span></li><li class="money-shop"><span>Lidl</span><span>36 Kč</span></li></ul></div></li>
+      <li class="item money-cat"><button type="button" class="item-main"><span class="item-text"><span class="item-name">Ostatní</span></span><span class="item-amount">120 Kč</span></button>
+        <div class="money-shops-wrap"><ul class="money-shops"></ul></div></li>
     </ul>
 
     <p class="section-label">Ikony</p>

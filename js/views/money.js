@@ -36,22 +36,23 @@ const monthName = (month) => {
   return `${MONTHS[m - 1] ?? month} ${y}`;
 };
 
-// Kategorie, které jdou rozbalit na obchody. shops je buď rovný seznam
-// { "Albert": 2823 } (patří k Potravinám), nebo rozdělený podle kategorie
-// { "Potraviny": { ... }, "Drogerie a lékárna": { ... } }.
-const SHOP_CATEGORIES = ['Potraviny', 'Drogerie a lékárna'];
-function shopsOf(row, category) {
-  const shops = row.shops ?? {};
-  const nested = Object.values(shops).some((v) => v && typeof v === 'object');
-  const list = nested ? shops[category] : (category === 'Potraviny' ? shops : null);
-  return Object.entries(list ?? {}).map(([name, amount]) => [name, Number(amount) || 0]).sort((a, b) => b[1] - a[1]);
+// Kategorie skutečnosti: [[název, částka, [[obchodník, součet], ...]], ...] od největší.
+// Hodnota kategorie je { total, items }, starší zápis jen číslo (bez items).
+function categoriesOf(row) {
+  const sorted = (entries) => entries.map(([name, value]) => [name, Number(value) || 0]).sort((a, b) => b[1] - a[1]);
+  return Object.entries(row.categories ?? {})
+    .map(([name, value]) => {
+      const total = typeof value === 'object' && value ? value.total : value;
+      const items = typeof value === 'object' && value ? sorted(Object.entries(value.items ?? {})) : [];
+      return [name, Number(total) || 0, items];
+    })
+    .sort((a, b) => b[1] - a[1]);
 }
 
-// Měsíčně / ročně v souhrnu, vybraný měsíc skutečnosti a rozbalené kategorie
-// vydrží, dokud je appka otevřená
+// Měsíčně / ročně v souhrnu a vybraný měsíc skutečnosti vydrží, dokud je appka
+// otevřená. Rozbalená kategorie se nepamatuje, po návratu je vše sbalené.
 let yearly = false;
 let pickedMonth = null;
-const openCats = new Set();
 
 export async function render(el, { extraEl }) {
   const root = document.createElement('div');
@@ -67,6 +68,7 @@ export async function render(el, { extraEl }) {
   const listRoot = root.querySelector('.list-root');
   const actualRoot = root.querySelector('.actual-root');
   let months = [];
+  let openCat = null; // nejvýš jedna rozbalená kategorie skutečnosti
 
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
@@ -180,7 +182,7 @@ export async function render(el, { extraEl }) {
       return;
     }
     const row = months.find((m) => m.month === pickedMonth) ?? months[0];
-    const cats = Object.entries(row.categories ?? {}).map(([name, amount]) => [name, Number(amount) || 0]).sort((a, b) => b[1] - a[1]);
+    const cats = categoriesOf(row);
     actualRoot.innerHTML = `
       <div class="toolbar actual-bar">
         <p class="section-label">Skutečnost</p>
@@ -193,25 +195,23 @@ export async function render(el, { extraEl }) {
         </div>
         <span class="sum-note">Přišlo ${money(row.income)}</span>
       </section>
-      ${cats.length ? `<ul class="item-list group money-cats">${cats.map(([name, amount]) => {
-        const shops = SHOP_CATEGORIES.includes(name) ? shopsOf(row, name) : [];
-        const open = shops.length && openCats.has(name);
-        const head = `<span class="item-text"><span class="item-name">${escapeHtml(name)}</span></span><span class="item-amount">${money(amount)}</span>`;
-        return `<li class="item money-cat${open ? ' is-open' : ''}">
-          ${shops.length
-    ? `<button type="button" class="item-main" data-cat="${escapeHtml(name)}" aria-expanded="${Boolean(open)}">${head}</button>`
-    : `<div class="item-main">${head}</div>`}
-          ${open ? `<ul class="money-shops">${shops.map(([shop, value]) => `<li class="money-shop"><span>${escapeHtml(shop)}</span><span>${money(value)}</span></li>`).join('')}</ul>` : ''}
-        </li>`;
-      }).join('')}</ul>` : ''}`;
+      ${cats.length ? `<ul class="item-list group money-cats">${cats.map(([name, amount, items]) => `<li class="item money-cat${items.length ? ' has-items' : ''}${name === openCat ? ' is-open' : ''}" data-cat="${escapeHtml(name)}">
+          <button type="button" class="item-main" aria-expanded="${name === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span></span><span class="item-amount">${money(amount)}</span></button>
+          <div class="money-shops-wrap"><ul class="money-shops">${items.map(([who, value]) => `<li class="money-shop"><span>${escapeHtml(who)}</span><span>${money(value)}</span></li>`).join('')}</ul></div>
+        </li>`).join('')}</ul>` : ''}`;
   }
 
   root.addEventListener('click', async (e) => {
+    // Kategorie se rozbalí na místě (jen třídy, bez překreslení, ať jede plynule).
+    // Rozbalená je nejvýš jedna, další ťuknutí na ni ji zavře.
     const cat = e.target.closest('[data-cat]');
-    if (cat) {
-      if (openCats.has(cat.dataset.cat)) openCats.delete(cat.dataset.cat);
-      else openCats.add(cat.dataset.cat);
-      draw();
+    if (cat && e.target.closest('.item-main')) {
+      openCat = openCat === cat.dataset.cat ? null : cat.dataset.cat;
+      actualRoot.querySelectorAll('.money-cat').forEach((li) => {
+        const on = li.dataset.cat === openCat;
+        li.classList.toggle('is-open', on);
+        li.querySelector('.item-main').setAttribute('aria-expanded', on);
+      });
       return;
     }
     const monthBtn = e.target.closest('[data-action="month"]');
@@ -226,6 +226,7 @@ export async function render(el, { extraEl }) {
           if (!item) return;
           close();
           pickedMonth = item.dataset.month;
+          openCat = null;
           draw();
         });
       });

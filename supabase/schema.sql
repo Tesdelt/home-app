@@ -266,8 +266,10 @@ create index if not exists notes_household_idx on public.notes (household_id);
 -- Peníze, skutečnost: měsíční součty z výpisů z účtu. Appka řádky jen čte,
 -- zapisuje je zvenku Claude přes SQL. Jednotlivé transakce se nikam neukládají.
 -- account je jméno člena (jeho osobní účet) nebo 'split' (společný účet),
--- month 'RRRR-MM', outgo kladné číslo, categories { "Potraviny": 3294.1, ... },
--- shops { "Albert": 2823, ... } (jen obchody s potravinami a drogerií).
+-- month 'RRRR-MM', outgo kladné číslo, categories
+-- { "Potraviny": { "total": 3294.1, "items": { "Albert": 2823, "Lidl": 36.3 } }, ... },
+-- items jsou součty za obchodníka nebo protiúčet, ne jednotlivé platby.
+-- (Starší návrh měl i sloupec shops. Kde už vznikl, zůstává, jen se nepoužívá.)
 create table if not exists public.money_months (
   id           uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.households (id) on delete cascade,
@@ -276,7 +278,6 @@ create table if not exists public.money_months (
   income       numeric(12, 2) not null default 0,
   outgo        numeric(12, 2) not null default 0,
   categories   jsonb not null default '{}'::jsonb,
-  shops        jsonb not null default '{}'::jsonb,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),
   deleted      boolean not null default false,
