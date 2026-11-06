@@ -213,7 +213,9 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   ho schová. Osa X zkratky měsíců (u ledna a na začátku i rok), osa Y 3-4 čáry („20 tis.“).
 - **Pruh naplnění** `.budget-bar` (> `span` se šířkou v %) pod názvem v řádku seznamu:
   výchozí `--text-2`, `.is-near` (nad 90 %) a `.is-over` (nad 100 %) `--warn`, `.is-goal`
-  `--flow-move`. Částka vedle ve tvaru „X / Y Kč“ (`.item-amount.is-budget`).
+  `--flow-move`. Částka vedle ve tvaru „X / Y Kč“ stejně velká a tučná jako ostatní
+  částky (`.item-amount`), část „/ Y Kč“ ve spanu `.budget-of` šedě (`--text-2`) a obyčejně.
+  Překročený limit částku nezvýrazňuje, stačí okrový pruh.
 - **Toast** `toast` / `undoToast` (se Zpět).
 - **Ikony** jen ze sady `ICONS` v `ui.js`: čárové, viewBox 24, tloušťka 1.8, bez výplně.
 
@@ -537,6 +539,10 @@ Hotovo (0.25.0):
   „zůstatek … ubývá v průměru o X Kč měsíčně“). Upravit = panel s cíli (pole se ukládají
   sama, pořadí přetažením za úchyt, potažení smaže se Zpět, dole Přidat).
 - Data na začátek (limity, cíle) zapisuje Claude přes SQL, dál je edituje appka.
+
+Hotovo (0.25.1):
+- Částka u kategorie s limitem a u cíle je stejně velká a tučná jako ostatní částky, část
+  „/ 4 000 Kč“ šedě a obyčejně (`.budget-of`). Překročení ukazuje jen okrový pruh.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

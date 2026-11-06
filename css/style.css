@@ -1455,8 +1455,8 @@ a.opt { display: inline-flex; align-items: center; justify-content: center; text
 .budget-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--text-2); }
 .budget-bar.is-near > span, .budget-bar.is-over > span { background: var(--warn); }
 .budget-bar.is-goal > span { background: var(--flow-move); }
-.item-amount.is-budget { font-weight: 400; font-size: var(--fs-small); color: var(--text-2); }
-.item-amount.is-budget.is-over { font-weight: 700; color: var(--text); }
+/* „3 294 / 4 000 Kč“: velikost a tučnost jako ostatní částky, část za lomítkem šedě a obyčejně */
+.item-amount .budget-of { color: var(--text-2); font-weight: 400; }
 .sum-sub { display: block; margin-top: 2px; font-size: var(--fs-small); color: var(--text-2); }
 /* Cíle */
 .goals { margin-bottom: var(--s2); }

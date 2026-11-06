@@ -266,10 +266,9 @@ export async function render(el, { params, extraEl, subEl }) {
     const fold = (group) => ([name, amount, items]) => {
       const key = `${group}:${name}`;
       const limit = group === 'out' ? budgets.get(name) : null;
-      const over = limit && amount > limit;
-      const value = limit ? `${num(amount)} / ${money(limit)}` : money(amount);
+      const value = limit ? `${num(amount)} <span class="budget-of">/ ${money(limit)}</span>` : money(amount);
       return `<li class="item fold money-cat${items.length ? ' has-items' : ''}${key === openCat ? ' is-open' : ''}" data-fold="${escapeHtml(key)}">
-          <button type="button" class="item-main fold-head" aria-expanded="${key === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span>${limit ? budgetBar(amount / limit) : ''}</span><span class="item-amount${limit ? ' is-budget' : ''}${over ? ' is-over' : ''}">${value}</span></button>
+          <button type="button" class="item-main fold-head" aria-expanded="${key === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span>${limit ? budgetBar(amount / limit) : ''}</span><span class="item-amount">${value}</span></button>
           <div class="fold-body"><ul class="money-shops">${items.map(([who, value]) => `<li class="money-shop"><span>${escapeHtml(who)}</span><span>${money(value)}</span></li>`).join('')}</ul></div>
         </li>`;
     };
@@ -333,7 +332,7 @@ export async function render(el, { params, extraEl, subEl }) {
       </div>
       ${filled.length ? `<ul class="item-list group goals">${filled.map((g) => `<li class="item goal">
           <div class="item-main"><span class="item-text"><span class="item-name">${escapeHtml(g.name)}</span>${budgetBar(g.target ? g.have / g.target : 0, ' is-goal')}</span>
-          <span class="item-amount is-budget">${num(g.have)} / ${money(g.target)}</span></div>
+          <span class="item-amount">${num(g.have)} <span class="budget-of">/ ${money(g.target)}</span></span></div>
         </li>`).join('')}</ul>` : ''}
       ${hint ? `<p class="goals-hint">${escapeHtml(hint)}</p>` : ''}`;
   }
