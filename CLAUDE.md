@@ -511,6 +511,11 @@ Hotovo (0.24.0):
 - Hlavička jako u ostatních podstránek: šipka zpět na Peníze, název Grafy, segment jako
   podtitul (bez karty).
 
+Hotovo (0.24.1):
+- Grafy: starší uložené volby se Zůstatkem a dalšími řadami se při načtení srovnají na
+  samotný Zůstatek; karta se ukazuje jen u samotného Zůstatku a pod číslem má „k <poslední
+  den posledního měsíce> · změna za období“. U Zůstatku pod grafem „průměr X Kč“ bez „/ měsíc“.
+
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
 2. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).

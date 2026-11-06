@@ -57,6 +57,11 @@ const netOf = (row) => {
 };
 const isBalance = (s) => s.g === 'flow' && s.c === 'balance';
 const monthShort = (month) => ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'][Number(month.split('-')[1]) - 1];
+// Poslední den měsíce: "2026-10" -> "31. 10. 2026"
+const lastDay = (month) => {
+  const [y, m] = month.split('-').map(Number);
+  return `${new Date(y, m, 0).getDate()}. ${m}. ${y}`;
+};
 const signed = (v) => `${v > 0 ? '+' : ''}${money(v)}`;
 
 // Zůstatek na konci každého měsíce od prvního do posledního s daty: { month: částka }.
@@ -141,6 +146,9 @@ export async function renderCharts(el, segment, { subEl }) {
     const all = await store.getMeta('moneyChart', {});
     prefs = { ...DEFAULTS, ...(all[segment] ?? {}) };
     if (!prefs.series?.length) prefs.series = DEFAULTS.series;
+    // Starší volby mohly mít Zůstatek spolu s jinými řadami: zůstane jen Zůstatek
+    const balance = prefs.series.find(isBalance);
+    if (balance && prefs.series.length > 1) prefs.series = [balance];
   }
   async function savePrefs() {
     const all = await store.getMeta('moneyChart', {});
@@ -224,7 +232,8 @@ export async function renderCharts(el, segment, { subEl }) {
 
   function draw() {
     const series = decorate(prefs.series);
-    const balanceOnly = series.some(isBalance);
+    // Karta a křivka zůstatku jen když je vybraný výhradně Zůstatek
+    const balanceOnly = series.length === 1 && isBalance(series[0]);
     whatBtn.querySelector('.opt-text').textContent = `${series[0].label}${series.length > 1 ? ` +${series.length - 1}` : ''}`;
     periodBtn.querySelector('.opt-text').textContent = periodLabel();
     // Zůstatek je vždy křivka, přepínač typu se schová
@@ -253,7 +262,7 @@ export async function renderCharts(el, segment, { subEl }) {
       const change = last - (before ?? values[0]);
       balanceEl.innerHTML = `<section class="card chart-balance">
           <span class="chart-balance-value">${escapeHtml(money(last))}</span>
-          <span class="chart-balance-change">${escapeHtml(signed(change))} ${escapeHtml(changeLabel())}</span>
+          <span class="chart-balance-change">k ${escapeHtml(lastDay(months[months.length - 1]))} · ${escapeHtml(signed(change))} ${escapeHtml(changeLabel())}</span>
         </section>`;
     } else {
       balanceEl.innerHTML = '';
@@ -266,7 +275,7 @@ export async function renderCharts(el, segment, { subEl }) {
       const hi = s.values.indexOf(Math.max(...s.values));
       const lo = s.values.indexOf(Math.min(...s.values));
       const total = isBalance(s) ? s.values[s.values.length - 1] : s.values.reduce((a, b) => a + b, 0);
-      const facts = `průměr ${money(avg)} / měsíc · nejvíc ${monthShort(months[hi])} ${money(s.values[hi])} · nejméně ${monthShort(months[lo])} ${money(s.values[lo])}`;
+      const facts = `průměr ${money(avg)}${isBalance(s) ? '' : ' / měsíc'} · nejvíc ${monthShort(months[hi])} ${money(s.values[hi])} · nejméně ${monthShort(months[lo])} ${money(s.values[lo])}`;
       return `<div class="chart-stat">
         <span class="chart-key" style="background: ${s.color}"></span>
         <span class="chart-stat-name">${escapeHtml(s.label)}<span class="chart-stat-range">${escapeHtml(facts)}</span></span>
