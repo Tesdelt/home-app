@@ -1123,7 +1123,31 @@ export async function duePayments(days = 7) {
     .sort((a, b) => a.nextDue.localeCompare(b.nextDue));
 }
 
-export async function addPayment({ name, amount = 0, kind = 'recurring', period = 'month', payer = undefined, nextDue = null, total = null }) {
+// Kategorie platby: prázdná = null. Existující kategorie se najde bez ohledu na
+// velikost písmen a mezery na krajích a uloží se v podobě, kterou už má.
+const categoryKey = (text) => String(text ?? '').trim().toLocaleLowerCase('cs');
+async function cleanCategory(text) {
+  const clean = String(text ?? '').trim().replace(/\s+/g, ' ');
+  if (!clean) return null;
+  const found = (await live('payments')).find((p) => p.category && categoryKey(p.category) === categoryKey(clean));
+  return found?.category ?? clean;
+}
+
+// Kategorie plateb v celé domácnosti (všechny segmenty), od nejpoužívanější:
+// [{ name, count }]
+export async function paymentCategories() {
+  const counts = new Map();
+  for (const p of await live('payments')) {
+    if (!p.category) continue;
+    const key = categoryKey(p.category);
+    const entry = counts.get(key) ?? { name: p.category, count: 0 };
+    entry.count += 1;
+    counts.set(key, entry);
+  }
+  return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'cs'));
+}
+
+export async function addPayment({ name, amount = 0, kind = 'recurring', period = 'month', payer = undefined, nextDue = null, total = null, category = null }) {
   const clean = String(name).trim();
   if (!clean) throw new Error('Prázdný název');
   const now = Date.now();
@@ -1134,6 +1158,7 @@ export async function addPayment({ name, amount = 0, kind = 'recurring', period 
     kind,
     period,
     payer: payer === undefined ? await getMe() : payer,
+    category: await cleanCategory(category),
     nextDue,
     total: kind === 'term' ? total : null,
     remaining: kind === 'term' ? total : null,
@@ -1149,6 +1174,7 @@ export async function addPayment({ name, amount = 0, kind = 'recurring', period 
 }
 
 export async function updatePayment(id, patch) {
+  if ('category' in patch) patch = { ...patch, category: await cleanCategory(patch.category) };
   const next = await patchRow('payments', id, patch);
   emit();
   return next;

@@ -124,7 +124,8 @@ export function rowGestures(listEl, { onTap, onPress, onSwipe }) {
 
   listEl.addEventListener('pointerdown', (e) => {
     const main = e.target.closest('.item-main');
-    if (!main || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    // Hlavička rozbalovacího řádku (.fold-head) není položka, gesta se jí netýkají
+    if (!main || main.classList.contains('fold-head') || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const li = main.closest('.item');
     gesture = {
       // Posouvá se celý řádek (.item-slide), když ho položka má, jinak jen tlačítko
@@ -192,11 +193,27 @@ export function rowGestures(listEl, { onTap, onPress, onSwipe }) {
 
   listEl.addEventListener('click', (e) => {
     const main = e.target.closest('.item-main');
-    if (!main || Date.now() < ignoreClicksUntil) return;
+    if (!main || main.classList.contains('fold-head') || Date.now() < ignoreClicksUntil) return;
     onTap(main.closest('.item'), e.target);
   });
 
   return endGesture;
+}
+
+// ---------- Rozbalovací řádky ----------
+// Řádek li.fold má hlavičku .fold-head a tělo .fold-body, které se rozbalí plynule
+// (CSS). V jednom seznamu je rozbalený nejvýš jeden: ťuknutí na jiný předchozí
+// zavře, další ťuknutí na stejný ho zavře. Mění jen třídy, nic se nepřekresluje.
+// Vrací data-fold rozbaleného řádku, nebo null. Používají ho kategorie ve
+// Skutečnosti i kategorie plateb v Penězích.
+export function toggleFold(li) {
+  const open = !li.classList.contains('is-open');
+  li.parentElement.querySelectorAll(':scope > .fold').forEach((row) => {
+    const on = open && row === li;
+    row.classList.toggle('is-open', on);
+    row.querySelector(':scope > .fold-head')?.setAttribute('aria-expanded', on);
+  });
+  return open ? li.dataset.fold : null;
 }
 
 // ---------- Čí to je: barva a značka ----------

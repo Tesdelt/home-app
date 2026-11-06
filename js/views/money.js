@@ -4,7 +4,7 @@
 // dole Zaplacené. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold } from '../ui.js';
 import { today, dueLabel } from '../dates.js';
 
 export const title = 'Peníze';
@@ -69,6 +69,7 @@ export async function render(el, { extraEl }) {
   const actualRoot = root.querySelector('.actual-root');
   let months = [];
   let openCat = null; // nejvýš jedna rozbalená kategorie skutečnosti
+  let openPayCat = null; // a nejvýš jedna rozbalená kategorie plateb
 
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
@@ -94,7 +95,8 @@ export async function render(el, { extraEl }) {
   // Jde platbu odškrtnout jako zaplacenou?
   const payable = (p) => !p.done && (kindOf(p) === 'once' || Boolean(p.nextDue));
 
-  function row(payment) {
+  // withCategory: v item-sub je i šedý název kategorie (mimo sbalenou kategorii)
+  function row(payment, withCategory = true) {
     const kind = kindOf(payment);
     const sub = [];
     if (payment.done) {
@@ -104,6 +106,7 @@ export async function render(el, { extraEl }) {
       if (kind !== 'once' && payment.period !== 'month') sub.push(periodShort(payment.period));
       if (kind === 'term' && payment.total) sub.push(`zbývá ${payment.remaining ?? payment.total} z ${payment.total}`);
     }
+    if (withCategory && payment.category) sub.push(escapeHtml(payment.category));
     const can = payable(payment);
     return `<li class="item ${whoClass(payment.payer || store.SPLIT, members)}${payment.done ? ' is-done' : ''}" data-id="${escapeHtml(payment.id)}">
       <div class="item-bg" aria-hidden="true">Smazat</div>
@@ -115,8 +118,41 @@ export async function render(el, { extraEl }) {
     </li>`;
   }
 
-  const group = (label, payments) => (payments.length ? `<li class="cat-head">${label}</li>${payments.map(row).join('')}` : '');
   const byDue = (a, b) => (a.nextDue ?? '9').localeCompare(b.nextDue ?? '9') || b.amount - a.amount;
+  const group = (label, payments) => (payments.length ? `<li class="cat-head">${label}</li>${payments.map((p) => row(p)).join('')}` : '');
+
+  // Skupina Pravidelné / Jednorázové / Na dobu: platby se stejnou kategorií jsou
+  // v jednom rozbalovacím řádku (název, počet, součet; pravidelné přepočtené na
+  // měsíc). Kategorie s jedinou platbou je obyčejný řádek platby.
+  function kindGroup(kind, label, payments) {
+    if (!payments.length) return '';
+    const byCat = new Map();
+    for (const p of payments) {
+      const key = p.category ? p.category.trim().toLocaleLowerCase('cs') : null;
+      if (key) byCat.set(key, [...(byCat.get(key) ?? []), p]);
+    }
+    const entries = payments
+      .filter((p) => !p.category || byCat.get(p.category.trim().toLocaleLowerCase('cs')).length < 2)
+      .map((p) => ({ sort: p, html: row(p) }));
+    for (const [key, list] of byCat) {
+      if (list.length < 2) continue;
+      const sum = list.reduce((acc, p) => acc + (kind === 'recurring' ? store.monthly(p) : (p.amount || 0)), 0);
+      const first = [...list].sort(byDue)[0];
+      entries.push({
+        sort: { nextDue: first.nextDue, amount: sum },
+        html: `<li class="item fold has-items pay-cat ${whoClass(list[0].payer || store.SPLIT, members)}${key === openPayCat ? ' is-open' : ''}" data-fold="${escapeHtml(key)}">
+          <button type="button" class="item-main fold-head has-stripe" aria-expanded="${key === openPayCat}">
+            <span class="item-text"><span class="item-name">${escapeHtml(list[0].category)}</span><span class="item-sub">${plural(list.length)}</span></span>
+            <span class="item-amount">${money(sum)}</span>
+          </button>
+          <div class="fold-body"><ul class="item-list fold-items">${list.map((p) => row(p, false)).join('')}</ul></div>
+        </li>`,
+      });
+    }
+    entries.sort((a, b) => byDue(a.sort, b.sort));
+    return `<li class="cat-head">${label}</li>${entries.map((e) => e.html).join('')}`;
+  }
+  const plural = (n) => `${n} ${n >= 2 && n <= 4 ? 'platby' : 'plateb'}`;
 
   async function draw() {
     const token = ++renderToken;
@@ -162,14 +198,14 @@ export async function render(el, { extraEl }) {
     const toPay = due.filter(inSeg);
     const open = mine.filter((p) => !p.done && !dueIds.has(p.id)).sort(byDue);
     const done = mine.filter((p) => p.done).sort((a, b) => (b.paidAt ?? 0) - (a.paidAt ?? 0));
-    const rows = group('Zaplatit', toPay) + KINDS.map((k) => group(k.group, open.filter((p) => kindOf(p) === k.id))).join('');
+    const rows = group('Zaplatit', toPay) + KINDS.map((k) => kindGroup(k.id, k.group, open.filter((p) => kindOf(p) === k.id))).join('');
 
     let out = rows ? `<ul class="item-list group">${rows}</ul>` : '';
     if (done.length) {
       out += `<div class="done-head">
           <p class="section-label">Zaplacené (${done.length})</p>
           <button type="button" class="btn btn-ghost btn-small" data-action="clear">Vyčistit</button>
-        </div><ul class="item-list group">${done.map(row).join('')}</ul>`;
+        </div><ul class="item-list group">${done.map((p) => row(p)).join('')}</ul>`;
     }
     listRoot.innerHTML = out;
   }
@@ -195,23 +231,19 @@ export async function render(el, { extraEl }) {
         </div>
         <span class="sum-note">Přišlo ${money(row.income)}</span>
       </section>
-      ${cats.length ? `<ul class="item-list group money-cats">${cats.map(([name, amount, items]) => `<li class="item money-cat${items.length ? ' has-items' : ''}${name === openCat ? ' is-open' : ''}" data-cat="${escapeHtml(name)}">
-          <button type="button" class="item-main" aria-expanded="${name === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span></span><span class="item-amount">${money(amount)}</span></button>
-          <div class="money-shops-wrap"><ul class="money-shops">${items.map(([who, value]) => `<li class="money-shop"><span>${escapeHtml(who)}</span><span>${money(value)}</span></li>`).join('')}</ul></div>
+      ${cats.length ? `<ul class="item-list group money-cats">${cats.map(([name, amount, items]) => `<li class="item fold money-cat${items.length ? ' has-items' : ''}${name === openCat ? ' is-open' : ''}" data-fold="${escapeHtml(name)}">
+          <button type="button" class="item-main fold-head" aria-expanded="${name === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span></span><span class="item-amount">${money(amount)}</span></button>
+          <div class="fold-body"><ul class="money-shops">${items.map(([who, value]) => `<li class="money-shop"><span>${escapeHtml(who)}</span><span>${money(value)}</span></li>`).join('')}</ul></div>
         </li>`).join('')}</ul>` : ''}`;
   }
 
   root.addEventListener('click', async (e) => {
-    // Kategorie se rozbalí na místě (jen třídy, bez překreslení, ať jede plynule).
-    // Rozbalená je nejvýš jedna, další ťuknutí na ni ji zavře.
-    const cat = e.target.closest('[data-cat]');
-    if (cat && e.target.closest('.item-main')) {
-      openCat = openCat === cat.dataset.cat ? null : cat.dataset.cat;
-      actualRoot.querySelectorAll('.money-cat').forEach((li) => {
-        const on = li.dataset.cat === openCat;
-        li.classList.toggle('is-open', on);
-        li.querySelector('.item-main').setAttribute('aria-expanded', on);
-      });
+    // Kategorie (Skutečnost i platby) se rozbalí na místě, viz toggleFold
+    const head = e.target.closest('.fold-head');
+    if (head) {
+      const li = head.closest('.fold');
+      if (actualRoot.contains(li)) openCat = toggleFold(li);
+      else openPayCat = toggleFold(li);
       return;
     }
     const monthBtn = e.target.closest('[data-action="month"]');
@@ -279,7 +311,7 @@ export async function render(el, { extraEl }) {
 
   // id = null založí novou platbu (druh podle sekce, na které zrovna jsme)
   async function openEdit(id) {
-    const payments = await store.listPayments();
+    const [payments, categories] = await Promise.all([store.listPayments(), store.paymentCategories()]);
     const existing = id ? payments.find((p) => p.id === id) : null;
     if (id && !existing) return;
     // Nová platba dostane plátce podle vybraného segmentu
@@ -295,6 +327,9 @@ export async function render(el, { extraEl }) {
           </div></div>
         <label class="field"><span>Název</span>
           <input class="input" name="name" value="${escapeHtml(p.name)}" placeholder="Nájem" autocapitalize="sentences" required></label>
+        <label class="field"><span>Kategorie</span>
+          <input class="input" name="category" value="${escapeHtml(p.category ?? '')}" autocapitalize="sentences"></label>
+        <div class="chips cat-picks"></div>
         <label class="field"><span>Částka v Kč</span>
           <input class="input" name="amount" inputmode="decimal" value="${escapeHtml(p.amount === '' ? '' : String(p.amount).replace('.', ','))}" placeholder="0"></label>
         <div class="field"><span>Kdo platí</span>
@@ -318,6 +353,28 @@ export async function render(el, { extraEl }) {
 
       const f = body.querySelector('form');
       const picked = wireSegmented(f);
+
+      // Čipy s kategoriemi, které už v domácnosti jsou: ťuknutí pole vyplní,
+      // ťuknutí na vybranou ho vymaže
+      const catInput = f.elements.category;
+      const catChips = f.querySelector('.cat-picks');
+      const drawCatChips = () => {
+        const typed = catInput.value.trim().toLocaleLowerCase('cs');
+        catChips.innerHTML = categories
+          .map((c) => `<button type="button" class="chip pick-chip" data-category="${escapeHtml(c.name)}" aria-pressed="${c.name.toLocaleLowerCase('cs') === typed}">${escapeHtml(c.name)}</button>`)
+          .join('');
+        catChips.hidden = !categories.length;
+      };
+      drawCatChips();
+      catInput.addEventListener('input', drawCatChips);
+      catChips.addEventListener('pointerdown', (e) => { if (e.target.closest('.chip')) e.preventDefault(); });
+      catChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-category]');
+        if (!chip) return;
+        catInput.value = chip.getAttribute('aria-pressed') === 'true' ? '' : chip.dataset.category;
+        drawCatChips();
+        catInput.dispatchEvent(new Event('change', { bubbles: true }));
+      });
       // Pole, která se týkají jen některého druhu platby
       const syncKind = () => {
         const kind = picked('kind') || 'recurring';
@@ -348,6 +405,7 @@ export async function render(el, { extraEl }) {
           period: kind === 'once' ? 'month' : (picked('period') || 'month'),
           payer: picked('payer') || store.SPLIT,
           nextDue: f.elements.nextDue.value || null,
+          category: f.elements.category.value.trim() || null,
           total,
         };
         if (existing) {

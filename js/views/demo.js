@@ -2,7 +2,7 @@
 // jedné stránce. Není v menu, slouží ke kontrole vzhledu ve světlém i tmavém
 // režimu. Nesahá na data, všechno je tu napevno. Popis je v CLAUDE.md.
 
-import { ICONS, toast, undoToast, openSheet, openMenu, emptyState } from '../ui.js';
+import { ICONS, toast, undoToast, openSheet, openMenu, emptyState, toggleFold } from '../ui.js';
 
 export const title = 'Ukázka';
 export const tab = 'vice';
@@ -114,12 +114,29 @@ export async function render(el, { extraEl }) {
 
     <p class="section-label">Skutečnost: kategorie, jedna rozbalená</p>
     <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
-      <li class="item money-cat has-items"><button type="button" class="item-main"><span class="item-text"><span class="item-name">Restaurace a kavárny</span></span><span class="item-amount">6 707 Kč</span></button>
-        <div class="money-shops-wrap"><ul class="money-shops"><li class="money-shop"><span>Piazza</span><span>2 799 Kč</span></li></ul></div></li>
-      <li class="item money-cat has-items is-open"><button type="button" class="item-main" aria-expanded="true"><span class="item-text"><span class="item-name">Potraviny</span></span><span class="item-amount">3 294 Kč</span></button>
-        <div class="money-shops-wrap"><ul class="money-shops"><li class="money-shop"><span>Albert</span><span>2 823 Kč</span></li><li class="money-shop"><span>Prima pekárna</span><span>305 Kč</span></li><li class="money-shop"><span>Lidl</span><span>36 Kč</span></li></ul></div></li>
-      <li class="item money-cat"><button type="button" class="item-main"><span class="item-text"><span class="item-name">Ostatní</span></span><span class="item-amount">120 Kč</span></button>
-        <div class="money-shops-wrap"><ul class="money-shops"></ul></div></li>
+      <li class="item fold money-cat has-items" data-fold="r"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Restaurace a kavárny</span></span><span class="item-amount">6 707 Kč</span></button>
+        <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Piazza</span><span>2 799 Kč</span></li></ul></div></li>
+      <li class="item fold money-cat has-items is-open" data-fold="p"><button type="button" class="item-main fold-head" aria-expanded="true"><span class="item-text"><span class="item-name">Potraviny</span></span><span class="item-amount">3 294 Kč</span></button>
+        <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Albert</span><span>2 823 Kč</span></li><li class="money-shop"><span>Prima pekárna</span><span>305 Kč</span></li><li class="money-shop"><span>Lidl</span><span>36 Kč</span></li></ul></div></li>
+      <li class="item fold money-cat" data-fold="o"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Ostatní</span></span><span class="item-amount">120 Kč</span></button>
+        <div class="fold-body"><ul class="money-shops"></ul></div></li>
+    </ul>
+
+    <p class="section-label">Peníze: kategorie plateb, sbalená a rozbalená</p>
+    <ul class="item-list group" style="margin-bottom: var(--s3)">
+      <li class="cat-head">Pravidelné</li>
+      <li class="item fold has-items pay-cat who-both" data-fold="b"><button type="button" class="item-main fold-head has-stripe" aria-expanded="false"><span class="item-text"><span class="item-name">Bydlení</span><span class="item-sub">2 platby</span></span><span class="item-amount">19 200 Kč</span></button>
+        <div class="fold-body"><ul class="item-list fold-items">
+          ${row({ who: 'who-both', name: 'Nájem', sub: 'čt 1. 12.', amount: '18 000 Kč' })}
+          ${row({ who: 'who-both', name: 'Energie', sub: 'po 15. 12.', amount: '1 200 Kč' })}
+        </ul></div></li>
+      <li class="item fold has-items pay-cat who-2 is-open" data-fold="o"><button type="button" class="item-main fold-head has-stripe" aria-expanded="true"><span class="item-text"><span class="item-name">OSVČ</span><span class="item-sub">3 platby</span></span><span class="item-amount">9 950 Kč</span></button>
+        <div class="fold-body"><ul class="item-list fold-items">
+          ${row({ who: 'who-2', name: 'ČSSZ', sub: 'so 20. 12.', amount: '5 005 Kč' })}
+          ${row({ who: 'who-2', name: 'VZP', sub: 'so 8. 12.', amount: '3 143 Kč' })}
+          ${row({ who: 'who-2', name: 'Záloha na daň', sub: 'čtvrtletně', amount: '1 802 Kč' })}
+        </ul></div></li>
+      ${row({ who: 'who-2', name: 'Telefon', sub: 'út 9. 12. · Komunikace', amount: '400 Kč' })}
     </ul>
 
     <p class="section-label">Ikony</p>
@@ -130,6 +147,11 @@ export async function render(el, { extraEl }) {
 
   root.addEventListener('click', (e) => {
     if (e.target.closest('a[href="#/ukazka"]')) e.preventDefault();
+    const head = e.target.closest('.fold-head');
+    if (head) {
+      toggleFold(head.closest('.fold'));
+      return;
+    }
     const btn = e.target.closest('[data-demo]');
     if (!btn) return;
     if (btn.dataset.demo === 'toast') toast('Uloženo');

@@ -147,6 +147,8 @@ alter table public.payments add column if not exists remaining integer;
 alter table public.payments add column if not exists done boolean not null default false;
 alter table public.payments add column if not exists paid_at timestamptz;
 alter table public.payments add column if not exists paid_by text;
+-- Volitelná kategorie platby (např. OSVČ pro ČSSZ, VZP a daně)
+alter table public.payments add column if not exists category text;
 
 -- Obchody: pořadí kategorií nákupu podle toho, jak se obchod prochází.
 -- key je buď vestavěný obchod z appky ('albert', 'lidl'), nebo vlastní id.

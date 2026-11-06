@@ -196,6 +196,10 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   **spodní panel** `openSheet`: vždy plné, neprůhledné pozadí.
 - **Prázdný stav** `emptyState(ikona, nadpis, věta)`: ikona, nadpis a jedna věta, co sem
   patří, s příkladem. Jediné místo, kde je v appce vysvětlující text.
+- **Rozbalovací řádek** `li.fold` > `.fold-head` + `.fold-body` a `toggleFold(li)` z `ui.js`:
+  plynulé rozbalení, v jednom seznamu nejvýš jeden rozbalený, další ťuknutí zavře, šipka
+  jen s `.has-items`. Rozbalení se nikde nepamatuje. `rowGestures` hlavičky ignoruje.
+  Používá Skutečnost i kategorie plateb; každé další rozbalování v seznamu přes něj.
 - **Toast** `toast` / `undoToast` (se Zpět).
 - **Ikony** jen ze sady `ICONS` v `ui.js`: čárové, viewBox 24, tloušťka 1.8, bez výplně.
 
@@ -427,6 +431,19 @@ Hotovo (0.18.0):
   největší; rozbalená je vždy nejvýš jedna (jiná ji zavře, další ťuknutí taky). Šipka jen
   u kategorie s `items`. Rozbalení se nikde nepamatuje.
 - Jde do zálohy JSON. Domů se nemění.
+
+Hotovo (0.19.0):
+- Platba má volitelnou kategorii (`category`, sloupec `payments.category`), např. OSVČ pro
+  ČSSZ, VZP a daně. V panelu platby je pod Názvem pole Kategorie a pod ním řádek čipů
+  s kategoriemi z celé domácnosti od nejpoužívanější (`paymentCategories()`); ťuknutí pole
+  vyplní, ťuknutí na vybranou ho vymaže, nová vznikne napsáním. Porovnává se bez ohledu na
+  velikost písmen a mezery a uloží se v podobě, která už existuje (`cleanCategory` ve `store.js`).
+- Ve skupinách Pravidelné, Jednorázové a Na dobu jsou platby se stejnou kategorií v jednom
+  rozbalovacím řádku: název, šedě počet plateb, vpravo součet (pravidelné přepočtené na
+  měsíc). Pod ním po rozbalení běžné řádky plateb s gesty. Kategorie s jedinou platbou je
+  obyčejný řádek. Zaplatit a Zaplacené zůstávají po platbách, kategorie je šedě v `item-sub`.
+- Rozbalovací řádky jsou společná komponenta (viz Design systém), sdílí je Skutečnost
+  i kategorie plateb.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
