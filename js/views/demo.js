@@ -112,6 +112,15 @@ export async function render(el, { extraEl }) {
       ${row({ who: 'who-2', name: 'Hotový úkol', sub: 'Tom 9:12', done: true })}
     </ul>
 
+    <p class="section-label">Skutečnost: kategorie s rozbalenými obchody</p>
+    <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Bydlení</span></span><span class="item-amount">18 000 Kč</span></div></li>
+      <li class="item money-cat is-open">
+        <button type="button" class="item-main" aria-expanded="true"><span class="item-text"><span class="item-name">Potraviny</span></span><span class="item-amount">3 294 Kč</span></button>
+        <ul class="money-shops"><li class="money-shop"><span>Albert</span><span>2 823 Kč</span></li><li class="money-shop"><span>Lidl</span><span>436 Kč</span></li><li class="money-shop"><span>Pekárna</span><span>35 Kč</span></li></ul>
+      </li>
+    </ul>
+
     <p class="section-label">Ikony</p>
     <div class="demo-row">${Object.keys(ICONS).map((name) => `<span class="card-icon" title="${name}">${ICONS[name]}</span>`).join('')}</div>
 

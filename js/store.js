@@ -1179,6 +1179,16 @@ export const removePayments = (ids) => removeByIds('payments', ids);
 export const restorePayments = (payments) => restore('payments', payments);
 
 // Smaže zaplacené a doplacené platby a vrátí je (kvůli tlačítku Zpět)
+// Skutečnost z výpisů z účtu: měsíční součty za účet (segment), od nejnovějšího.
+// Řádek: { id, account, month 'RRRR-MM', income, outgo, categories, shops }.
+// Zapisuje je zvenku Claude přes SQL, appka je jen čte.
+export async function listMoneyMonths(account) {
+  const members = await listMembers();
+  return (await live('moneymonths'))
+    .filter((m) => inPaymentSegment({ payer: m.account }, account, members))
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
+
 // Smaže zaplacené (jednorázové) a doplacené (na dobu) platby, se segmentem jen v něm
 export async function clearDonePayments(segment = null) {
   const members = await listMembers();
@@ -1201,7 +1211,7 @@ export async function exportAll() {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Sklady s řádky podle id, které se synchronizují stejným způsobem
-const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes', 'documents', 'notes'];
+const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes', 'documents', 'notes', 'moneymonths'];
 
 export async function importAll(backup) {
   if (backup?.app !== 'home-app' || !backup.data) throw new Error('Tohle není záloha této aplikace.');

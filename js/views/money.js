@@ -4,7 +4,7 @@
 // dole Zaplacené. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState } from '../ui.js';
 import { today, dueLabel } from '../dates.js';
 
 export const title = 'Peníze';
@@ -29,8 +29,29 @@ const EMPTY = {
   member: 'Platby z osobního účtu, třeba telefon nebo zálohy OSVČ.',
 };
 
-// Měsíčně / ročně v souhrnu vydrží, dokud je appka otevřená
+const MONTHS = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
+// "2026-09" -> "Září 2026"
+const monthName = (month) => {
+  const [y, m] = month.split('-').map(Number);
+  return `${MONTHS[m - 1] ?? month} ${y}`;
+};
+
+// Kategorie, které jdou rozbalit na obchody. shops je buď rovný seznam
+// { "Albert": 2823 } (patří k Potravinám), nebo rozdělený podle kategorie
+// { "Potraviny": { ... }, "Drogerie a lékárna": { ... } }.
+const SHOP_CATEGORIES = ['Potraviny', 'Drogerie a lékárna'];
+function shopsOf(row, category) {
+  const shops = row.shops ?? {};
+  const nested = Object.values(shops).some((v) => v && typeof v === 'object');
+  const list = nested ? shops[category] : (category === 'Potraviny' ? shops : null);
+  return Object.entries(list ?? {}).map(([name, amount]) => [name, Number(amount) || 0]).sort((a, b) => b[1] - a[1]);
+}
+
+// Měsíčně / ročně v souhrnu, vybraný měsíc skutečnosti a rozbalené kategorie
+// vydrží, dokud je appka otevřená
 let yearly = false;
+let pickedMonth = null;
+const openCats = new Set();
 
 export async function render(el, { extraEl }) {
   const root = document.createElement('div');
@@ -38,11 +59,14 @@ export async function render(el, { extraEl }) {
   root.innerHTML = `
     <div class="toolbar"><div class="segmented" role="tablist"></div></div>
     <div class="summary-root"></div>
+    <div class="actual-root"></div>
     <div class="list-root"></div>`;
 
   const segEl = root.querySelector('.segmented');
   const summaryRoot = root.querySelector('.summary-root');
   const listRoot = root.querySelector('.list-root');
+  const actualRoot = root.querySelector('.actual-root');
+  let months = [];
 
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
@@ -96,8 +120,12 @@ export async function render(el, { extraEl }) {
     const token = ++renderToken;
     members = await store.listMembers();
     segment = validSegment(segment);
-    const [payments, summary, due] = await Promise.all([store.listPayments(), store.paymentsSummary(segment), store.duePayments(7)]);
+    const [payments, summary, due, monthRows] = await Promise.all([
+      store.listPayments(), store.paymentsSummary(segment), store.duePayments(7), store.listMoneyMonths(segment),
+    ]);
     if (token !== renderToken) return;
+    months = monthRows;
+    drawActual(summary);
     const inSeg = (p) => store.inPaymentSegment(p, segment, members);
 
     // Přepínač segmentů s počtem plateb k zaplacení
@@ -107,6 +135,11 @@ export async function render(el, { extraEl }) {
     }).join('');
 
     const mine = payments.filter(inSeg);
+    if (!mine.length && months.length) {
+      summaryRoot.innerHTML = '';
+      listRoot.innerHTML = '';
+      return;
+    }
     if (!mine.length) {
       summaryRoot.innerHTML = '';
       listRoot.innerHTML = emptyState('wallet', 'Zatím žádné platby', segment === store.SPLIT ? EMPTY[store.SPLIT] : EMPTY.member);
@@ -139,7 +172,65 @@ export async function render(el, { extraEl }) {
     listRoot.innerHTML = out;
   }
 
+  // Skutečnost z výpisů za vybraný měsíc: plán proti tomu, co opravdu odešlo,
+  // a kategorie od největší. Segment bez měsíců sekci nemá.
+  function drawActual(summary) {
+    if (!months.length) {
+      actualRoot.innerHTML = '';
+      return;
+    }
+    const row = months.find((m) => m.month === pickedMonth) ?? months[0];
+    const cats = Object.entries(row.categories ?? {}).map(([name, amount]) => [name, Number(amount) || 0]).sort((a, b) => b[1] - a[1]);
+    actualRoot.innerHTML = `
+      <div class="toolbar actual-bar">
+        <p class="section-label">Skutečnost</p>
+        <button type="button" class="opt" data-action="month"><span class="opt-text">${escapeHtml(monthName(row.month))}</span></button>
+      </div>
+      <section class="card summary">
+        <div class="sum-row">
+          <div class="sum-cell"><span class="sum-label">Plán</span><span class="sum-value">${money(summary.total)}</span></div>
+          <div class="sum-cell is-total"><span class="sum-label">Skutečně odešlo</span><span class="sum-value">${money(row.outgo)}</span></div>
+        </div>
+        <span class="sum-note">Přišlo ${money(row.income)}</span>
+      </section>
+      ${cats.length ? `<ul class="item-list group money-cats">${cats.map(([name, amount]) => {
+        const shops = SHOP_CATEGORIES.includes(name) ? shopsOf(row, name) : [];
+        const open = shops.length && openCats.has(name);
+        const head = `<span class="item-text"><span class="item-name">${escapeHtml(name)}</span></span><span class="item-amount">${money(amount)}</span>`;
+        return `<li class="item money-cat${open ? ' is-open' : ''}">
+          ${shops.length
+    ? `<button type="button" class="item-main" data-cat="${escapeHtml(name)}" aria-expanded="${Boolean(open)}">${head}</button>`
+    : `<div class="item-main">${head}</div>`}
+          ${open ? `<ul class="money-shops">${shops.map(([shop, value]) => `<li class="money-shop"><span>${escapeHtml(shop)}</span><span>${money(value)}</span></li>`).join('')}</ul>` : ''}
+        </li>`;
+      }).join('')}</ul>` : ''}`;
+  }
+
   root.addEventListener('click', async (e) => {
+    const cat = e.target.closest('[data-cat]');
+    if (cat) {
+      if (openCats.has(cat.dataset.cat)) openCats.delete(cat.dataset.cat);
+      else openCats.add(cat.dataset.cat);
+      draw();
+      return;
+    }
+    const monthBtn = e.target.closest('[data-action="month"]');
+    if (monthBtn) {
+      const current = (months.find((m) => m.month === pickedMonth) ?? months[0])?.month;
+      openMenu(monthBtn, (menu, close) => {
+        menu.innerHTML = months
+          .map((m) => `<button type="button" class="menu-item" data-month="${escapeHtml(m.month)}" aria-pressed="${m.month === current}">${escapeHtml(monthName(m.month))}</button>`)
+          .join('');
+        menu.addEventListener('click', (ev) => {
+          const item = ev.target.closest('[data-month]');
+          if (!item) return;
+          close();
+          pickedMonth = item.dataset.month;
+          draw();
+        });
+      });
+      return;
+    }
     if (e.target.closest('[data-action="scale"]')) {
       yearly = !yearly;
       draw();
