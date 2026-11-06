@@ -66,7 +66,7 @@ export async function render(el, { extraEl }) {
     <div class="segmented" style="margin-bottom: var(--s3)">
       <button type="button" aria-pressed="true">Tom</button>
       <button type="button" aria-pressed="false">Domi</button>
-      <button type="button" aria-pressed="false">Napůl</button>
+      <button type="button" aria-pressed="false">Společné</button>
     </div>
 
     <p class="section-label">Čipy a malá tlačítka</p>
@@ -108,7 +108,7 @@ export async function render(el, { extraEl }) {
       ${row({ who: 'who-1', name: 'Úkol pro Domi', sub: 'dnes 18:00 · kroky 1/3', prio: 2 })}
       ${row({ who: 'who-both', name: 'Úkol pro oba', sub: 'dnes · hotovo Tom, zbývá Domi', prio: 1 })}
       ${row({ name: 'Úkol pro kohokoliv', sub: 'zítra', lock: true, prio: 2 })}
-      ${row({ who: 'who-both', name: 'Platba napůl', sub: 'čt 15. 10.', amount: '12 000 Kč' })}
+      ${row({ who: 'who-both', name: 'Společná platba', sub: 'čt 15. 10.', amount: '12 000 Kč' })}
       ${row({ who: 'who-2', name: 'Hotový úkol', sub: 'Tom 9:12', done: true })}
     </ul>
 

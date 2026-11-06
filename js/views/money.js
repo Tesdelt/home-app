@@ -1,6 +1,7 @@
-// Peníze: nahoře souhrn (každý zvlášť a dohromady), pod ním čtyři sekce:
-// co je teď potřeba zaplatit, pravidelné platby, jednorázové a platby na dobu
-// určitou. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
+// Peníze: nahoře přepínač segmentů (každý člen = jeho osobní účet, Společné =
+// společný účet), pod ním souhrn za vybraný segment a jeden seznam po skupinách:
+// Zaplatit (splatné do 7 dní a po termínu), Pravidelné, Jednorázové, Na dobu,
+// dole Zaplacené. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
 import { escapeHtml, ICONS, undoToast, openSheet, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState } from '../ui.js';
@@ -16,32 +17,31 @@ const PERIODS = [
 const periodShort = (id) => PERIODS.find((p) => p.id === id)?.short ?? '';
 
 const KINDS = [
-  { id: 'recurring', name: 'Pravidelná', tab: 'Pravidelné' },
-  { id: 'once', name: 'Jednorázová', tab: 'Jednou' },
-  { id: 'term', name: 'Na dobu', tab: 'Na dobu' },
+  { id: 'recurring', name: 'Pravidelná', group: 'Pravidelné' },
+  { id: 'once', name: 'Jednorázová', group: 'Jednorázové' },
+  { id: 'term', name: 'Na dobu', group: 'Na dobu' },
 ];
 const kindOf = (payment) => payment.kind ?? 'recurring';
 
+const SHARED = 'Společné';
 const EMPTY = {
-  recurring: 'Pravidelné platby, třeba nájem nebo internet každý měsíc.',
-  once: 'Jednorázové platby, třeba doplatek za energie.',
-  term: 'Platby na dobu určitou, třeba 12 splátek za pračku.',
+  [store.SPLIT]: 'Platby ze společného účtu, třeba nájem nebo internet.',
+  member: 'Platby z osobního účtu, třeba telefon nebo zálohy OSVČ.',
 };
 
-// Volby vydrží, dokud je appka otevřená. section = null: vybere se sama.
+// Měsíčně / ročně v souhrnu vydrží, dokud je appka otevřená
 let yearly = false;
-let section = null;
 
 export async function render(el, { extraEl }) {
   const root = document.createElement('div');
   el.append(root);
   root.innerHTML = `
+    <div class="toolbar"><div class="segmented" role="tablist"></div></div>
     <div class="summary-root"></div>
-    <div class="segmented seg-bar filter-bar" hidden></div>
     <div class="list-root"></div>`;
 
+  const segEl = root.querySelector('.segmented');
   const summaryRoot = root.querySelector('.summary-root');
-  const tabsEl = root.querySelector('.filter-bar');
   const listRoot = root.querySelector('.list-root');
 
   const addBtn = document.createElement('button');
@@ -57,7 +57,13 @@ export async function render(el, { extraEl }) {
   extraEl.append(addBtn);
 
   let renderToken = 0;
-  let members = [];
+  let members = await store.listMembers();
+  const me = await store.getMe();
+  // Vybraný segment si pamatuje každý telefon zvlášť, výchozí je přihlášený člen
+  let segment = await store.getMeta('moneySegment', null);
+  const segments = () => [...members, store.SPLIT];
+  const validSegment = (value) => (segments().includes(value) ? value : (members.includes(me) ? me : store.SPLIT));
+  segment = validSegment(segment);
 
   // Jde platbu odškrtnout jako zaplacenou?
   const payable = (p) => !p.done && (kindOf(p) === 'once' || Boolean(p.nextDue));
@@ -83,59 +89,52 @@ export async function render(el, { extraEl }) {
     </li>`;
   }
 
-  const list = (payments) => `<ul class="item-list group">${payments.map(row).join('')}</ul>`;
+  const group = (label, payments) => (payments.length ? `<li class="cat-head">${label}</li>${payments.map(row).join('')}` : '');
+  const byDue = (a, b) => (a.nextDue ?? '9').localeCompare(b.nextDue ?? '9') || b.amount - a.amount;
 
   async function draw() {
     const token = ++renderToken;
-    const [payments, summary, due] = await Promise.all([store.listPayments(), store.paymentsSummary(), store.duePayments(7)]);
     members = await store.listMembers();
+    segment = validSegment(segment);
+    const [payments, summary, due] = await Promise.all([store.listPayments(), store.paymentsSummary(segment), store.duePayments(7)]);
     if (token !== renderToken) return;
+    const inSeg = (p) => store.inPaymentSegment(p, segment, members);
 
-    if (!payments.length) {
+    // Přepínač segmentů s počtem plateb k zaplacení
+    segEl.innerHTML = segments().map((value) => {
+      const count = due.filter((p) => store.inPaymentSegment(p, value, members)).length;
+      return `<button type="button" role="tab" data-segment="${escapeHtml(value)}" aria-pressed="${value === segment}">${escapeHtml(value === store.SPLIT ? SHARED : value)}${count ? ` <span class="seg-count is-alert">${count}</span>` : ''}</button>`;
+    }).join('');
+
+    const mine = payments.filter(inSeg);
+    if (!mine.length) {
       summaryRoot.innerHTML = '';
-      tabsEl.hidden = true;
-      listRoot.innerHTML = emptyState('wallet', 'Zatím žádné platby', 'Patří sem všechno, co platíte opakovaně, třeba nájem, internet nebo pojištění.');
+      listRoot.innerHTML = emptyState('wallet', 'Zatím žádné platby', segment === store.SPLIT ? EMPTY[store.SPLIT] : EMPTY.member);
       return;
     }
 
-    // Souhrn: co stojí běžný měsíc, každý zvlášť a dohromady
+    // Souhrn za vybraný segment: běžný měsíc (ťuknutím rok) a zbývající jednorázové
     const scale = yearly ? 12 : 1;
-    const cells = Object.entries(summary.perPerson)
-      .map(([name, amount]) => `<div class="sum-cell"><span class="sum-label"><span class="legend-dot ${whoClass(name, members)}"></span>${escapeHtml(name)}</span><span class="sum-value">${money(amount * scale)}</span></div>`)
-      .join('');
-    const once = summary.onceTotal ? ` · jednorázově zbývá ${money(summary.onceTotal)}` : '';
     summaryRoot.innerHTML = `<button type="button" class="card summary" data-action="scale" aria-label="Přepnout měsíčně a ročně">
-        <div class="sum-row">${cells}
-          <div class="sum-cell is-total"><span class="sum-label">Dohromady</span><span class="sum-value">${money(summary.total * scale)}</span></div>
+        <div class="sum-row">
+          <div class="sum-cell is-total"><span class="sum-label">${yearly ? 'Pravidelně za rok' : 'Pravidelně za měsíc'}</span><span class="sum-value">${money(summary.total * scale)}</span></div>
+          ${summary.onceTotal ? `<div class="sum-cell"><span class="sum-label">Jednorázově zbývá</span><span class="sum-value">${money(summary.onceTotal)}</span></div>` : ''}
         </div>
-        <span class="sum-note">${yearly ? 'pravidelně za rok' : 'pravidelně za měsíc'}${once}</span>
       </button>`;
 
-    // Sekce. "Zaplatit" je to, co je splatné do 7 dní nebo už po termínu.
-    const byKind = (kind) => payments.filter((p) => kindOf(p) === kind);
-    const openCount = (kind) => byKind(kind).filter((p) => !p.done).length;
-    const tabs = [['due', 'Zaplatit', due.length], ...KINDS.map((k) => [k.id, k.tab, openCount(k.id)])];
-    if (!section) section = due.length ? 'due' : 'recurring';
-    tabsEl.hidden = false;
-    tabsEl.innerHTML = tabs.map(([id, name, count]) => `<button type="button" data-section="${id}" aria-pressed="${id === section}">${name}${count ? ` <span class="seg-count${id === 'due' ? ' is-alert' : ''}">${count}</span>` : ''}</button>`).join('');
+    // Jeden seznam po skupinách. Platba ze Zaplatit se dál neopakuje.
+    const dueIds = new Set(due.map((p) => p.id));
+    const toPay = due.filter(inSeg);
+    const open = mine.filter((p) => !p.done && !dueIds.has(p.id)).sort(byDue);
+    const done = mine.filter((p) => p.done).sort((a, b) => (b.paidAt ?? 0) - (a.paidAt ?? 0));
+    const rows = group('Zaplatit', toPay) + KINDS.map((k) => group(k.group, open.filter((p) => kindOf(p) === k.id))).join('');
 
-    let out = '';
-    if (section === 'due') {
-      out = due.length
-        ? list(due)
-        : emptyState('check', 'Nic k zaplacení', 'Objeví se tu platby splatné do 7 dní, třeba nájem před prvním.');
-    } else {
-      const inKind = byKind(section);
-      const open = inKind.filter((p) => !p.done).sort((a, b) => (a.nextDue ?? '9').localeCompare(b.nextDue ?? '9') || b.amount - a.amount);
-      const done = inKind.filter((p) => p.done).sort((a, b) => (b.paidAt ?? 0) - (a.paidAt ?? 0));
-      if (open.length) out += list(open);
-      else if (!done.length) out += emptyState('wallet', 'Nic tu není', EMPTY[section]);
-      if (done.length) {
-        out += `<div class="done-head">
-            <p class="section-label">${section === 'term' ? 'Doplacené' : 'Zaplacené'} (${done.length})</p>
-            <button type="button" class="btn btn-ghost btn-small" data-action="clear">Vyčistit</button>
-          </div>${list(done)}`;
-      }
+    let out = rows ? `<ul class="item-list group">${rows}</ul>` : '';
+    if (done.length) {
+      out += `<div class="done-head">
+          <p class="section-label">Zaplacené (${done.length})</p>
+          <button type="button" class="btn btn-ghost btn-small" data-action="clear">Vyčistit</button>
+        </div><ul class="item-list group">${done.map(row).join('')}</ul>`;
     }
     listRoot.innerHTML = out;
   }
@@ -147,13 +146,14 @@ export async function render(el, { extraEl }) {
       return;
     }
     if (e.target.closest('[data-action="clear"]')) {
-      const removed = await store.clearDonePayments();
+      const removed = await store.clearDonePayments(segment);
       if (removed.length) undoToast(`Smazáno zaplacených: ${removed.length}`, () => store.restorePayments(removed));
       return;
     }
-    const tabBtn = e.target.closest('[data-section]');
-    if (tabBtn) {
-      section = tabBtn.dataset.section;
+    const segBtn = e.target.closest('[data-segment]');
+    if (segBtn) {
+      segment = segBtn.dataset.segment;
+      await store.setLocal('moneySegment', segment);
       draw();
     }
   });
@@ -187,12 +187,13 @@ export async function render(el, { extraEl }) {
 
   // id = null založí novou platbu (druh podle sekce, na které zrovna jsme)
   async function openEdit(id) {
-    const [payments, me] = await Promise.all([store.listPayments(), store.getMe()]);
+    const payments = await store.listPayments();
     const existing = id ? payments.find((p) => p.id === id) : null;
     if (id && !existing) return;
-    const startKind = KINDS.some((k) => k.id === section) ? section : 'recurring';
-    const p = existing ?? { name: '', amount: '', kind: startKind, period: 'month', payer: me ?? store.SPLIT, nextDue: null, total: null };
-    const payers = [...members.map((m) => [m, m]), [store.SPLIT, 'Napůl']];
+    // Nová platba dostane plátce podle vybraného segmentu
+    const p = existing ?? { name: '', amount: '', kind: 'recurring', period: 'month', payer: segment, nextDue: null, total: null };
+    const payers = [...members.map((m) => [m, m]), [store.SPLIT, SHARED]];
+    const payerValue = members.includes(p.payer) ? p.payer : store.SPLIT;
 
     openSheet(existing ? existing.name : 'Nová platba', (body, close) => {
       body.innerHTML = `<form class="edit-form" autocomplete="off">
@@ -206,7 +207,7 @@ export async function render(el, { extraEl }) {
           <input class="input" name="amount" inputmode="decimal" value="${escapeHtml(p.amount === '' ? '' : String(p.amount).replace('.', ','))}" placeholder="0"></label>
         <div class="field"><span>Kdo platí</span>
           <div class="segmented" data-name="payer">
-            ${payers.map(([value, name]) => `<button type="button" class="${whoClass(value, members)}" data-value="${escapeHtml(value)}" aria-pressed="${value === (p.payer || store.SPLIT)}">${escapeHtml(name)}</button>`).join('')}
+            ${payers.map(([value, name]) => `<button type="button" class="${whoClass(value, members)}" data-value="${escapeHtml(value)}" aria-pressed="${value === payerValue}">${escapeHtml(name)}</button>`).join('')}
           </div></div>
         <div class="field" data-for="recurring term"><span>Jak často</span>
           <div class="segmented" data-name="period">
@@ -272,7 +273,11 @@ export async function render(el, { extraEl }) {
           await store.updatePayment(id, { ...data, remaining, done });
         } else {
           await store.addPayment(data);
-          section = kind;
+          // Platba se přidala jinam: přepnout na její segment, ať je vidět
+          if (data.payer !== segment) {
+            segment = data.payer;
+            await store.setLocal('moneySegment', segment);
+          }
         }
         return true;
       };

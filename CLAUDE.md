@@ -167,6 +167,8 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
     jantarová, Nákup terakota, Peníze tmavě zlatá, Recepty světle oranžová, Administrativa
     hnědá, Wishlist fialová, Bucketlist žlutá, Byt šedofialová. Nikdy modrá, růžová, zelená
     ani červená. Nový modul dostane další teplý odstín, který ještě není použitý.
+  - Peníze: přepínač segmentů jsou jména členů a „Společné“ (bez barev osob). Barevný pruh
+    plateb v seznamu se nemění: člen jeho barvou, Společné zelenou.
   - ostatní stavový text je šedý (`--text-2`): opakování, „hotovo Tom, zbývá Domi“, počty.
   - důležitost úkolu (číslo v řádku): 1 šedá, 2 žlutá (`--warn`), 3 červená. Je to jediná
     výjimka, kde je červená bez ikony.
@@ -221,7 +223,7 @@ Hotovo (0.3.0):
   kdokoliv / Tom / Domi, opakování (od termínu vs. od splnění). Opakovaný úkol se splněním
   neuzavře, posune se mu termín a zůstane u něj, kdo a kdy ho splnil naposledy. Nový úkol
   dostane termín podle záložky (Dnes = dnes, Týden = za 7 dní, Někdy = bez termínu).
-- Peníze: pravidelné platby (měsíčně / čtvrtletně / ročně), kdo platí (člen nebo napůl),
+- Peníze: pravidelné platby (měsíčně / čtvrtletně / ročně), kdo platí (člen nebo Společné),
   nahoře souhrn za každého a dohromady (ťuknutím měsíčně / ročně), filtr podle plátce.
   Přidání tlačítkem + v horní liště.
 - Domů: karty Úkoly (co je na dnes) a Peníze (měsíční součet, platby splatné do 7 dní).
@@ -247,7 +249,7 @@ Hotovo (0.4.0):
 Hotovo (0.5.0):
 - Push notifikace na platby: zapínají se ve Více na každém telefonu zvlášť (`js/push.js`,
   tabulka `push_subscriptions`). Ráno v 8:01 GitHub Actions zavolá funkci `send-reminders`, ta
-  pošle plátci (u platby napůl oběma) upozornění na platby splatné dnes nebo po termínu.
+  pošle plátci (u společné platby oběma) upozornění na platby splatné dnes nebo po termínu.
   Na iPhonu funguje jen u appky přidané na plochu.
 
 Hotovo (0.6.0):
@@ -388,6 +390,20 @@ Hotovo (0.16.0), úklid vzhledu a UX bez nových funkcí:
   a termínu, oba telefony tedy vyrobí stejný řádek, schéma se neměnilo). Na stránce úkolu
   je vidět jako šedý řádek, do počtu komentářů ani nepřečtených se nepočítá. Posouvá se
   jen s čerstvě staženými daty. Opakování „od splnění“ se nemění.
+
+Hotovo (0.17.0):
+- Peníze rozdělené na segmenty Tom / Domi / Společné (`.segmented` pod hlavičkou, jména podle
+  `listMembers()`). Člen = platby z jeho osobního účtu (`payer` = jméno), Společné = placeno
+  ze společného účtu (`payer` = `'split'` nebo prázdný; hodnota v datech zůstala, změnil se
+  jen popisek z „Napůl“). Vybraný segment si pamatuje každý telefon (meta `moneySegment`),
+  výchozí je přihlášený člen, u segmentu je počet plateb k zaplacení.
+- Souhrn jen za vybraný segment: pravidelně za měsíc (ťuknutím za rok) a jednorázově zbývá
+  (`paymentsSummary(segment)`, bez segmentu za všechno pro dlaždici na Domů). Společné
+  platby se už nedělí napůl mezi členy.
+- Žádné záložky Zaplatit / Pravidelné / Jednou / Na dobu: jeden seznam se skupinami
+  Zaplatit (splatné do 7 dní a po termínu), Pravidelné, Jednorázové, Na dobu, dole
+  Zaplacené s Vyčistit (jen v segmentu). Nová platba dostane plátce podle segmentu.
+- Upozornění na společné platby chodí dál oběma.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

@@ -1076,7 +1076,8 @@ export async function clearDoneTasks() {
 //           done, paidAt, paidBy, createdAt, updatedAt }
 //   kind     'recurring' pravidelná, 'once' jednorázová, 'term' pravidelná po dobu X
 //   period   'month' | 'quarter' | 'year' (u jednorázové se nepoužívá)
-//   payer    jméno člena, nebo 'split' = napůl
+//   payer    jméno člena (platí z osobního účtu), nebo 'split' = Společné
+//            (placeno ze společného účtu). Prázdný payer patří taky do Společné.
 //   nextDue  nejbližší splatnost "RRRR-MM-DD", nebo null = bez hlídání
 //   total / remaining  počet plateb celkem a kolik zbývá (jen 'term')
 //   done     jednorázová zaplacena, nebo 'term' doplacena
@@ -1092,35 +1093,26 @@ export async function listPayments() {
 // Částka přepočtená na jeden měsíc
 export const monthly = (payment) => (payment.amount || 0) / (PERIOD_MONTHS[payment.period] ?? 1);
 
-// Kolik z částky připadá na jednoho člena (napůl = rovný díl)
-function addShare(perPerson, members, payer, amount) {
-  if (payer === SPLIT || !payer) {
-    members.forEach((m) => { perPerson[m] += amount / members.length; });
-  } else {
-    perPerson[payer] = (perPerson[payer] ?? 0) + amount;
-  }
+// Peníze se dělí na segmenty: každý člen (osobní účet) a Společné (SPLIT).
+// Do Společné patří i platba bez plátce nebo s plátcem, který už není členem.
+export function inPaymentSegment(payment, segment, members) {
+  if (segment === SPLIT) return !members.includes(payment.payer);
+  return payment.payer === segment;
 }
 
 // Souhrn: co stojí běžný měsíc (pravidelné a běžící platby na dobu určitou)
-// a kolik zbývá zaplatit jednorázově. { total, perPerson, onceTotal, oncePerPerson }
-export async function paymentsSummary() {
+// a kolik zbývá zaplatit jednorázově. segment = jméno člena nebo SPLIT,
+// bez segmentu za všechny platby dohromady (dlaždice na Domů). { total, onceTotal }
+export async function paymentsSummary(segment = null) {
   const [payments, members] = await Promise.all([live('payments'), listMembers()]);
-  const zero = () => Object.fromEntries(members.map((m) => [m, 0]));
-  const perPerson = zero();
-  const oncePerPerson = zero();
   let total = 0;
   let onceTotal = 0;
   for (const p of payments) {
-    if (p.done) continue;
-    if (p.kind === 'once') {
-      onceTotal += p.amount || 0;
-      addShare(oncePerPerson, members, p.payer, p.amount || 0);
-    } else {
-      total += monthly(p);
-      addShare(perPerson, members, p.payer, monthly(p));
-    }
+    if (p.done || (segment && !inPaymentSegment(p, segment, members))) continue;
+    if (p.kind === 'once') onceTotal += p.amount || 0;
+    else total += monthly(p);
   }
-  return { total, perPerson, onceTotal, oncePerPerson };
+  return { total, onceTotal };
 }
 
 // Nezaplacené platby se splatností nejpozději za daný počet dní (i po termínu)
@@ -1187,8 +1179,10 @@ export const removePayments = (ids) => removeByIds('payments', ids);
 export const restorePayments = (payments) => restore('payments', payments);
 
 // Smaže zaplacené a doplacené platby a vrátí je (kvůli tlačítku Zpět)
-export async function clearDonePayments() {
-  const done = (await live('payments')).filter((p) => p.done);
+// Smaže zaplacené (jednorázové) a doplacené (na dobu) platby, se segmentem jen v něm
+export async function clearDonePayments(segment = null) {
+  const members = await listMembers();
+  const done = (await live('payments')).filter((p) => p.done && (!segment || inPaymentSegment(p, segment, members)));
   await markDeleted('payments', done);
   emit();
   return done;

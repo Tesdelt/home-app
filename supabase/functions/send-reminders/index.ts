@@ -3,7 +3,7 @@
 // 1. Ranní upozornění na platby. Jednou denně ji bez přihlášení zavolá
 //    GitHub Actions (.github/workflows/denni-kontrola.yml). Najde nezaplacené
 //    platby se splatností dnes nebo dřív a upozorní toho, kdo je má platit
-//    (platbu napůl oba).
+//    (společnou platbu oba).
 // 2. Upozornění na nový úkol nebo komentář. Volá ji appka přihlášeného člena
 //    s tělem { task, title } (úkol) nebo { task, title, kind: 'comment', text }
 //    a funkce pošle upozornění ostatním členům domácnosti.
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     if (subsError) throw subsError;
     stage = 'odeslani';
 
-    // Komu která platba patří: plátci podle jména, platba napůl všem
+    // Komu která platba patří: plátci podle jména, společná platba (split) všem
     const perUser = new Map<string, typeof fresh>();
     for (const p of fresh) {
       const inHouse = (members ?? []).filter((m) => m.household_id === p.household_id);

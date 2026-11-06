@@ -118,7 +118,8 @@ create index if not exists task_comments_household_idx on public.task_comments (
 -- Komentář soukromého úkolu je soukromý stejně jako úkol
 alter table public.task_comments add column if not exists private_to uuid references auth.users (id) on delete cascade;
 
--- Pravidelné platby. payer je jméno člena, nebo 'split' (napůl).
+-- Pravidelné platby. payer je jméno člena, nebo 'split' (Společné = placeno ze
+-- společného účtu).
 create table if not exists public.payments (
   id           uuid primary key,
   household_id uuid not null references public.households (id) on delete cascade,
