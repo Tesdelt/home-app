@@ -438,6 +438,8 @@ Hotovo (0.18.0):
   "Podíl spolubydlící": -9200 } }`): zobrazí se s mínusem, neutrálně, kladné od největší
   a záporné na konec. `total` je vždy součet položek a zapisuje ho Claude, appka ho
   nepřepočítává.
+  `balance` (0.23.0) je konečný zůstatek účtu k poslednímu dni měsíce z výpisu, nebo null.
+  Zapisuje ho Claude z výpisu spolu se součty (stačí i jen u některých měsíců).
   Unikátní je (household_id, account, month).
 - **Kdo do ní píše:** appka řádky jen čte a zobrazuje. Zapisuje je zvenku Claude přes SQL
   z výpisů z banky, které mu Tom dá (`insert ... on conflict (household_id, account, month)
@@ -484,6 +486,12 @@ Hotovo (0.22.0):
   (Sloupce / Křivka). Telefon si je pamatuje pro každý segment (meta `moneyChart`). Výchozí
   Utraceno za 12 měsíců ve sloupcích. Měsíc bez dat je 0, chybějící měsíce na začátku a konci
   období se vynechají.
+
+Hotovo (0.23.0):
+- Grafy: řada „Zůstatek“ (vývoj zůstatku účtu). Měsíční pohyb = income - outgo - součet
+  moves. Měsíce se známým `balance` z výpisu ho mají přesně, ostatní se dopočítají z pohybů
+  od nejbližšího známého (`balances()` v `moneycharts.js`). Bez jediného známého zůstatku
+  se řada jmenuje „Pohyb celkem“ a jde od nuly. Barva `--text` (neutrální).
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

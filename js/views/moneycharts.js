@@ -16,6 +16,7 @@ const FLOWS = [
   { g: 'flow', c: 'income', label: 'Přišlo', color: 'var(--flow-in)' },
   { g: 'flow', c: 'outgo', label: 'Utraceno', color: 'var(--flow-out)' },
   { g: 'flow', c: 'saved', label: 'Odloženo', color: 'var(--flow-move)' },
+  { g: 'flow', c: 'balance', label: 'Zůstatek', color: 'var(--text)' },
 ];
 const GROUPS = [['out', 'Výdaje', 'categories'], ['in', 'Příjmy', 'incomes'], ['move', 'Přesuny', 'moves']];
 const PALETTE = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)'];
@@ -41,13 +42,46 @@ const shortMonth = (month) => {
   return `${['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'][m - 1]} ${y}`;
 };
 
+// Celkový pohyb účtu za měsíc: všechno, co přišlo, minus všechno, co odešlo
+// (výdaje i přesuny; přesun z úspor zpět je záporný, takže se přičte)
+const movesOf = (row) => Object.values(row?.moves ?? {}).reduce((sum, v) => sum + totalOf(v), 0);
+const netOf = (row) => (row ? (Number(row.income) || 0) - (Number(row.outgo) || 0) - movesOf(row) : 0);
+
+// Zůstatek na konci každého měsíce od prvního do posledního s daty: { month: částka }.
+// Kde je z výpisu známý (balance), platí ten, ostatní měsíce se dopočítají z pohybů
+// od nejbližšího známého (dopředu od předchozího, před prvním známým zpětně).
+// Bez jediného známého zůstatku je to jen pohyb celkem od nuly (anchored = false).
+function balances(rows) {
+  if (!rows.length) return { map: new Map(), anchored: false };
+  const byMonth = new Map(rows.map((r) => [r.month, r]));
+  const months = monthRange(rows[0].month, rows[rows.length - 1].month);
+  const known = months.map((m) => {
+    const b = byMonth.get(m)?.balance;
+    return b == null ? null : Number(b);
+  });
+  const values = new Array(months.length).fill(null);
+  const firstKnown = known.findIndex((b) => b != null);
+  if (firstKnown < 0) {
+    let sum = 0;
+    months.forEach((m, i) => { sum += netOf(byMonth.get(m)); values[i] = sum; });
+    return { map: new Map(months.map((m, i) => [m, values[i]])), anchored: false };
+  }
+  for (let i = firstKnown; i < months.length; i += 1) {
+    values[i] = known[i] ?? values[i - 1] + netOf(byMonth.get(months[i]));
+  }
+  for (let i = firstKnown - 1; i >= 0; i -= 1) {
+    values[i] = values[i + 1] - netOf(byMonth.get(months[i + 1]));
+  }
+  return { map: new Map(months.map((m, i) => [m, values[i]])), anchored: true };
+}
+
 // Hodnota řady v jednom měsíci (měsíc bez řádku = 0)
 function valueOf(row, s) {
   if (!row) return 0;
   if (s.g === 'flow') {
     if (s.c === 'income') return Number(row.income) || 0;
     if (s.c === 'outgo') return Number(row.outgo) || 0;
-    return Object.values(row.moves ?? {}).reduce((sum, v) => sum + totalOf(v), 0);
+    return movesOf(row);
   }
   const map = row[GROUPS.find(([g]) => g === s.g)[2]] ?? {};
   const value = map[s.c];
@@ -113,8 +147,11 @@ export async function renderCharts(el, segment) {
   // Popisek a barva řady: toky mají svou barvu, ostatní z palety podle pořadí
   function decorate(series) {
     let next = 0;
+    const anchored = balances(rows).anchored;
     return series.map((s) => {
       const flow = FLOWS.find((f) => s.g === 'flow' && f.c === s.c);
+      // Bez známého zůstatku z výpisu je to jen pohyb celkem od nuly
+      if (flow?.c === 'balance' && !anchored) return { ...s, label: 'Pohyb celkem', color: flow.color };
       if (flow) return { ...s, label: flow.label, color: flow.color };
       return { ...s, label: s.i == null ? s.c : `${s.c} · ${s.i}`, color: PALETTE[next++ % PALETTE.length] };
     });
@@ -164,9 +201,11 @@ export async function renderCharts(el, segment) {
       return;
     }
     const byMonth = new Map(rows.map((r) => [r.month, r]));
+    const balance = balances(rows).map;
+    const valueAt = (m, s) => (s.g === 'flow' && s.c === 'balance' ? balance.get(m) ?? 0 : valueOf(byMonth.get(m), s));
     endChart = drawChart(chartEl, {
       months,
-      series: series.map((s) => ({ label: s.label, color: s.color, values: months.map((m) => valueOf(byMonth.get(m), s)) })),
+      series: series.map((s) => ({ label: s.label, color: s.color, values: months.map((m) => valueAt(m, s)) })),
       type: prefs.type,
       format: money,
     });

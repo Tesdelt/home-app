@@ -294,6 +294,9 @@ create index if not exists money_months_household_idx on public.money_months (ho
 -- Přesun z úspor zpět má záporný total (např. "Ze spořáku": { "total": -18025 }).
 alter table public.money_months add column if not exists incomes jsonb not null default '{}'::jsonb;
 alter table public.money_months add column if not exists moves jsonb not null default '{}'::jsonb;
+-- Konečný zůstatek účtu k poslednímu dni měsíce z výpisu (null = neznámý).
+-- Graf Zůstatek se od něj odvíjí, chybějící měsíce dopočítá z pohybů.
+alter table public.money_months add column if not exists balance numeric(12, 2);
 
 -- Push notifikace: adresy, na které se telefonům posílají upozornění.
 -- Každý vidí a mění jen své vlastní odběry.
