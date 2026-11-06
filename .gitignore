@@ -2,3 +2,6 @@
 node_modules/
 # Soukromé klíče pro Supabase Secrets, nikdy do repozitáře
 supabase/.secrets/
+
+# Místní nastavení Claude Code (povolení), jen pro tento počítač
+.claude/settings.local.json
