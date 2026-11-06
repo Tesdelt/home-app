@@ -1208,7 +1208,9 @@ export const restorePayments = (payments) => restore('payments', payments);
 // Skutečnost z výpisů z účtu: měsíční součty za účet (segment), od nejnovějšího.
 // Řádek: { id, account, month 'RRRR-MM', income, outgo,
 //   categories: { název: { total, items: { obchodník nebo protiúčet: součet } } },
-//   incomes: rozpad příjmů ve stejném tvaru }.
+//   incomes: rozpad příjmů, moves: přesuny mezi vlastními účty a do spoření
+//   (z úspor zpět záporně), oba ve stejném tvaru }. income = jen příjmy,
+//   outgo = jen výdaje bez přesunů.
 // Zapisuje je zvenku Claude přes SQL, appka je jen čte.
 export async function listMoneyMonths(account) {
   const members = await listMembers();

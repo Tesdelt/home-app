@@ -36,17 +36,19 @@ const monthName = (month) => {
   return `${MONTHS[m - 1] ?? month} ${y}`;
 };
 
-// Kategorie skutečnosti (výdaje i příjmy): [[název, částka, [[obchodník, součet], ...]], ...]
-// od největší. Hodnota kategorie je { total, items }, starší zápis jen číslo (bez items).
+// Kategorie skutečnosti (příjmy, výdaje, přesuny): [[název, částka, [[obchodník, součet], ...]], ...]
+// od největší podle absolutní hodnoty (přesun z úspor zpět je záporný).
+// Hodnota kategorie je { total, items }, starší zápis jen číslo (bez items).
+const byAbs = (a, b) => Math.abs(b[1]) - Math.abs(a[1]);
 function categoriesOf(map) {
-  const sorted = (entries) => entries.map(([name, value]) => [name, Number(value) || 0]).sort((a, b) => b[1] - a[1]);
+  const sorted = (entries) => entries.map(([name, value]) => [name, Number(value) || 0]).sort(byAbs);
   return Object.entries(map ?? {})
     .map(([name, value]) => {
       const total = typeof value === 'object' && value ? value.total : value;
       const items = typeof value === 'object' && value ? sorted(Object.entries(value.items ?? {})) : [];
       return [name, Number(total) || 0, items];
     })
-    .sort((a, b) => b[1] - a[1]);
+    .sort(byAbs);
 }
 
 // Měsíčně / ročně v souhrnu a vybraný měsíc skutečnosti vydrží, dokud je appka
@@ -218,9 +220,15 @@ export async function render(el, { extraEl }) {
       return;
     }
     const row = months.find((m) => m.month === pickedMonth) ?? months[0];
-    const outs = categoriesOf(row.categories);
-    const ins = categoriesOf(row.incomes);
-    // Řádek kategorie; klíč má předponu skupiny, název se může v obou opakovat
+    // Skupiny Příjmy / Výdaje / Přesuny; barva skupiny je jen u čísla v kartě
+    // a v tečce před nadpisem, řádky zůstávají neutrální
+    const groups = [
+      ['in', 'Příjmy', categoriesOf(row.incomes)],
+      ['out', 'Výdaje', categoriesOf(row.categories)],
+      ['move', 'Přesuny', categoriesOf(row.moves)],
+    ];
+    const saved = Object.values(row.moves ?? {}).reduce((sum, v) => sum + (Number(typeof v === 'object' && v ? v.total : v) || 0), 0);
+    // Řádek kategorie; klíč má předponu skupiny, název se může opakovat
     const fold = (group) => ([name, amount, items]) => {
       const key = `${group}:${name}`;
       return `<li class="item fold money-cat${items.length ? ' has-items' : ''}${key === openCat ? ' is-open' : ''}" data-fold="${escapeHtml(key)}">
@@ -228,22 +236,24 @@ export async function render(el, { extraEl }) {
           <div class="fold-body"><ul class="money-shops">${items.map(([who, value]) => `<li class="money-shop"><span>${escapeHtml(who)}</span><span>${money(value)}</span></li>`).join('')}</ul></div>
         </li>`;
     };
-    // Příjmy a Výdaje jsou v jednom seznamu, takže rozbalená je nejvýš jedna
-    // kategorie napříč oběma. Bez rozpadu příjmů zůstanou jen výdaje bez nadpisu.
-    const lists = ins.length
-      ? `<li class="cat-head">Příjmy</li>${ins.map(fold('in')).join('')}${outs.length ? `<li class="cat-head">Výdaje</li>${outs.map(fold('out')).join('')}` : ''}`
-      : outs.map(fold('out')).join('');
+    // Všechny skupiny jsou v jednom seznamu, takže rozbalená je nejvýš jedna
+    // kategorie napříč všemi. Prázdná skupina se nezobrazí.
+    const lists = groups
+      .filter(([, , cats]) => cats.length)
+      .map(([id, label, cats]) => `<li class="cat-head"><span class="flow-dot flow-${id}"></span>${label}</li>${cats.map(fold(id)).join('')}`)
+      .join('');
     actualRoot.innerHTML = `
       <div class="toolbar actual-bar">
         <p class="section-label">Skutečnost</p>
         <button type="button" class="opt" data-action="month"><span class="opt-text">${escapeHtml(monthName(row.month))}</span></button>
       </div>
-      <section class="card summary">
+      <section class="card summary flow-card">
         <div class="sum-row">
-          <div class="sum-cell"><span class="sum-label">Plán</span><span class="sum-value">${money(summary.total)}</span></div>
-          <div class="sum-cell is-total"><span class="sum-label">Skutečně odešlo</span><span class="sum-value">${money(row.outgo)}</span></div>
+          <div class="sum-cell"><span class="sum-label">Přišlo</span><span class="sum-value flow-in">${money(row.income)}</span></div>
+          <div class="sum-cell"><span class="sum-label">Utraceno</span><span class="sum-value flow-out">${money(row.outgo)}</span></div>
+          <div class="sum-cell"><span class="sum-label">Odloženo</span><span class="sum-value flow-move">${money(saved)}</span></div>
         </div>
-        <span class="sum-note">Přišlo ${money(row.income)}</span>
+        <span class="sum-note">Plán ${money(summary.total)}</span>
       </section>
       ${lists ? `<ul class="item-list group money-cats">${lists}</ul>` : ''}`;
   }

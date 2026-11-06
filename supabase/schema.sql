@@ -287,9 +287,13 @@ create table if not exists public.money_months (
 );
 
 create index if not exists money_months_household_idx on public.money_months (household_id);
--- Rozpad příjmů ve stejném tvaru jako categories:
+-- Význam sloupců: income = jen příjmy, outgo = jen výdaje (bez přesunů),
+-- categories = rozpad výdajů, incomes = rozpad příjmů, moves = přesuny mezi
+-- vlastními účty a do spoření. Všechny tři rozpady mají stejný tvar:
 -- { "Práce": { "total": 45000, "items": { "Firma s.r.o.": 45000 } }, ... }
+-- Přesun z úspor zpět má záporný total (např. "Ze spořáku": { "total": -18025 }).
 alter table public.money_months add column if not exists incomes jsonb not null default '{}'::jsonb;
+alter table public.money_months add column if not exists moves jsonb not null default '{}'::jsonb;
 
 -- Push notifikace: adresy, na které se telefonům posílají upozornění.
 -- Každý vidí a mění jen své vlastní odběry.

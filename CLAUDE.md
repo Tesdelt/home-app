@@ -171,6 +171,9 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
     a ikon, `items` šedé podřádky `.money-shop` (ukázka na `#/ukazka`).
   - Peníze: přepínač segmentů jsou jména členů a „Společné“ (bez barev osob). Barevný pruh
     plateb v seznamu se nemění: člen jeho barvou, Společné zelenou.
+  - Peníze, Skutečnost: `--flow-in` (Příjmy, olivová), `--flow-out` (Výdaje, vínová),
+    `--flow-move` (Přesuny, šedá = `--text-2`). Jen u čísla v kartě a jako tečka `.flow-dot`
+    před nadpisem skupiny; řádky a částky v seznamu zůstávají neutrální.
   - ostatní stavový text je šedý (`--text-2`): opakování, „hotovo Tom, zbývá Domi“, počty.
   - důležitost úkolu (číslo v řádku): 1 šedá, 2 žlutá (`--warn`), 3 červená. Je to jediná
     výjimka, kde je červená bez ikony.
@@ -419,8 +422,10 @@ Hotovo (0.18.0):
   `categories` ve tvaru `{ "Potraviny": { "total": 3294.1, "items": { "Albert": 2823,
   "Lidl": 36.3 } }, ... }`. `items` jsou součty za obchodníka nebo protiúčet, ne jednotlivé
   platby (0.18.1; starší sloupec `shops`, pokud v databázi vznikl, se nepoužívá a nemaže).
-  Sloupec `incomes` (0.20.0) je rozpad příjmů ve stejném tvaru (`{ "Práce": { "total":
-  45000, "items": { ... } } }`), prázdné `{}` = bez rozpadu.
+  Od 0.21.0 platí význam sloupců: `income` = jen příjmy, `outgo` = jen výdaje (bez přesunů),
+  `categories` = rozpad výdajů, `incomes` = rozpad příjmů, `moves` = přesuny mezi vlastními
+  účty a do spoření. Všechny tři rozpady mají stejný tvar (`{ "Práce": { "total": 45000,
+  "items": { ... } } }`), přesun z úspor zpět má záporný `total`. Prázdné `{}` = bez skupiny.
   Unikátní je (household_id, account, month).
 - **Kdo do ní píše:** appka řádky jen čte a zobrazuje. Zapisuje je zvenku Claude přes SQL
   z výpisů z banky, které mu Tom dá (`insert ... on conflict (household_id, account, month)
@@ -452,6 +457,12 @@ Hotovo (0.20.0):
   `li.cat-head` v jednom seznamu, stejné rozbalovací řádky (`toggleFold`), rozbalená nejvýš
   jedna kategorie napříč oběma. Částky příjmů bez znaménka a bez barvy. Prázdné `incomes`
   = skupina Příjmy se nezobrazí a výdaje zůstanou bez nadpisu jako dřív.
+
+Hotovo (0.21.0):
+- Skutečnost: karta Přišlo / Utraceno / Odloženo (součet `moves`, záporně když se bralo
+  z úspor), pod ní šedě Plán. Pod kartou skupiny Příjmy, Výdaje, Přesuny (nadpis s tečkou
+  v barvě skupiny), řazené podle absolutní hodnoty, prázdná skupina se nezobrazí,
+  rozbalená nejvýš jedna kategorie napříč všemi.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

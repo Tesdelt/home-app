@@ -33,6 +33,11 @@
   --mod-wishlist: #8660B4;
   --mod-bucketlist: #D9A400;
   --mod-info: #8E6886;
+  /* Peníze, Skutečnost: barvy skupin (jen číslo v kartě a tečka u nadpisu).
+     Olivová, vínová, šedá: nesmí splývat s osobami, --danger ani --accent. */
+  --flow-in: #6E6A1C;
+  --flow-out: #7D2E3C;
+  --flow-move: var(--text-2);
   --warn: #9A7400;
   --warn-soft: #F6ECC8;
 
@@ -89,6 +94,8 @@
     --mod-wishlist: #B596E0;
     --mod-bucketlist: #F2CB45;
     --mod-info: #C19DB9;
+    --flow-in: #BDB65C;
+    --flow-out: #B5726B;
     --warn: #E2BD55;
     --warn-soft: #3A3117;
   }
@@ -1375,3 +1382,11 @@ a.card.tile { display: flex; flex-direction: column; justify-content: space-betw
 .chip.pick-chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 .field + .chips { margin: calc(var(--s2) * -1) calc(var(--gutter) * -1) var(--s3); padding-top: 0; }
 .money-cats { margin-bottom: var(--s4); }
+
+/* ---------- Peníze, Skutečnost: Příjmy / Výdaje / Přesuny ---------- */
+.flow-card .sum-row { gap: var(--s2); }
+.flow-card .sum-value { font-size: var(--fs-text); }
+.sum-value.flow-in, .flow-dot.flow-in { color: var(--flow-in); }
+.sum-value.flow-out, .flow-dot.flow-out { color: var(--flow-out); }
+.sum-value.flow-move, .flow-dot.flow-move { color: var(--flow-move); }
+.flow-dot { display: inline-block; width: 8px; height: 8px; margin-right: var(--s2); border-radius: 50%; background: currentColor; vertical-align: 0.05em; }

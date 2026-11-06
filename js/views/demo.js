@@ -30,7 +30,7 @@ export async function render(el, { extraEl }) {
 
   const root = document.createElement('div');
   el.append(root);
-  const swatches = ['bg', 'surface', 'surface-2', 'border', 'text', 'text-2', 'text-3', 'accent', 'accent-soft', 'danger', 'who-1', 'who-2', 'who-both'];
+  const swatches = ['bg', 'surface', 'surface-2', 'border', 'text', 'text-2', 'text-3', 'accent', 'accent-soft', 'danger', 'who-1', 'who-2', 'who-both', 'flow-in', 'flow-out', 'flow-move'];
   root.innerHTML = `
     <p class="section-label">Písmo</p>
     <section class="card">
@@ -112,19 +112,32 @@ export async function render(el, { extraEl }) {
       ${row({ who: 'who-2', name: 'Hotový úkol', sub: 'Tom 9:12', done: true })}
     </ul>
 
-    <p class="section-label">Skutečnost: příjmy a výdaje, jedna rozbalená</p>
+    <p class="section-label">Skutečnost: karta a skupiny Příjmy / Výdaje / Přesuny</p>
+    <section class="card summary flow-card">
+      <div class="sum-row">
+        <div class="sum-cell"><span class="sum-label">Přišlo</span><span class="sum-value flow-in">46 200 Kč</span></div>
+        <div class="sum-cell"><span class="sum-label">Utraceno</span><span class="sum-value flow-out">31 251 Kč</span></div>
+        <div class="sum-cell"><span class="sum-label">Odloženo</span><span class="sum-value flow-move">-4 704 Kč</span></div>
+      </div>
+      <span class="sum-note">Plán 10 650 Kč</span>
+    </section>
     <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
-      <li class="cat-head">Příjmy</li>
+      <li class="cat-head"><span class="flow-dot flow-in"></span>Příjmy</li>
       <li class="item fold money-cat has-items" data-fold="w"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Práce</span></span><span class="item-amount">45 000 Kč</span></button>
         <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Zaměstnavatel</span><span>45 000 Kč</span></li></ul></div></li>
       <li class="item fold money-cat" data-fold="x"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Ostatní příjmy</span></span><span class="item-amount">1 200 Kč</span></button>
         <div class="fold-body"><ul class="money-shops"></ul></div></li>
-      <li class="cat-head">Výdaje</li>
+      <li class="cat-head"><span class="flow-dot flow-out"></span>Výdaje</li>
       <li class="item fold money-cat has-items" data-fold="r"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Restaurace a kavárny</span></span><span class="item-amount">6 707 Kč</span></button>
         <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Piazza</span><span>2 799 Kč</span></li></ul></div></li>
       <li class="item fold money-cat has-items is-open" data-fold="p"><button type="button" class="item-main fold-head" aria-expanded="true"><span class="item-text"><span class="item-name">Potraviny</span></span><span class="item-amount">3 294 Kč</span></button>
         <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Albert</span><span>2 823 Kč</span></li><li class="money-shop"><span>Prima pekárna</span><span>305 Kč</span></li><li class="money-shop"><span>Lidl</span><span>36 Kč</span></li></ul></div></li>
       <li class="item fold money-cat" data-fold="o"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Ostatní</span></span><span class="item-amount">120 Kč</span></button>
+        <div class="fold-body"><ul class="money-shops"></ul></div></li>
+      <li class="cat-head"><span class="flow-dot flow-move"></span>Přesuny</li>
+      <li class="item fold money-cat" data-fold="m1"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Ze spořáku</span></span><span class="item-amount">-18 025 Kč</span></button>
+        <div class="fold-body"><ul class="money-shops"></ul></div></li>
+      <li class="item fold money-cat" data-fold="m2"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Na spořák</span></span><span class="item-amount">13 321 Kč</span></button>
         <div class="fold-body"><ul class="money-shops"></ul></div></li>
     </ul>
 
