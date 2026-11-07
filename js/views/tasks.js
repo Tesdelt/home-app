@@ -401,5 +401,5 @@ async function renderPage(el, { params, subEl, extraEl }) {
 // Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
 export const split = true;
 export function render(el, ctx) {
-  return splitView(el, ctx, renderPage, { key: 'ukoly', empty: ['tasks', 'Vyberte úkol', 'Otevře se tady i s kroky a komentáři, třeba Vynést tříděný odpad.'] });
+  return splitView(el, ctx, renderPage, { key: 'ukoly' });
 }

@@ -35,6 +35,10 @@ const viewEl = document.getElementById('view');
 const titleEl = document.getElementById('screen-title');
 let currentModule = null;
 
+// Výška horní lišty pro rozvržení seznamu s detailem na počítači (CSS --topbar-h)
+const topbarEl = document.querySelector('.topbar');
+new ResizeObserver(() => document.getElementById('app').style.setProperty('--topbar-h', `${topbarEl.offsetHeight}px`)).observe(topbarEl);
+
 async function updateDots() {
   if (auth.getState().status !== 'ready') return;
   const [unread, due, news] = await Promise.all([store.unreadComments(), store.duePayments(7), store.moduleNews()]);

@@ -2,7 +2,7 @@
 // Administrativa, Wishlist, Bucketlist a Byt: vlevo seznam, vpravo otevřená
 // položka (stávající stránka položky, bez vlastní šipky zpět). Trasa zůstává
 // stejná, #/ukoly/<id> na počítači vykreslí obojí a vybraný řádek zvýrazní.
-// Bez vybrané položky je vpravo prázdný stav modulu. Detail se sám neotevírá
+// Bez vybrané položky je vpravo prázdno (žádný vysvětlující text). Detail se sám neotevírá
 // (u úkolů by se tím komentáře označily jako přečtené).
 //
 // Na mobilu a tabletu se nic nemění: pohled se vykreslí jako dřív.
@@ -10,15 +10,14 @@
 // renderPage(el, ctx) je dosavadní render pohledu (bez params = seznam,
 // s params = stránka položky). Tohle není pohled, ale pomocník pohledů.
 
-import { isDesktop, emptyState } from './ui.js';
+import { isDesktop } from './ui.js';
 
 // Kde byl seznam odrolovaný, ať po otevření jiné položky neskočí nahoru
 const scrolls = new Map();
 
 // key   klíč pro zapamatování posunu seznamu (název trasy)
-// empty [ikona, nadpis, věta] pro prázdnou pravou část
 // fullWhenEmpty  bez otevřené položky je seznam přes celou šířku (Recepty)
-export async function splitView(el, ctx, renderPage, { key, empty, fullWhenEmpty = false }) {
+export async function splitView(el, ctx, renderPage, { key, fullWhenEmpty = false }) {
   const selected = ctx.params?.[0] ?? null;
   if (!isDesktop() || (fullWhenEmpty && !selected)) return renderPage(el, ctx);
 
@@ -31,7 +30,7 @@ export async function splitView(el, ctx, renderPage, { key, empty, fullWhenEmpty
 
   const [endList, endDetail] = await Promise.all([
     renderPage(listEl, { ...ctx, params: [] }),
-    selected ? renderPage(detailEl, ctx) : (detailEl.innerHTML = emptyState(...empty), undefined),
+    selected ? renderPage(detailEl, ctx) : undefined,
   ]);
   listEl.scrollTop = scrolls.get(key) ?? 0;
 

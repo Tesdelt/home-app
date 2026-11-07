@@ -161,7 +161,9 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
 - Úkoly, Recepty, Administrativa, Wishlist, Bucketlist a Byt jsou na počítači seznam (vlevo,
   380 px) a detail (vpravo) vedle sebe (`splitView` v `js/split.js`, pohled má `split = true`).
   `#/ukoly/<id>` vykreslí obojí, vybraný řádek je zvýrazněný (`.is-selected`), bez vybrané
-  položky je vpravo prázdný stav modulu. Detail se sám neotevírá (u úkolů by se komentáře
+  položky je vpravo prázdno (žádný vysvětlující text, 0.33.5). Hlavička stránky (název a +)
+  je jen nad sloupcem se seznamem (horní lišta má šířku sloupce, `--topbar-h` měří `app.js`)
+  a detail vpravo začíná u horního okraje. Detail se sám neotevírá (u úkolů by se komentáře
   označily jako přečtené). Nová položka (+) se otevře vpravo jako koncept, smazání otevřené
   položky detail zavře. Režimy na místě (přesun úkolu, recept do receptu) fungují i tak.
   Recepty bez otevřeného receptu mají mřížku přes celou šířku, s otevřeným 2 sloupce vlevo.
@@ -214,7 +216,7 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   sloupce podle termínu. Karta = stejný obsah jako řádek. Přetažení karty myší do jiného
   sloupce změní termín (Dnes = dnes, Tento týden = za 3 dny, Později = za 14 dní, Bez termínu
   = bez termínu; do Po termínu nejde) nebo pro koho, toast se Zpět. Klik otevře detail vpravo
-  a sloupce se zúží (posouvají se vodorovně). Klávesa N kdekoliv v Úkolech (mimo psaní do
+  a sloupce se zalomí do řádků (nejméně 220 px na sloupec), nic nejede do strany. Klávesa N kdekoliv v Úkolech (mimo psaní do
   pole) = nový úkol.
 - Recepty, režim vaření (`js/views/cooking.js`, i na mobilu): tlačítko Vařit na stránce
   receptu otevře celou obrazovku: vlevo ingredience s odškrtáváním, vpravo jeden krok velkým
@@ -232,6 +234,11 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   sticky. Klik na kategorii rozbalí položky, klik do Limitu ho upraví v buňce (Enter /
   opuštění uloží přes `setBudget`, Esc zruší), klik na měsíc otevře Skutečnost toho měsíce.
   „Srovnat 2 měsíce“: dva vybrané měsíce vedle sebe a sloupec Rozdíl.
+- Na počítači se nic neposouvá do strany (0.33.5): řádek nástrojů `.toolbar` se zalomí
+  (v úzkém seznamu Úkolů má přepínač Seznam / Sloupce vlastní řádek), bublinky `.chips`
+  se zalamují (v Nákupu jen řádek návrhů, co se nevejde, se neukáže; kategorie jsou
+  v katalogu vpravo), tabulka Peněz se vejde na šířku (užší buňky). Záporné okraje
+  z mobilu (`.chips`, `.add-bar`) jsou na počítači zrušené. Mobil se nemění.
 - Klávesnice: Esc zavře nabídku, dialog i otevřený detail (předtím opustí pole, ať se
   změna uloží), fokus je vidět (outline `--text-2`).
 
@@ -300,7 +307,7 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
 ### Komponenty
 
 - **Hlavička stránky**: název, na podstránce vlevo šipka zpět, vpravo nejvýš jedno hlavní
-  tlačítko `.add-btn` (+). Šipku zpět na Domů mají všechny moduly včetně Úkolů, Nákupu a Peněz (bez ní je jen Domů
+  tlačítko `.add-btn` (+); na počítači stojí + hned vedle názvu, ne v pravém rohu. Šipku zpět na Domů mají všechny moduly včetně Úkolů, Nákupu a Peněz (bez ní je jen Domů
   a Nastavení), kreslí ji `app.js` sám,
   stránka položky má vlastní `.detail-head` se šipkou. Vedlejší ovládání (řazení, výběr
   obchodu, přepínač záložek, „Co uvařit“) patří do řádku `.toolbar` nad obsahem, ne do hlavičky.
@@ -368,15 +375,18 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
 - **Levý panel** `.sidenav` (240 px, `js/sidenav.js`): název Domácnost, moduly s ikonou
   v barvě modulu (`--mod-*`), aktivní položka `--accent-soft` + `--accent` jako aktivní
   záložka, tečka nepřečtených u Úkolů, počet k zaplacení u Peněz (`.side-badge`).
-  Moduly s podsekcemi (`.side-group.has-subs`) se rozbalí šipkou `.side-toggle` (klik na
-  název otevře modul), plynule jako `toggleFold`, víc modulů může být rozbalených.
+  Moduly s podsekcemi (`.side-group.has-subs`): rozbalený je sám aktivní modul a při
+  přechodu do jiného modulu se zavře (0.33.5). Šipka `.side-toggle` zavřený modul rozbalí
+  a ukotví (zůstane rozbalený i po přepnutí, víc ukotvených může být otevřených), rozbalený
+  zavře a ukotvení zruší (u aktivního ho zavře, dokud se neotevře jiný modul). Plynule jako
+  `toggleFold`, klik na název otevře modul.
   Podsekce `.side-subitem` bez ikon, s menším odsazením, aktivní zvýrazněná stejně jako
-  aktivní modul; modul s aktivní podsekcí se při načtení sám rozbalí:
+  aktivní modul:
   Peníze (členové, Společné, Grafy), Recepty (Recepty, Co uvařit, Skills), Úkoly (Všechny,
   Pro mě, Pro druhého, Pro oba), Administrativa (Společné, Osobní).
   Pořadí modulů jde změnit přetažením (`dragSort`), Nastavení zůstává dole. Tlačítko
   `.side-collapse` dole zúží panel na ikony (64 px, název v `title` při najetí myší).
-  Pořadí, rozbalené moduly a zúžení si pamatuje každý počítač (meta `sidebar`).
+  Pořadí, ukotvené moduly (`pinned`) a zúžení si pamatuje každý počítač (meta `sidebar`).
 - Obsah vpravo, max. 1200 px, centrovaný. **Dialog** místo spodního panelu: `openSheet`
   se na počítači vykreslí uprostřed (max. 520 px, `--radius`, ztmavené pozadí). `openMenu`
   zůstává nabídka u tlačítka (u pravého tlačítka myši u kurzoru).
@@ -790,6 +800,11 @@ výchozí zapnuto, meta `pushSound` přes `setLocal`, nesynchronizuje se). Zkusi
 i tón. Prohlížeč pustí zvuk až po první interakci, `AudioContext` se proto vytvoří /
 odemkne při prvním kliknutí nebo klávese v appce (`unlockAudio`). Zavřené okno appky tón
 nezahraje.
+
+Hotovo (0.33.5): počítač bez přežitků z mobilu. Nic se neposouvá do strany (přepínač
+Seznam / Sloupce, bublinky v Nákupu, sloupce úkolů, tabulka). Levý panel: rozbalený je jen
+aktivní modul, šipka modul ukotví. Seznam s detailem: hlavička jen nad seznamem, detail od
+horního okraje, bez textu „Vyberte…“; + vedle názvu stránky.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

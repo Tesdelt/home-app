@@ -962,7 +962,7 @@ export function render(el, ctx) {
     listTab = first === 'skills' ? 'skills' : 'recipes';
     ctx = { ...ctx, params: [] };
   }
-  return splitView(el, ctx, renderPage, { key: 'recepty', empty: ['recipe', 'Vyberte recept', 'Otevře se tady s postupem, třeba lasagne.'], fullWhenEmpty: true });
+  return splitView(el, ctx, renderPage, { key: 'recepty', fullWhenEmpty: true });
 }
 
 // Která záložka seznamu je otevřená (pro zvýraznění podsekce v levém panelu)

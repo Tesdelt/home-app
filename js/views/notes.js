@@ -145,5 +145,5 @@ async function renderNote(el, id) {
 // Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
 export const split = true;
 export function render(el, ctx) {
-  return splitView(el, ctx, renderPage, { key: 'info', empty: ['house', 'Vyberte poznámku', 'Otevře se tady celá, třeba heslo na Wi-Fi.'] });
+  return splitView(el, ctx, renderPage, { key: 'info' });
 }

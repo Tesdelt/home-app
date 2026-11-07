@@ -2112,3 +2112,48 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
 .switch[aria-checked="true"]::after { transform: translateX(18px); }
 @media (prefers-color-scheme: dark) { .switch::after { background: var(--text); } }
 @media (prefers-reduced-motion: reduce) { .switch, .switch::after { transition: none; } }
+
+/* ---------- Počítač: rozvržení bez přežitků z mobilu ----------
+   Nikde se nic neposouvá do strany. Seznam s detailem: hlavička stránky
+   (název a +) patří ke sloupci se seznamem, detail vpravo začíná nahoře
+   a bez vybrané položky je prázdný (žádný vysvětlující text). */
+@media (min-width: 1024px) {
+  #app:has(.view > .split:not(.is-kanban)) .topbar {
+    position: relative;
+    z-index: 2;
+    justify-self: start;
+    width: calc(max(var(--s5), (100% - 1200px) / 2) + 380px);
+    padding-right: 0;
+  }
+  #app:has(.view > .split:not(.is-kanban)) .view { grid-row: 1 / 3; }
+  .view > .split:not(.is-kanban) > .split-list { padding-top: var(--topbar-h, 0px); }
+  .view > .split:not(.is-kanban) > .split-detail { padding-top: var(--s3); }
+
+  /* Úkoly: přepínač Seznam / Sloupce v úzkém seznamu na vlastním řádku */
+  .toolbar { flex-wrap: wrap; row-gap: var(--s2); }
+  .split:not(.is-kanban) .split-list .toolbar > .kb-switch { flex: 1 1 100%; width: auto; margin-left: 0; }
+
+  /* Sloupce úkolů: zalomí se do řádků, místo aby jely do strany */
+  .kb { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); overflow: visible; }
+
+  /* Bublinky: bez vodorovného posouvání. V Nákupu jen řádek návrhů
+     (kategorie jsou v katalogu vpravo), co se nevejde, se neukáže. */
+  .chips { flex-wrap: wrap; overflow: visible; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+  .detail .chips, .field + .chips { margin-left: 0; margin-right: 0; }
+  .add-bar { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+  .shop-main .chips .cat-chip { display: none; }
+  .shop-main .chips { max-height: calc(36px + var(--s2) + 2px); overflow: hidden; }
+
+  /* Tabulka Peněz: vejde se na šířku (užší první sloupec a buňky) */
+  .mt-table { width: 100%; }
+  .mt-table th, .mt-table td { padding: var(--s2) var(--s1); }
+  .mt-table th:first-child { padding-left: var(--s3); }
+  .mt-table th:last-child, .mt-table td:last-child { padding-right: var(--s3); }
+  .mt-table tbody th { min-width: 140px; max-width: 200px; }
+  .mt-limit { min-width: 72px; }
+}
+@media (min-width: 1024px) {
+  /* Hlavní tlačítko (+) hned vedle názvu stránky, ne v pravém rohu daleko od obsahu */
+  .screen-title { flex: none; }
+  .topbar-extra { margin-right: auto; }
+}

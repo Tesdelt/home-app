@@ -1,8 +1,8 @@
 // Levý panel na počítači (od 1024 px). Moduly s ikonou v barvě modulu, dole
-// Nastavení. Moduly s podsekcemi se rozbalí šipkou u názvu (klik na název modul
-// otevře), pořadí modulů jde změnit přetažením (Nastavení zůstává dole) a panel
-// jde zúžit na samotné ikony. Pořadí, rozbalené moduly a zúžení si pamatuje každý
-// počítač zvlášť (meta sidebar). Mobilní spodní lišta se tím nemění.
+// Nastavení. Rozbalený je jen aktivní modul s podsekcemi, šipka modul ukotví
+// (zůstane rozbalený i po přepnutí). Pořadí modulů jde změnit přetažením
+// (Nastavení zůstává dole) a panel jde zúžit na samotné ikony. Pořadí, ukotvené
+// moduly a zúžení si pamatuje každý počítač zvlášť (meta sidebar).
 //
 // Podsekce nastavují stav modulu: segment Peněz (meta moneySegment), filtr Úkolů
 // (meta taskFilter), záložku Receptů a část Administrativy (přes trasu).
@@ -26,7 +26,11 @@ const MODULES = {
 export const SIDE_ROUTES = Object.keys(MODULES);
 
 const panel = document.querySelector('.sidenav');
-let prefs = { order: SIDE_ROUTES, open: [], narrow: false };
+// pinned = moduly ukotvené šipkou (zůstávají rozbalené i po přepnutí).
+// Jinak je rozbalený jen aktivní modul a při přechodu jinam se sám zavře.
+let prefs = { order: SIDE_ROUTES, pinned: [], narrow: false };
+let activeGroup = null;   // modul, který je teď otevřený
+let closedActive = null;  // aktivní modul, který uživatel šipkou zavřel
 let subs = {};
 let rerender = () => {};
 let current = { name: null, params: [] };
@@ -64,10 +68,17 @@ async function loadSubs() {
   };
 }
 
+const isOpen = (route) => prefs.pinned.includes(route) || (route === activeGroup && route !== closedActive);
+
+function setOpen(group, open) {
+  group.classList.toggle('is-open', open);
+  group.querySelector('.side-toggle')?.setAttribute('aria-expanded', String(open));
+}
+
 function item(route) {
   const [icon, label] = MODULES[route] ?? ['gear', 'Nastavení'];
   const list = subs[route] ?? [];
-  const open = prefs.open.includes(route);
+  const open = isOpen(route);
   return `<div class="side-group${list.length ? ' has-subs' : ''}${open ? ' is-open' : ''}" data-route="${route}">
       <div class="side-row">
         <a href="#/${route}" data-route="${route}" class="side-item mod-${route}" title="${escapeHtml(label)}" draggable="false">
@@ -84,7 +95,9 @@ export async function drawSidenav() {
   if (saved) {
     // Moduly, které v uloženém pořadí chybí (nově přidané), přijdou na konec
     const order = (saved.order ?? []).filter((r) => SIDE_ROUTES.includes(r));
-    prefs = { ...prefs, ...saved, order: [...order, ...SIDE_ROUTES.filter((r) => !order.includes(r))] };
+    // Starší uložené „open“ (rozbalené ručně) se neukotvuje, začíná se s čistým stavem
+    const { open: _old, ...rest } = saved;
+    prefs = { ...prefs, ...rest, pinned: rest.pinned ?? [], order: [...order, ...SIDE_ROUTES.filter((r) => !order.includes(r))] };
   }
   await loadSubs();
   if (!panel.querySelector('.side-list')) return;
@@ -124,12 +137,11 @@ export async function markSidenav(name, params = [], tab = null) {
     el.classList.toggle('is-active', active);
     if (active) el.setAttribute('aria-current', 'page');
     else el.removeAttribute('aria-current');
-    // Modul s aktivní podsekcí se sám rozbalí
-    if (active && !group.classList.contains('is-open')) {
-      group.classList.add('is-open');
-      group.querySelector('.side-toggle')?.setAttribute('aria-expanded', 'true');
-    }
   });
+  // Rozbalený je aktivní modul a ukotvené; předchozí neukotvený se zavře
+  if (side !== activeGroup) closedActive = null;
+  activeGroup = side;
+  panel.querySelectorAll('.side-group.has-subs').forEach((group) => setOpen(group, isOpen(group.dataset.route)));
 }
 
 // Poslední stav teček a počtů, ať je překreslení panelu neztratí
@@ -149,15 +161,21 @@ export function initSidenav({ onRerender }) {
   const listEl = panel.querySelector('.side-list');
 
   panel.addEventListener('click', async (e) => {
-    // Šipka jen rozbalí podsekce (plynule, víc modulů může být rozbalených)
     const toggle = e.target.closest('.side-toggle');
     if (toggle) {
+      // Šipka: zavřený modul rozbalí a ukotví (zůstane rozbalený i po přepnutí),
+      // rozbalený zavře a ukotvení zruší
       const group = toggle.closest('.side-group');
-      const open = !group.classList.contains('is-open');
-      group.classList.toggle('is-open', open);
-      toggle.setAttribute('aria-expanded', open);
       const route = group.dataset.route;
-      prefs.open = open ? [...new Set([...prefs.open, route])] : prefs.open.filter((r) => r !== route);
+      const open = !group.classList.contains('is-open');
+      if (open) {
+        prefs.pinned = [...new Set([...prefs.pinned, route])];
+        if (closedActive === route) closedActive = null;
+      } else {
+        prefs.pinned = prefs.pinned.filter((r) => r !== route);
+        if (route === activeGroup) closedActive = route;
+      }
+      setOpen(group, open);
       await savePrefs();
       return;
     }

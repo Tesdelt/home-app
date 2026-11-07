@@ -314,5 +314,5 @@ export function render(el, ctx) {
     scope = first === 'osobni' ? 'private' : 'shared';
     ctx = { ...ctx, params: [] };
   }
-  return splitView(el, ctx, renderPage, { key: 'administrativa', empty: ['folder', 'Vyberte dokument', 'Otevře se tady i s naskenovanými stránkami, třeba záruka na pračku.'] });
+  return splitView(el, ctx, renderPage, { key: 'administrativa' });
 }

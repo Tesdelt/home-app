@@ -26,7 +26,7 @@ function horizonLabel(untilYear) {
 
 const whoName = (value) => (!value ? 'Kdokoliv' : value === store.BOTH ? 'Oba' : value);
 
-function makeView({ list, title, route, icon, empty, detailEmpty }) {
+function makeView({ list, title, route, icon, empty }) {
   async function renderPage(el, { params, extraEl }) {
     if (params?.[0]) return renderItem(el, params[0]);
 
@@ -295,17 +295,15 @@ function makeView({ list, title, route, icon, empty, detailEmpty }) {
   }
 
   // Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
-  const render = (el, ctx) => splitView(el, ctx, renderPage, { key: route, empty: detailEmpty });
+  const render = (el, ctx) => splitView(el, ctx, renderPage, { key: route });
   return { title, tab: 'domu', render, split: true };
 }
 
 export const wishlist = makeView({
   list: 'wish', title: 'Wishlist', route: 'wishlist', icon: 'gift',
   empty: ['Zatím žádná přání', 'Patří sem věci, které by udělaly radost, třeba nová sluchátka nebo víkend ve Vídni.'],
-  detailEmpty: ['gift', 'Vyberte přání', 'Otevře se tady s podrobnostmi, třeba nová sluchátka.'],
 });
 export const bucketlist = makeView({
   list: 'bucket', title: 'Bucketlist', route: 'bucketlist', icon: 'star',
   empty: ['Zatím žádné nápady', 'Patří sem, co chcete jednou zažít, třeba přejít Alpy nebo vidět polární záři.'],
-  detailEmpty: ['star', 'Vyberte nápad', 'Otevře se tady s podrobnostmi, třeba přejít Alpy.'],
 });
