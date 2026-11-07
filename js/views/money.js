@@ -4,7 +4,7 @@
 // dole Zaplacené. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold, dragSort, budgetColor, isDesktop } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold, dragSort, budgetColor, isDesktop, planMeter } from '../ui.js';
 import { today, dueLabel, shiftMonth } from '../dates.js';
 import { renderCharts } from './moneycharts.js';
 import { renderTable } from './moneytable.js';
@@ -356,7 +356,7 @@ export async function render(el, { params, extraEl, subEl }) {
       const limit = group === 'out' ? budgets.get(name) : null;
       const value = limit ? `${num(amount)} <span class="budget-of">/ ${money(limit)}</span>` : money(amount);
       return `<li class="item fold money-cat${items.length ? ' has-items' : ''}${key === openCat ? ' is-open' : ''}" data-fold="${escapeHtml(key)}">
-          <button type="button" class="item-main fold-head" aria-expanded="${key === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span>${limit ? budgetBar(amount / limit) : ''}</span><span class="item-amount">${value}</span></button>
+          <button type="button" class="item-main fold-head" aria-expanded="${key === openCat}"><span class="item-text"><span class="item-name">${escapeHtml(name)}</span></span><span class="item-amount">${value}</span>${limit ? budgetBar(amount / limit) : ''}</button>
           <div class="fold-body"><ul class="money-shops">${items.map(([who, value]) => `<li class="money-shop"><span>${escapeHtml(who)}</span><span>${money(value)}</span></li>`).join('')}</ul></div>
         </li>`;
     };
@@ -378,7 +378,7 @@ export async function render(el, { params, extraEl, subEl }) {
           <div class="sum-cell"><span class="sum-label">Utraceno</span><span class="sum-value flow-out">${money(row.outgo)}</span>${overLimits > 0 ? `<span class="sum-sub">z toho nad limity ${money(overLimits)}</span>` : ''}</div>
           <div class="sum-cell"><span class="sum-label">Odloženo</span><span class="sum-value flow-move">${money(saved)}</span></div>
         </div>
-        <span class="sum-note">Plán ${money(summary.total + limitSum)}</span>
+        ${summary.total + limitSum > 0 ? planMeter(row.outgo, summary.total + limitSum) : ''}
       </section>`;
     actualCats.innerHTML = lists ? `<ul class="item-list group money-cats">${lists}</ul>` : '';
   }
@@ -419,8 +419,8 @@ export async function render(el, { params, extraEl, subEl }) {
         <button type="button" class="opt" data-action="goals"><span class="opt-text">Upravit</span></button>
       </div>
       ${filled.length ? `<ul class="item-list group goals">${filled.map((g) => `<li class="item goal">
-          <div class="item-main"><span class="item-text"><span class="item-name">${escapeHtml(g.name)}</span>${budgetBar(g.target ? g.have / g.target : 0, ' is-goal')}</span>
-          <span class="item-amount">${num(g.have)} <span class="budget-of">/ ${money(g.target)}</span></span></div>
+          <div class="item-main"><span class="item-text"><span class="item-name">${escapeHtml(g.name)}</span></span>
+          <span class="item-amount">${num(g.have)} <span class="budget-of">/ ${money(g.target)}</span></span>${budgetBar(g.target ? g.have / g.target : 0, ' is-goal')}</div>
         </li>`).join('')}</ul>` : ''}
       ${hint ? `<p class="goals-hint">${escapeHtml(hint)}</p>` : ''}`;
   }

@@ -9,7 +9,7 @@
 // Úkoly a Nákupem jen když se vejdou. Data se překreslují živě.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, money, whoClass, budgetColor, flowTone, undoToast, markNew, isNew, blink } from '../ui.js';
+import { escapeHtml, ICONS, money, whoClass, budgetColor, planMeter, undoToast, markNew, isNew, blink } from '../ui.js';
 import { addEntry } from './shopping.js';
 import { today, dueLabel, dueTimeLabel } from '../dates.js';
 import { navigate } from '../router.js';
@@ -187,13 +187,8 @@ export async function renderOverview(el) {
     // ---------- Peníze přihlášeného ----------
     let top = '';
     const row = months[0];
-    // Tón karty podle posledního měsíce: Utraceno / Plán (pravidelné platby
-    // segmentu za měsíc + limity), bez plánu neutrální
+    // Plán = pravidelné platby segmentu za měsíc + limity (jako ve Skutečnosti)
     const plan = summary.total + budgetRows.reduce((sum, b) => sum + (Number(b.monthlyLimit) || 0), 0);
-    const tone = row ? flowTone(plan > 0 ? row.outgo / plan : null) : null;
-    cards.penize.classList.toggle('has-tone', Boolean(tone));
-    if (tone) cards.penize.style.setProperty('--tone', tone);
-    else cards.penize.style.removeProperty('--tone');
     if (row) {
       const saved = Object.values(row.moves ?? {}).reduce((s, v) => s + totalOf(v), 0);
       top += `<a class="home-month" href="#/penize">
@@ -202,7 +197,7 @@ export async function renderOverview(el) {
           <div class="sum-cell"><span class="sum-label">Přišlo</span><span class="sum-value flow-in">${money(row.income)}</span></div>
           <div class="sum-cell"><span class="sum-label">Utraceno</span><span class="sum-value flow-out">${money(row.outgo)}</span></div>
           <div class="sum-cell"><span class="sum-label">Odloženo</span><span class="sum-value flow-move">${money(saved)}</span></div>
-        </div></a>`;
+        </div>${planMeter(row.outgo, plan)}</a>`;
       // Nejvýš 3 kategorie přes 90 % limitu, od nejvíc naplněné
       const near = budgetRows
         .map((b) => ({ ...b, spent: totalOf(row.categories?.[b.category]) }))
@@ -211,8 +206,8 @@ export async function renderOverview(el) {
         .slice(0, LIMITS_MAX);
       if (near.length) {
         top += `<p class="section-label">Limity</p><ul class="item-list home-list">${near.map((b) => `<li class="item"><a class="item-main" href="#/penize">
-            <span class="item-text"><span class="item-name">${escapeHtml(b.category)}</span>${bar(b.spent / b.monthlyLimit, budgetColor(b.spent / b.monthlyLimit))}</span>
-            <span class="item-amount">${num(b.spent)} <span class="budget-of">/ ${money(b.monthlyLimit)}</span></span></a></li>`).join('')}</ul>`;
+            <span class="item-text"><span class="item-name">${escapeHtml(b.category)}</span></span>
+            <span class="item-amount">${num(b.spent)} <span class="budget-of">/ ${money(b.monthlyLimit)}</span></span>${bar(b.spent / b.monthlyLimit, budgetColor(b.spent / b.monthlyLimit))}</a></li>`).join('')}</ul>`;
       }
     }
     // Platby k zaplacení do 7 dní: klik zaplatí (se Zpět)

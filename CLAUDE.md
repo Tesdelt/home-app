@@ -188,8 +188,8 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   zůstává na Domů. Úkol jen s názvem, nákup přes `addEntry` z `shopping.js` (stejné
   parsování „mléko 2“, katalog a kategorie jako pole v Nákupu). Nový řádek se zvýrazní; když
   by se do karty nevešel, zabere poslední viditelná místa (první řádek zůstává).
-  Karta Peníze má tón podle posledního měsíce: p = Utraceno / Plán (pravidelné platby
-  segmentu za měsíc + limity), okraj 2 px a podklad 8 % barvy z `flowTone(p)`.
+  Karta měsíce v Penězích má pod Přišlo / Utraceno / Odloženo hlavní ukazatel
+  „Utraceno z plánu X / Y Kč“ s pruhem (`planMeter`), karta sama se nebarví.
 - Stránka jako celek se na počítači nikdy neposouvá: posouvá se jen sloupec, jehož obsah se
   nevejde (split, Peníze, Nákup: seznam i katalog zvlášť), posuvník tenký a nenápadný
   (`scrollbar-width: thin`, barva `--border`). Stránky s jediným sloupcem posouvají obsah
@@ -278,10 +278,12 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
     zelená, kdokoliv neutrální (`whoClass()` z `ui.js`).
   - `--danger` (červená) jen pro „po termínu“ a mazání, **vždy s ikonou** (třída `.is-late`
     přidá hodiny, `.btn-danger` a `.menu-item.is-danger` koš), ať se neplete s růžovou Domi.
-  - každý modul má vlastní barvu ikony na Domů (`--mod-*`, třída `.mod-<trasa>`): Úkoly
-    jantarová, Nákup terakota, Peníze zlatá, Recepty meruňková, Administrativa oříšková,
-    Wishlist švestková, Bucketlist slunečnicová, Byt šedofialová. Nikdy modrá, růžová, zelená
-    ani červená. Nový modul dostane další teplý odstín, který ještě není použitý.
+  - každý modul má vlastní, dobře odlišitelnou barvu (`--mod-*`, třída `.mod-<trasa>`):
+    Úkoly jantarová, Nákup modrá, Peníze zelená, Recepty oranžová, Administrativa hnědá,
+    Wishlist fialová, Bucketlist žlutá, Byt břidlicově šedá (0.33.3, přání Toma: víc
+    rozlišit sekce). Jen ikony a navigace (Domů, levý panel, hlavičky karet), nikdy řádky,
+    pruhy ani text v seznamu, takže se nepletou s barvami osob. Nikdy červená ani růžová.
+    Nový modul dostane odstín, který ještě není použitý.
   - Peníze, skutečnost: kategorie jsou běžné řádky seznamu bez pruhu osoby, bez barev
     a ikon, `items` šedé podřádky `.money-shop` (ukázka na `#/ukazka`).
   - Peníze: přepínač segmentů jsou jména členů a „Společné“ (bez barev osob). Barevný pruh
@@ -324,7 +326,9 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   knihoven, sloupce (víc řad vedle sebe, záporné pod nulou) nebo křivka s jemnou plochou.
   Dotyk / tažení ukáže svislou čáru a štítek s hodnotami, zůstane po puštění, ťuknutí mimo
   ho schová. Osa X zkratky měsíců (u ledna a na začátku i rok), osa Y 3-4 čáry („20 tis.“).
-- **Pruh naplnění** `.budget-bar` (> `span` se šířkou v %) pod názvem v řádku seznamu.
+- **Pruh naplnění** `.budget-bar` (> `span` se šířkou v %) přes celou šířku řádku: v markupu
+  je posledním prvkem `.item-main` (za `.item-amount`) a zalomí se pod název i částku, takže
+  mají všechny pruhy stejnou délku a plný pruh = vyčerpaný limit (nad limitem plný).
   U limitu barva podle naplnění z `budgetColor(podíl)` v `ui.js`: šedá (`--bar-0`), do třetiny
   přechází do zelené (`--bar-1`), od poloviny žlutá (`--bar-2`), ke konci oranžová (`--bar-3`),
   od 95 % a nad limitem červená (`--bar-4`). Mezi body se barvy plynule míchají
@@ -332,11 +336,11 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   Cíl `.is-goal` má pevně `--flow-move`. Částka vedle ve tvaru „X / Y Kč“ stejně velká a tučná jako ostatní
   částky (`.item-amount`), část „/ Y Kč“ ve spanu `.budget-of` šedě (`--text-2`) a obyčejně.
   Překročený limit částku nezvýrazňuje, stačí okrový pruh.
-- **Tón podle plánu** `flowTone(p)` z `ui.js` (p = Utraceno / Plán): plynule jako
-  `budgetColor`: do 0,8 olivová `--flow-in`, 0,8-1,0 do neutrální `--border`, 1,0-1,2 do
-  okrové `--warn`, 1,2-1,4 do oranžové `--bar-3`. Nikdy červená, bez plánu neutrální. Okraj
-  2 px a podklad `color-mix(tón 8 %, --surface)` (`.home-card.has-tone`, `--tone`). Ukázka
-  s několika hodnotami p na `#/ukazka`.
+- **Plán měsíce** `planMeter(utraceno, plán)` z `ui.js`: řádek „Utraceno z plánu X / Y Kč“
+  a pruh 6 px se stejnou škálou jako limity (`budgetColor`). Je v kartě měsíce v Penězích
+  (Skutečnost) i na Domů a je to hlavní ukazatel, jak blízko je měsíc plánu. Plán =
+  pravidelné platby segmentu za měsíc + součet limitů; bez plánu se nezobrazí. Karta se
+  kvůli tomu nebarví ani nemá rámeček (vypadalo by to jako vybraná).
 - **Toast** `toast` / `undoToast` (se Zpět).
 - **Zvýraznění nové věci** `markNew(id)` / `isNew(id)` z `ui.js` (v paměti, nesynchronizuje
   se). Volá se ve `store.js` ve všech `add*` (úkol, krok, komentář, položka nákupu i z
@@ -765,7 +769,11 @@ Hotovo (0.33.0):
   jedna. Když je modul právě otevřený, novinka z Realtime tečku nepřidá.
 
 Hotovo (0.33.1): Domů na počítači, rychlé přidání úkolu a položky nákupu přímo v kartě
-a tón karty Peníze podle poměru Utraceno / Plán (`flowTone`).
+a tón karty Peníze podle poměru Utraceno / Plán (v 0.33.3 nahrazen pruhem `planMeter`).
+
+Hotovo (0.33.3): odlišnější barvy modulů (Nákup modrá, Peníze zelená…), na Domů místo
+barevného rámečku karty Peníze pruh „Utraceno z plánu“ (i ve Skutečnosti), pruhy limitů
+a cílů přes celou šířku řádku, takže mají všechny stejnou délku.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

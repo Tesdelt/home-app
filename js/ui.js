@@ -286,20 +286,16 @@ export function budgetColor(part) {
   return `color-mix(in oklab, var(--bar-${b}) ${t}%, var(--bar-${a}))`;
 }
 
-// Tón karty Peníze podle posledního měsíce, p = Utraceno / Plán. Plynule jako
-// budgetColor: do 0,8 olivová (--flow-in), do 1,0 přechod do neutrální
-// (--border), do 1,2 do okrové (--warn), pak do oranžové (--bar-3). Nikdy
-// červená. Bez plánu (p = null) neutrální.
-const TONE_STOPS = [[0.8, 'var(--flow-in)'], [1, 'var(--border)'], [1.2, 'var(--warn)'], [1.4, 'var(--bar-3)']];
-export function flowTone(p) {
-  if (p == null || !Number.isFinite(p)) return 'var(--border)';
-  if (p <= TONE_STOPS[0][0]) return TONE_STOPS[0][1];
-  if (p >= TONE_STOPS[TONE_STOPS.length - 1][0]) return TONE_STOPS[TONE_STOPS.length - 1][1];
-  const i = TONE_STOPS.findIndex(([at]) => at > p);
-  const [from, a] = TONE_STOPS[i - 1];
-  const [to, b] = TONE_STOPS[i];
-  const t = Math.round(((p - from) / (to - from)) * 100);
-  return `color-mix(in oklab, ${b} ${t}%, ${a})`;
+// Plán v kartě měsíce (Peníze, Domů): „Utraceno z plánu X / Y Kč“ a pruh
+// se stejnou barevnou škálou jako limity (budgetColor). Bez plánu nic.
+export function planMeter(spent, plan) {
+  if (!(plan > 0)) return '';
+  const part = Math.max(0, spent) / plan;
+  const width = (Math.min(1, part) * 100).toFixed(1);
+  return `<span class="plan-meter">
+      <span class="plan-meter-row"><span>Utraceno z plánu</span><span class="plan-meter-value">${Math.round(spent).toLocaleString('cs-CZ')} <span class="budget-of">/ ${money(plan)}</span></span></span>
+      <span class="budget-bar"><span style="width: ${width}%; background: ${budgetColor(part)}"></span></span>
+    </span>`;
 }
 
 // ---------- Rozbalovací řádky ----------

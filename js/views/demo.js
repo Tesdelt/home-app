@@ -2,7 +2,7 @@
 // jedné stránce. Není v menu, slouží ke kontrole vzhledu ve světlém i tmavém
 // režimu. Nesahá na data, všechno je tu napevno. Popis je v CLAUDE.md.
 
-import { ICONS, escapeHtml, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor, rowGestures, markNew, blink, flowTone } from '../ui.js';
+import { ICONS, escapeHtml, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor, rowGestures, markNew, blink, planMeter } from '../ui.js';
 import { drawChart } from '../chart.js';
 import { openCooking } from './cooking.js';
 
@@ -58,10 +58,6 @@ export async function render(el, { extraEl }) {
       <span class="demo-swatch" style="background: var(--surface); box-shadow: var(--shadow)" title="--shadow"></span>
       <span class="demo-swatch flow-card" title="karta posledního měsíce"></span>
     </div>
-
-    <p class="section-label">Tón karty Peníze: Utraceno / Plán (flowTone)</p>
-    <div class="demo-row">${[0.6, 0.85, 0.95, 1, 1.1, 1.2, 1.3, 1.5].map((p) => `<span class="demo-tone" style="--tone: ${flowTone(p)}">${String(p).replace('.', ',')}</span>`).join('')}
-      <span class="demo-tone" style="--tone: ${flowTone(null)}">bez plánu</span></div>
 
     <p class="section-label">Rozestupy 4 / 8 / 12 / 16 / 24</p>
     <div class="demo-row">${[1, 2, 3, 4, 5].map((n) => `<span class="demo-swatch" style="width: var(--s${n}); background: var(--text-3)"></span>`).join('')}</div>
@@ -146,8 +142,9 @@ export async function render(el, { extraEl }) {
         <div class="sum-cell"><span class="sum-label">Utraceno</span><span class="sum-value flow-out">31 251 Kč</span></div>
         <div class="sum-cell"><span class="sum-label">Odloženo</span><span class="sum-value flow-move">-4 704 Kč</span></div>
       </div>
-      <span class="sum-note">Plán 10 650 Kč</span>
+      ${planMeter(31251, 40000)}
     </section>
+    <section class="card summary flow-card">${planMeter(37000, 40000)}${planMeter(46800, 40000)}</section>
     <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
       <li class="cat-head"><span class="flow-dot flow-in"></span>Příjmy</li>
       <li class="item fold money-cat has-items" data-fold="w"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Práce</span></span><span class="item-amount">45 000 Kč</span></button>
@@ -170,16 +167,16 @@ export async function render(el, { extraEl }) {
 
     <p class="section-label">Pruh naplnění: limity (barva podle naplnění) a cíle</p>
     <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Trafika</span>${bar(0.0500)}</span><span class="item-amount">150 <span class="budget-of">/ 3 000 Kč</span></span></div></li>
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Potraviny</span>${bar(0.3250)}</span><span class="item-amount">1 300 <span class="budget-of">/ 4 000 Kč</span></span></div></li>
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Drogerie</span>${bar(0.5200)}</span><span class="item-amount">520 <span class="budget-of">/ 1 000 Kč</span></span></div></li>
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Restaurace a kavárny</span>${bar(0.8000)}</span><span class="item-amount">2 400 <span class="budget-of">/ 3 000 Kč</span></span></div></li>
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Doprava</span>${bar(0.9500)}</span><span class="item-amount">1 900 <span class="budget-of">/ 2 000 Kč</span></span></div></li>
-      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Oblečení</span>${bar(3.9447)}</span><span class="item-amount">11 834 <span class="budget-of">/ 3 000 Kč</span></span></div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Trafika</span></span><span class="item-amount">150 <span class="budget-of">/ 3 000 Kč</span></span>${bar(0.0500)}</div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Potraviny</span></span><span class="item-amount">1 300 <span class="budget-of">/ 4 000 Kč</span></span>${bar(0.3250)}</div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Drogerie</span></span><span class="item-amount">520 <span class="budget-of">/ 1 000 Kč</span></span>${bar(0.5200)}</div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Restaurace a kavárny</span></span><span class="item-amount">2 400 <span class="budget-of">/ 3 000 Kč</span></span>${bar(0.8000)}</div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Doprava</span></span><span class="item-amount">1 900 <span class="budget-of">/ 2 000 Kč</span></span>${bar(0.9500)}</div></li>
+      <li class="item money-cat"><div class="item-main"><span class="item-text"><span class="item-name">Oblečení</span></span><span class="item-amount">11 834 <span class="budget-of">/ 3 000 Kč</span></span>${bar(3.9447)}</div></li>
     </ul>
     <ul class="item-list group goals">
-      <li class="item goal"><div class="item-main"><span class="item-text"><span class="item-name">Rezerva</span><span class="budget-bar is-goal"><span style="width: 100%"></span></span></span><span class="item-amount">60 000 <span class="budget-of">/ 60 000 Kč</span></span></div></li>
-      <li class="item goal"><div class="item-main"><span class="item-text"><span class="item-name">Auto</span><span class="budget-bar is-goal"><span style="width: 46%"></span></span></span><span class="item-amount">52 000 <span class="budget-of">/ 114 000 Kč</span></span></div></li>
+      <li class="item goal"><div class="item-main"><span class="item-text"><span class="item-name">Rezerva</span></span><span class="item-amount">60 000 <span class="budget-of">/ 60 000 Kč</span></span><span class="budget-bar is-goal"><span style="width: 100%"></span></span></div></li>
+      <li class="item goal"><div class="item-main"><span class="item-text"><span class="item-name">Auto</span></span><span class="item-amount">52 000 <span class="budget-of">/ 114 000 Kč</span></span><span class="budget-bar is-goal"><span style="width: 46%"></span></span></div></li>
     </ul>
     <p class="goals-hint">při tomhle tempu: Auto v březnu 2027</p>
 

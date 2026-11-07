@@ -30,16 +30,17 @@
   --who-2-soft: #DCE9FA;
   --who-both: #5FA86B;
   --who-both-soft: #E3F2E5;
-  /* Barvy ikon modulů na Domů. Teplé, bez modré, růžové, zelené a červené
-     (ty patří osobám a stavu po termínu). */
+  /* Barvy modulů (ikony, aktivní modul v panelu). Každý modul jiný odstín,
+     Nákup modrý a Peníze zelené na přání Toma; jen ikony a navigace, ne
+     řádky, takže se nepletou s barvami osob. Nikdy červená (--danger). */
   --mod-ukoly: #D08600;
-  --mod-nakup: #D9562A;
-  --mod-penize: #B38A10;
-  --mod-recepty: #E57A33;
+  --mod-nakup: #3567D6;
+  --mod-penize: #1E9A5A;
+  --mod-recepty: #E5702A;
   --mod-administrativa: #8E6040;
   --mod-wishlist: #9A57C8;
-  --mod-bucketlist: #C99700;
-  --mod-info: #8F6A9A;
+  --mod-bucketlist: #C49C00;
+  --mod-info: #66788F;
   /* Peníze, Skutečnost: barvy skupin (jen číslo v kartě a tečka u nadpisu).
      Olivová, vínová, šedá: nesmí splývat s osobami, --danger ani --accent. */
   --flow-in: #6E6A1C;
@@ -109,13 +110,13 @@
     --who-both: #8FD19A;
     --who-both-soft: #1F3324;
     --mod-ukoly: #FFBC3D;
-    --mod-nakup: #FF8E5E;
-    --mod-penize: #E6BC52;
-    --mod-recepty: #FFA86C;
+    --mod-nakup: #86A8FF;
+    --mod-penize: #5CD08F;
+    --mod-recepty: #FF9A5C;
     --mod-administrativa: #D9AA84;
     --mod-wishlist: #CDA2F5;
-    --mod-bucketlist: #FFD84D;
-    --mod-info: #D4ABD1;
+    --mod-bucketlist: #F5D24A;
+    --mod-info: #A9B7CA;
     --flow-in: #BDB65C;
     --flow-out: #B5726B;
     --chart-1: #B39BD9;
@@ -1477,7 +1478,7 @@ a.opt { display: inline-flex; align-items: center; justify-content: center; text
 .budget-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--text-2); }
 .budget-bar.is-goal > span { background: var(--flow-move); }
 /* „3 294 / 4 000 Kč“: velikost a tučnost jako ostatní částky, část za lomítkem šedě a obyčejně */
-.item-amount .budget-of { color: var(--text-2); font-weight: 400; }
+.item-amount .budget-of, .plan-meter-value .budget-of { color: var(--text-2); font-weight: 400; }
 .sum-sub { display: block; margin-top: 2px; font-size: var(--fs-small); color: var(--text-2); }
 /* Cíle */
 .goals { margin-bottom: var(--s2); }
@@ -2059,19 +2060,23 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   vertical-align: 0.15em;
 }
 
-/* ---------- Domů na počítači: rychlé přidání a tón karty Peníze ---------- */
+/* ---------- Domů na počítači: rychlé přidání ---------- */
 @media (min-width: 1024px) {
   .home-add { flex: none; padding: 0 var(--s4) var(--s2); }
   .home-add .input { width: 100%; min-height: 40px; font-size: var(--fs-text); }
 }
-/* Tón karty Peníze podle posledního měsíce (flowTone v ui.js): okraj 2 px
-   a jemný podklad, nikdy červená */
-.home-card.has-tone, .demo-tone {
-  border: 2px solid var(--tone);
-  background: color-mix(in srgb, var(--tone) 8%, var(--surface));
-}
-.home-card.has-tone a.home-month {
-  background: linear-gradient(135deg, transparent, color-mix(in srgb, var(--accent) 8%, transparent));
-}
-.demo-tone { display: flex; align-items: center; justify-content: center; width: 72px; height: 48px; border-radius: var(--radius-sm); font-size: var(--fs-small); color: var(--text-2); }
-.home-card.has-tone .item-main, .home-card.has-tone .item-slide { background: transparent; }
+
+/* ---------- Pruh naplnění přes celou šířku řádku ----------
+   Pruh je posledním prvkem .item-main a zalomí se pod název i částku, takže
+   mají všechny pruhy stejnou délku a plný pruh = limit vyčerpaný. */
+.item-main:has(> .budget-bar) { flex-wrap: wrap; row-gap: 0; }
+.item-main > .budget-bar { flex: 0 0 100%; order: 1; }
+
+/* Plán v kartě měsíce (planMeter v ui.js): Utraceno / Plán a pruh se stejnou
+   barevnou škálou jako limity. Hlavní ukazatel, jak blízko je měsíc plánu. */
+.plan-meter { display: block; margin-top: var(--s3); }
+.plan-meter-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); color: var(--text-2); font-size: var(--fs-small); }
+.plan-meter-value { font-size: var(--fs-text); }
+.plan-meter-row .plan-meter-value { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plan-meter .budget-bar { height: 6px; border-radius: 3px; }
+.plan-meter .budget-bar > span { border-radius: 3px; }
