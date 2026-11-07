@@ -1,16 +1,20 @@
 // Supabase Edge Function: push notifikace. Umí dvě věci.
 //
-// 1. Ranní upozornění na platby. Jednou denně ji bez přihlášení zavolá
-//    GitHub Actions (.github/workflows/denni-kontrola.yml). Najde nezaplacené
-//    platby se splatností dnes nebo dřív a upozorní toho, kdo je má platit
-//    (společnou platbu oba).
+// 1. Ranní přehled. Jednou denně ji bez přihlášení zavolá GitHub Actions
+//    (.github/workflows/denni-kontrola.yml). Každý člen dostane nejvýš jedno
+//    upozornění, které spojí jeho úkoly (nehotové s termínem dnes nebo po
+//    termínu: pro něj, pro oba, pro kohokoliv; soukromé jen majiteli) a platby
+//    splatné dnes nebo po termínu (plátce, společnou oba). Nadpis „Dnes: 2 úkoly
+//    (1 po termínu), 1 platba“, text první 3 názvy. Když nic, nic se neposílá.
+//    Odběr s vypnutým Ranním přehledem (push_subscriptions.morning) ho nedostane.
 // 2. Upozornění na nový úkol nebo komentář. Volá ji appka přihlášeného člena
 //    s tělem { task, title } (úkol) nebo { task, title, kind: 'comment', text }
 //    a funkce pošle upozornění ostatním členům domácnosti.
 //
 // Bezpečnost:
 //   * Bez přihlášení jde spustit jen ranní rozeslání, proto nic nevrací (jen
-//     počet odeslaných) a o každé platbě pošle nejvýš jedno upozornění denně.
+//     počet odeslaných) a každému členovi pošle nejvýš jeden přehled denně
+//     (tabulka morning_reminders).
 //   * Upozornění na úkol vyžaduje platné přihlášení člena domácnosti a jde
 //     jen členům téže domácnosti.
 //   * Do databáze chodí servisním klíčem, který Supabase funkci dodá sám.
@@ -111,61 +115,89 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null);
     if (body?.task) return await notifyTask(db, req, body);
 
-    stage = 'platby';
+    stage = 'clenove';
     const day = today();
+    const { data: members, error: membersError } = await db
+      .from('household_members').select('user_id, household_id, display_name');
+    if (membersError) throw membersError;
+    if (!members?.length) return reply({ sent: 0 });
+
+    // Kdo už dnes přehled dostal, znovu nedostane
+    stage = 'zaznamy';
+    const { data: logged, error: loggedError } = await db.from('morning_reminders').select('user_id').eq('day', day);
+    if (loggedError) throw loggedError;
+    const already = new Set((logged ?? []).map((row) => row.user_id));
+    const waiting = members.filter((m) => !already.has(m.user_id));
+    if (!waiting.length) return reply({ sent: 0 });
+    const households = [...new Set(waiting.map((m) => m.household_id))];
+
+    stage = 'ukoly';
+    const { data: tasks, error: tasksError } = await db
+      .from('tasks')
+      .select('household_id, title, assignee, due, done_parts, private_to')
+      .in('household_id', households)
+      .eq('deleted', false)
+      .eq('done', false)
+      .not('due', 'is', null)
+      .lte('due', day);
+    if (tasksError) throw tasksError;
+
+    stage = 'platby';
     const { data: payments, error } = await db
       .from('payments')
-      .select('id, household_id, name, amount, payer, next_due')
+      .select('household_id, name, amount, payer, next_due')
+      .in('household_id', households)
       .eq('deleted', false)
       .eq('done', false)
       .lte('next_due', day);
     if (error) throw error;
-    if (!payments?.length) return reply({ sent: 0 });
 
-    // Co už dnes upozornění dostalo, znovu nepůjde
-    stage = 'zaznamy';
-    const { data: logged, error: loggedError } = await db.from('payment_reminders').select('payment_id').eq('day', day);
-    if (loggedError) throw loggedError;
-    const already = new Set((logged ?? []).map((row) => row.payment_id));
-    const fresh = payments.filter((p) => !already.has(p.id));
-    if (!fresh.length) return reply({ sent: 0 });
-
-    const households = [...new Set(fresh.map((p) => p.household_id))];
-    stage = 'clenove';
-    const { data: members, error: membersError } = await db
-      .from('household_members').select('user_id, household_id, display_name').in('household_id', households);
-    if (membersError) throw membersError;
     stage = 'odbery';
     const { data: subs, error: subsError } = await db
-      .from('push_subscriptions').select('endpoint, p256dh, auth, user_id, household_id').in('household_id', households);
+      .from('push_subscriptions').select('endpoint, p256dh, auth, user_id, household_id, morning').in('household_id', households);
     if (subsError) throw subsError;
+
     stage = 'odeslani';
-
-    // Komu která platba patří: plátci podle jména, společná platba (split) všem
-    const perUser = new Map<string, typeof fresh>();
-    for (const p of fresh) {
-      const inHouse = (members ?? []).filter((m) => m.household_id === p.household_id);
-      const who = p.payer && p.payer !== 'split' ? inHouse.filter((m) => m.display_name === p.payer) : inHouse;
-      for (const m of who) perUser.set(m.user_id, [...(perUser.get(m.user_id) ?? []), p]);
-    }
-
+    const plural = (n: number, one: string, few: string, many: string) => `${n} ${n === 1 ? one : n >= 2 && n <= 4 ? few : many}`;
     let sent = 0;
-    for (const [userId, list] of perUser) {
-      const body = list
-        .map((p) => `${p.name} ${money(Number(p.amount))}${p.next_due < day ? ' (po termínu)' : ''}`)
-        .join(', ');
+    const done: { user_id: string; day: string }[] = [];
+    for (const m of waiting) {
+      // Úkoly pro něj, pro oba (kromě těch, kde svou část už odškrtl) a pro kohokoliv;
+      // soukromý jen majiteli
+      const myTasks = (tasks ?? []).filter((t) => t.household_id === m.household_id
+        && (!t.private_to || t.private_to === m.user_id)
+        && (!t.assignee || t.assignee === m.display_name || (t.assignee === 'both' && !(t.done_parts ?? []).includes(m.display_name))))
+        .sort((a, b) => String(a.due).localeCompare(String(b.due)));
+      // Platby: plátce podle jména, společná (split nebo prázdný plátce) oběma
+      const myPayments = (payments ?? []).filter((p) => p.household_id === m.household_id
+        && (!p.payer || p.payer === 'split' || p.payer === m.display_name))
+        .sort((a, b) => String(a.next_due).localeCompare(String(b.next_due)));
+      if (!myTasks.length && !myPayments.length) continue;
+      done.push({ user_id: m.user_id, day });
+
+      const late = myTasks.filter((t) => t.due < day).length;
+      const parts: string[] = [];
+      if (myTasks.length) parts.push(`${plural(myTasks.length, 'úkol', 'úkoly', 'úkolů')}${late ? ` (${late} po termínu)` : ''}`);
+      if (myPayments.length) parts.push(plural(myPayments.length, 'platba', 'platby', 'plateb'));
+      const names = [
+        ...myTasks.map((t) => t.title),
+        ...myPayments.map((p) => `${p.name} ${money(Number(p.amount))}`),
+      ];
+      const rest = names.length - 3;
       const payload = JSON.stringify({
-        title: list.length === 1 ? 'K zaplacení' : `K zaplacení: ${list.length}`,
-        body,
-        url: '#/penize',
-        tag: 'platby',
+        title: `Dnes: ${parts.join(', ')}`,
+        body: `${names.slice(0, 3).join(', ')}${rest > 0 ? ` a další ${rest}` : ''}`,
+        url: myPayments.length ? (myTasks.length ? '#/domu' : '#/penize') : '#/ukoly',
+        tag: 'rano',
       });
-      sent += await sendAll(db, (subs ?? []).filter((s) => s.user_id === userId), payload);
+      sent += await sendAll(db, (subs ?? []).filter((s) => s.user_id === m.user_id && s.morning !== false), payload);
     }
 
     stage = 'zapis';
-    const { error: logError } = await db.from('payment_reminders').upsert(fresh.map((p) => ({ payment_id: p.id, day })));
-    if (logError) throw logError;
+    if (done.length) {
+      const { error: logError } = await db.from('morning_reminders').upsert(done, { ignoreDuplicates: true });
+      if (logError) throw logError;
+    }
     return reply({ sent });
   } catch (err) {
     console.error(stage, err);

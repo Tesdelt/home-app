@@ -57,8 +57,22 @@ async function subscribe(householdId) {
     auth: keys.auth,
     household_id: householdId,
     user_id: userId,
+    morning: await morningWanted(),
   }, { onConflict: 'endpoint' });
   return !error;
+}
+
+// Ranní přehled (úkoly a platby v jednom upozornění v 8:01): chce ho tento
+// telefon? Výchozí ano. Pamatuje si to telefon (meta pushMorning) a zapisuje se
+// k odběru (push_subscriptions.morning), funkce send-reminders ho podle toho pošle.
+export const morningWanted = async () => (await store.getMeta('pushMorning', null)) ?? true;
+
+export async function setMorning(on) {
+  await store.setLocal('pushMorning', Boolean(on));
+  const reg = await registration().catch(() => null);
+  const sub = await reg?.pushManager?.getSubscription().catch(() => null);
+  if (!sub) return;
+  await supabase.from('push_subscriptions').update({ morning: Boolean(on) }).eq('endpoint', sub.endpoint).then(() => {}, () => {});
 }
 
 // Musí se volat z ťuknutí uživatele, jinak se iPhone na povolení nezeptá
@@ -96,5 +110,5 @@ export async function disable({ forget = true } = {}) {
 // Ukáže zkušební upozornění přímo z telefonu (ověří povolení a vzhled)
 export async function test() {
   const reg = await registration();
-  await reg?.showNotification('Domácnost', { body: 'Takhle bude vypadat upozornění na platbu.', icon: 'icons/icon-192.png', data: { url: '#/penize' } });
+  await reg?.showNotification('Dnes: 2 úkoly (1 po termínu), 1 platba', { body: 'Takhle bude vypadat ranní přehled úkolů a plateb.', icon: 'icons/icon-192.png', data: { url: '#/domu' } });
 }

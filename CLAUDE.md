@@ -111,10 +111,12 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   pošle GitHub e-mail. Žádná tajemství v něm nejsou a být nesmí.
 - **Push notifikace:** veřejný VAPID klíč je v `js/config.js`, soukromý jen v Supabase
   Secrets (lokálně v `supabase/.secrets/`, které je v `.gitignore`). Funkce `send-reminders`
-  je volatelná bez přihlášení, proto nesmí vracet nic kromě počtu odeslaných zpráv a o každé
-  platbě posílá nejvýš jedno upozornění denně (tabulka `payment_reminders`). Nasazuje se
-  ručně v Supabase dashboardu (vypnuté „Verify JWT“), po změně `index.ts` ji tam znovu vložit.
-  Text notifikace obsahuje názvy a částky plateb a jde přes servery Applu / Googlu.
+  je volatelná bez přihlášení, proto nesmí vracet nic kromě počtu odeslaných zpráv a každému
+  členovi posílá nejvýš jeden ranní přehled denně (tabulka `morning_reminders`; starší
+  `payment_reminders` zůstává, už se nepoužívá). Nasazuje se ručně v Supabase dashboardu
+  (vypnuté „Verify JWT“), po změně `index.ts` ji tam znovu vložit (Claude ji nasadit nesmí,
+  nástroj to odmítne jako nasazení do produkce). Text notifikace obsahuje názvy úkolů
+  a názvy a částky plateb a jde přes servery Applu / Googlu. Soukromý úkol jen majiteli.
 - Odhlášení zruší na telefonu odběr notifikací (po dalším přihlášení se zapnou sama).
 - Jednou zapnutá upozornění zůstávají zapnutá, dokud je uživatel sám nevypne (meta
   `pushWanted`). Telefon odběr občas zahodí sám, proto ho `push.ensure()` po přihlášení
@@ -858,12 +860,23 @@ Hotovo (0.36.0), Recepty, Jídelníček (`js/views/meals.js`):
 - Recept má šedě „naposledy v jídelníčku před X dny“. Domů: dlaždice Recepty „Dnes:
   Lasagne“ (otevře recept), na počítači pod pozdravem „Dnes k jídlu: Lasagne“.
 
+Hotovo (0.37.0), ranní přehled úkolů a plateb:
+- Funkce `send-reminders` (GitHub Actions ráno v 8:01) pošle každému členovi jedno
+  upozornění, které spojí úkoly (nehotové s termínem dnes nebo po termínu, pro něj, pro
+  oba bez jeho odškrtnuté části, pro kohokoliv; soukromé jen majiteli `private_to`)
+  a platby splatné dnes / po termínu (plátce, společnou oba). Nadpis „Dnes: 2 úkoly
+  (1 po termínu), 1 platba“, text první 3 názvy („a další X“), url `#/domu` (jen úkoly
+  `#/ukoly`, jen platby `#/penize`), tag `rano`. Když nic, nic se neposílá.
+- Nejvýš jeden přehled na člena a den: tabulka `morning_reminders` (user_id, day),
+  RLS bez politik, zapisuje jen funkce (servisní role: select, insert; navíc select na tasks).
+- Nastavení > Upozornění: přepínač „Ranní přehled“ (výchozí zapnuto), meta `pushMorning`
+  na telefonu a sloupec `push_subscriptions.morning` u odběru (`setMorning` v `push.js`).
+
 Další kroky:
-1. Notifikace i na úkoly (jen to, co vyžaduje akci).
-2. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).
-3. Peníze, další část: společné jednorázové výdaje (kdo platil, dělení 50/50 nebo jinak),
+1. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).
+2. Peníze, další část: společné jednorázové výdaje (kdo platil, dělení 50/50 nebo jinak),
    zůstatek kdo komu kolik dluží + Vyrovnat. Později import CSV z banky.
-4. Více: pes (léky, očkování), záruky a dokumenty, info o domácnosti.
+3. Více: pes (léky, očkování), záruky a dokumenty, info o domácnosti.
 
 ## Testování
 

@@ -394,6 +394,17 @@ create table if not exists public.payment_reminders (
   primary key (payment_id, day)
 );
 
+-- Ranní přehled (úkoly a platby v jednom upozornění): morning = jestli ho tento
+-- odběr chce (přepínač v Nastavení). morning_reminders = komu už dnes přišel,
+-- nejvýš jeden na člena a den. Zapisuje jen funkce send-reminders servisním
+-- klíčem: RLS zapnuté a žádná politika.
+alter table public.push_subscriptions add column if not exists morning boolean not null default true;
+create table if not exists public.morning_reminders (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  day     date not null,
+  primary key (user_id, day)
+);
+
 -- ---------- Pomocné funkce ----------
 
 -- Schéma private není vystavené přes API, funkce v něm nejdou volat zvenku.
@@ -526,6 +537,7 @@ revoke all on public.money_rules       from public, anon, authenticated;
 revoke all on public.meal_plan         from public, anon, authenticated;
 revoke all on public.push_subscriptions from public, anon, authenticated;
 revoke all on public.payment_reminders  from public, anon, authenticated;
+revoke all on public.morning_reminders  from public, anon, authenticated;
 
 grant select on public.households        to authenticated;
 grant select on public.household_members to authenticated;
@@ -553,6 +565,8 @@ grant select, insert, update, delete on public.push_subscriptions to authenticat
 grant select on public.payments, public.household_members to service_role;
 grant select, delete on public.push_subscriptions to service_role;
 grant select, insert, update on public.payment_reminders to service_role;
+grant select, insert on public.morning_reminders to service_role;
+grant select on public.tasks to service_role;
 
 -- ---------- RLS ----------
 
@@ -577,6 +591,7 @@ alter table public.money_rules       enable row level security;
 alter table public.meal_plan         enable row level security;
 alter table public.push_subscriptions enable row level security;
 alter table public.payment_reminders  enable row level security;
+alter table public.morning_reminders  enable row level security;
 
 drop policy if exists "clen vidi svou domacnost" on public.households;
 create policy "clen vidi svou domacnost" on public.households
