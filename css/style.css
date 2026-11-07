@@ -2184,3 +2184,64 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
 .month-note { position: relative; display: block; margin: 0; padding: var(--s1) 0 var(--s1) var(--s4); color: var(--text-2); font-size: var(--fs-small); line-height: 1.4; }
 .month-note::before { content: ""; position: absolute; left: var(--s1); top: calc(var(--s1) + 0.7em - 2px); width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); }
 .home-note { margin-top: var(--s2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Recepty: Jídelníček (js/views/meals.js) ---------- */
+.sub-link { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+.meal-bar { flex-wrap: wrap; row-gap: var(--s2); }
+.meal-week-nav { display: inline-flex; align-items: center; gap: var(--s1); }
+.meal-week-label { min-width: 104px; text-align: center; font-size: var(--fs-small); font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.meal-next svg { transform: rotate(180deg); }
+.meal-actions { display: inline-flex; gap: var(--s2); margin-left: auto; }
+.meal-bar .opt svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.meal-day { margin-bottom: var(--s3); }
+.meal-day-head { display: flex; align-items: baseline; gap: var(--s2); margin: 0 0 var(--s1); padding: 0 var(--s1); font-size: var(--fs-small); font-weight: 600; color: var(--text-2); }
+.meal-day-date { font-weight: 400; }
+.meal-day.is-today .meal-day-name { color: var(--accent-ink); }
+.meal-day.is-today .meal-list { box-shadow: var(--shadow), 0 0 0 2px var(--accent-soft); }
+.meal-day.is-past { opacity: 0.7; }
+.meal-slot.is-empty { display: flex; }
+.meal-add { flex: 1; min-height: 48px; padding: 0 var(--s3); border: 0; background: transparent; color: var(--text-3); font-size: var(--fs-text); text-align: left; }
+.meal-slot.is-folded .meal-add { min-height: 36px; font-size: var(--fs-small); }
+.meal-slot + .meal-slot { border-top: 1px solid var(--border); }
+.item + .meal-slot .item-main, .meal-slot + .item .item-main { border-top: 0; }
+.meal-main { gap: var(--s2); cursor: pointer; touch-action: pan-y; }
+.meal-slot-label { flex: none; width: 52px; color: var(--text-2); font-size: var(--fs-small); }
+.meal-main .item-name { flex: 1; min-width: 0; }
+.meal-slot.is-text .item-name { color: var(--text-2); font-style: italic; }
+.meal-slot.is-held .meal-main { background: var(--surface-2); transform: scale(0.98); transition: transform 120ms ease; }
+.meal-slot.is-lifted { opacity: 0.35; }
+.meal-slot.is-target { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.meal-ghost { position: fixed; z-index: 60; margin: 0; list-style: none; pointer-events: none; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25); }
+.meal-more { position: absolute; top: 50%; right: var(--s2); display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--radius-sm); background: var(--surface); color: var(--text-2); opacity: 0; transform: translateY(-50%); transition: opacity 120ms ease; }
+.meal-more svg { width: 18px; height: 18px; fill: currentColor; }
+.meal-slot:hover .meal-more, .meal-more:focus-visible { opacity: 1; }
+.meal-menu { width: 300px; }
+.meal-menu-list { max-height: min(50dvh, 360px); overflow-y: auto; }
+.meal-menu-recipe .menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meal-pick-rest { flex: none; color: var(--text-3); font-size: var(--fs-small); }
+.meal-shop { margin-bottom: var(--s3); max-height: 55dvh; overflow-y: auto; }
+.meal-panel { display: none; }
+
+@media (min-width: 1024px) {
+  /* 7 sloupců přes celou šířku, vpravo úzký panel s recepty; stránka se neposouvá */
+  .view:has(> .meals) { overflow: hidden; padding-bottom: 0; }
+  .meals { display: flex; flex-direction: column; height: 100%; }
+  .meals > .toolbar { flex: none; }
+  .meal-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: var(--s4); padding-bottom: var(--s4); }
+  .meal-days { min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--s2); align-content: start; }
+  .meal-day { margin: 0; min-width: 0; }
+  .meal-day-head { flex-direction: column; gap: 0; padding: 0 var(--s1) var(--s1); }
+  .meal-main { flex-direction: column; align-items: flex-start; gap: 2px; min-height: 64px; padding: var(--s2); }
+  .meal-slot-label { width: auto; }
+  .meal-main .item-name { font-size: var(--fs-small); font-weight: 600; overflow-wrap: anywhere; }
+  .meal-add { min-height: 64px; padding: var(--s2); font-size: var(--fs-small); }
+  .meal-slot.is-folded .meal-add { min-height: 32px; }
+  .meal-panel { display: flex; flex-direction: column; gap: var(--s2); min-height: 0; }
+  .meal-search { flex: none; width: 100%; }
+  .meal-picks { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--s1); }
+  .meal-pick { display: flex; flex-direction: column; gap: 2px; padding: var(--s2) var(--s3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: grab; user-select: none; -webkit-user-select: none; }
+  .meal-pick:hover { background: var(--surface-2); }
+  .meal-pick-name { font-size: var(--fs-small); font-weight: 600; }
+  .meal-pick-none { color: var(--text-2); font-size: var(--fs-small); }
+  .meals.is-dragging, .meals.is-dragging * { cursor: grabbing; }
+}

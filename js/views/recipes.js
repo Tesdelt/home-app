@@ -4,6 +4,7 @@
 //   #/recepty/<id>             recept: výběr ingrediencí do nákupu a postup
 //   #/recepty/<id>/upravit     úprava receptu
 //   #/recepty/zasoby           co máme doma -> co se z toho dá uvařit
+//   #/recepty/jidelnicek       jídelníček na týden (js/views/meals.js)
 //   #/recepty/<id>/zasoby      recept otevřený ze zásob (předvybrané jen to, co chybí)
 
 import * as store from '../store.js';
@@ -12,6 +13,7 @@ import { parseEntry, normalize } from '../categories.js';
 import { findProduct } from '../catalog.js';
 import { productChips } from '../catalogui.js';
 import { openCooking, printRecipe } from './cooking.js';
+import { renderMeals, restLabel } from './meals.js';
 import { escapeHtml, ICONS, toast, undoToast, openMenu, openSheet, dragSort, holdKeyboard, squarePhoto, emptyState, markNew } from '../ui.js';
 import { navigate } from '../router.js';
 
@@ -58,6 +60,7 @@ async function renderList(el, extraEl) {
     <div class="toolbar recipe-toolbar">
       <div class="segmented" role="tablist">
         <button type="button" role="tab" data-tab="recipes">Recepty</button>
+        <button type="button" role="tab" data-go="recepty/jidelnicek" aria-pressed="false">Jídelníček</button>
         <button type="button" role="tab" data-tab="skills">Skills</button>
       </div>
       <a class="btn btn-small" href="#/recepty/${PANTRY}">Co uvařit</a>
@@ -141,6 +144,11 @@ async function renderList(el, extraEl) {
   }
 
   tabsEl.addEventListener('click', (e) => {
+    const go = e.target.closest('[data-go]');
+    if (go) {
+      navigate(go.dataset.go);
+      return;
+    }
     const btn = e.target.closest('[data-tab]');
     if (!btn) return;
     listTab = btn.dataset.tab;
@@ -198,6 +206,7 @@ async function renderRecipe(el, id, fromPantry) {
   const { root, back } = page(el, fromPantry ? `recepty/${PANTRY}` : 'recepty');
   let view = await store.recipeView(id);
   let photo = (await store.recipePhotos())[id] ?? null;
+  const lastDay = (await store.lastPlanned()).get(id) ?? null;
   if (!view) {
     root.innerHTML = `<div class="detail-head">${back}<span class="detail-name">Recept už neexistuje</span></div>`;
     return undefined;
@@ -230,7 +239,7 @@ async function renderRecipe(el, id, fromPantry) {
         ${recipe.method || subs.some((s) => s.method) ? '<button type="button" class="btn btn-primary btn-small" data-action="cook">Vařit</button>' : ''}
       </div>
       ${photo ? `<img class="recipe-photo" src="${photo}" alt="">` : ''}
-      ${store.recipeTime(recipe) ? `<p class="recipe-time">${escapeHtml(store.recipeTime(recipe))}</p>` : ''}
+      ${store.recipeTime(recipe) || lastDay ? `<p class="recipe-time">${escapeHtml([store.recipeTime(recipe), lastDay ? `naposledy v jídelníčku ${restLabel(lastDay)}` : ''].filter(Boolean).join(' · '))}</p>` : ''}
       ${ingredients.length ? `
         <div class="done-head" style="margin-top: var(--s2)">
           <p class="section-label">Ingredience</p>
@@ -958,11 +967,18 @@ export const split = true;
 export function render(el, ctx) {
   // #/recepty/recepty a #/recepty/skills otevřou seznam na dané záložce (podsekce v levém panelu)
   const [first] = ctx.params ?? [];
+  if (first === 'jidelnicek') return renderMeals(el, ctx);
   if (first === 'recepty' || first === 'skills') {
     listTab = first === 'skills' ? 'skills' : 'recipes';
     ctx = { ...ctx, params: [] };
   }
   return splitView(el, ctx, renderPage, { key: 'recepty', fullWhenEmpty: true });
+}
+
+// Režim vaření receptu podle id (z jídelníčku)
+export async function cookRecipe(id) {
+  const view = await store.recipeView(id);
+  if (view) openCooking(view, { parseMethod, methodHtml });
 }
 
 // Která záložka seznamu je otevřená (pro zvýraznění podsekce v levém panelu)

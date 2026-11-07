@@ -52,6 +52,7 @@ async function loadSubs() {
     ],
     recepty: [
       { key: 'recipes', label: 'Recepty', href: '#/recepty/recepty' },
+      { key: 'jidelnicek', label: 'Jídelníček', href: '#/recepty/jidelnicek' },
       { key: 'zasoby', label: 'Co uvařit', href: '#/recepty/zasoby' },
       { key: 'skills', label: 'Skills', href: '#/recepty/skills' },
     ],
@@ -130,7 +131,7 @@ export async function markSidenav(name, params = [], tab = null) {
     sub = params[0] === 'grafy' || params[0] === 'tabulka' ? params[0] : `seg:${valid}`;
   }
   if (name === 'ukoly') sub = await store.getMeta('taskFilter', 'all');
-  if (name === 'recepty') sub = params[0] === 'zasoby' ? 'zasoby' : listTabNow();
+  if (name === 'recepty') sub = params[0] === 'zasoby' || params[0] === 'jidelnicek' ? params[0] : listTabNow();
   if (name === 'administrativa') sub = scopeNow();
   panel.querySelectorAll('.side-subitem').forEach((el) => {
     const group = el.closest('.side-group');

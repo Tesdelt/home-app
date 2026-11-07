@@ -4,7 +4,7 @@
 // Nový modul = další řádek v poli tiles a barva --mod-* v css/style.css.
 
 import * as store from '../store.js';
-import { ICONS, todayLabel, itemsCount, money, isDesktop, blink } from '../ui.js';
+import { ICONS, todayLabel, itemsCount, money, isDesktop, blink, escapeHtml } from '../ui.js';
 import { today } from '../dates.js';
 import { renderOverview } from './homedesk.js';
 
@@ -32,6 +32,15 @@ export function greeting(name, date = new Date()) {
 export async function render(el, { subEl }) {
   subEl.textContent = todayLabel();
   subEl.hidden = false;
+  // Počítač: pod pozdravem šedě „Dnes k jídlu: Lasagne“ (klik otevře recept)
+  if (isDesktop()) {
+    const meals = await store.todayMeals();
+    if (meals.length) {
+      subEl.innerHTML = `${escapeHtml(todayLabel())} · Dnes k jídlu: ${meals.map((m) => (m.recipeId
+        ? `<a class="sub-link" href="#/recepty/${escapeHtml(m.recipeId)}">${escapeHtml(m.name)}</a>`
+        : escapeHtml(m.name))).join(', ')}`;
+    }
+  }
   document.getElementById('screen-title').textContent = greeting(await store.getMe());
   // Počítač: přehled ve dvou sloupcích místo dlaždic (moduly jsou v levém panelu)
   if (isDesktop()) return renderOverview(el);
@@ -42,10 +51,10 @@ export async function render(el, { subEl }) {
   el.append(root);
 
   async function draw() {
-    const [items, tasks, payments, summary, soon, recipes, docs, wishes, buckets, notes, news, unread, unsorted] = await Promise.all([
+    const [items, tasks, payments, summary, soon, recipes, docs, wishes, buckets, notes, news, unread, unsorted, meals] = await Promise.all([
       store.listItems(), store.listTasks(), store.listPayments(), store.paymentsSummary(), store.duePayments(7),
       store.listRecipes(), store.listDocs(), store.listWishes('wish'), store.listWishes('bucket'), store.listNotes(),
-      store.moduleNews(), store.unreadComments(), store.latestUnsorted(),
+      store.moduleNews(), store.unreadComments(), store.latestUnsorted(), store.todayMeals(),
     ]);
     const dots = new Set(Object.keys(news));
     if (Object.keys(unread).length) dots.add('ukoly');
@@ -71,7 +80,8 @@ export async function render(el, { subEl }) {
       ['penize', 'wallet', 'Peníze', paysLate ? late(`${paysLate} po termínu`)
         : soon.length ? `${soon.length} k zaplacení`
           : payments.length ? `${money(summary.total)} měsíčně` : ''],
-      ['recepty', 'recipe', 'Recepty', recipes.length ? plural(recipes.length, 'recept', 'recepty', 'receptů') : ''],
+      ['recepty', 'recipe', 'Recepty', meals.length ? `Dnes: ${escapeHtml(meals.map((m) => m.name).join(', '))}`
+        : recipes.length ? plural(recipes.length, 'recept', 'recepty', 'receptů') : ''],
       ['administrativa', 'folder', 'Administrativa', expired ? late(`${expired} po termínu`)
         : ending ? `${ending} končí do 30 dní`
           : docs.length ? plural(docs.length, 'dokument', 'dokumenty', 'dokumentů') : ''],
@@ -81,7 +91,10 @@ export async function render(el, { subEl }) {
     ];
     // Peníze s nezařazenými: druhý šedý řádek a dlaždice otevře Skutečnost měsíce
     const extra = { penize: unsorted.count ? unsorted.label : '' };
-    const href = (route) => (route === 'penize' && unsorted.count ? unsorted.href : `#/${route}`);
+    // Recepty s dnešním jídlem: dlaždice otevře ten recept
+    const mealRecipe = meals.find((m) => m.recipeId)?.recipeId;
+    const href = (route) => (route === 'penize' && unsorted.count ? unsorted.href
+      : route === 'recepty' && mealRecipe ? `#/recepty/${mealRecipe}` : `#/${route}`);
     root.innerHTML = `<div class="tiles">${tiles.map(([route, icon, name, info]) => `<a class="card tile mod-${route}${dots.has(route) ? ' has-dot' : ''}" href="${href(route)}">
         <span class="card-icon">${ICONS[icon]}</span>
         <h2 class="card-title">${name}</h2>

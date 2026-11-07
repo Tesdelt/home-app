@@ -59,6 +59,19 @@ export async function render(el, { extraEl }) {
       <span class="demo-swatch flow-card" title="karta posledního měsíce"></span>
     </div>
 
+    <p class="section-label">Jídelníček: den se sloty</p>
+    <section class="meal-day is-today" style="max-width: 380px">
+      <p class="meal-day-head"><span class="meal-day-name">Dnes</span><span class="meal-day-date">Sobota 7. 11.</span></p>
+      <ul class="item-list group meal-list">
+        <li class="meal-slot is-empty is-folded"><button type="button" class="meal-add">+ Oběd</button></li>
+        <li class="item meal-slot is-filled"><div class="item-main meal-main"><span class="meal-slot-label">Večeře</span><span class="item-name">Lasagne</span></div></li>
+      </ul>
+    </section>
+    <ul class="item-list group meal-list" style="max-width: 380px; margin-bottom: var(--s3)">
+      <li class="item meal-slot is-filled is-text"><div class="item-main meal-main"><span class="meal-slot-label">Oběd</span><span class="item-name">venku</span></div></li>
+      <li class="meal-slot is-empty"><button type="button" class="meal-add">Večeře</button></li>
+    </ul>
+
     <p class="section-label">Rozestupy 4 / 8 / 12 / 16 / 24</p>
     <div class="demo-row">${[1, 2, 3, 4, 5].map((n) => `<span class="demo-swatch" style="width: var(--s${n}); background: var(--text-3)"></span>`).join('')}</div>
 

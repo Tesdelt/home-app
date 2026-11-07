@@ -16,7 +16,7 @@ export async function addEntry(text) {
   return name ? addParsed(name, qty) : null;
 }
 
-async function addParsed(name, qty) {
+export async function addParsed(name, qty) {
   const result = await store.addItem({ name, qty });
   if (result.status === 'exists') toast(`${result.item.name} už na seznamu je`);
   else if (result.status === 'restored') toast(`${result.item.name} je zpátky na seznamu`);

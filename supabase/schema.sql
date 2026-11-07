@@ -354,6 +354,23 @@ alter table public.money_months add column if not exists unsorted jsonb not null
 -- výpisu („Restaurace o 60 % nad průměrem“). Appka je jen zobrazuje.
 alter table public.money_months add column if not exists notes jsonb not null default '[]'::jsonb;
 
+-- Jídelníček: den 'RRRR-MM-DD', slot 'obed' | 'vecere', recept (recipe_id) nebo volný
+-- zápis (text: „venku“, „zbytky“). Bez cizího klíče na recipes: offline fronta může
+-- poslat jídlo dřív než nový recept.
+create table if not exists public.meal_plan (
+  id           uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households (id) on delete cascade,
+  day          text not null check (day ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'),
+  slot         text not null default 'vecere' check (slot in ('obed', 'vecere')),
+  recipe_id    uuid,
+  text         text,
+  sort         integer not null default 0,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  deleted      boolean not null default false
+);
+create index if not exists meal_plan_household_idx on public.meal_plan (household_id, day);
+
 -- Push notifikace: adresy, na které se telefonům posílají upozornění.
 -- Každý vidí a mění jen své vlastní odběry.
 create table if not exists public.push_subscriptions (
@@ -461,6 +478,9 @@ create trigger money_goals_keep_newer before update on public.money_goals
 drop trigger if exists money_rules_keep_newer on public.money_rules;
 create trigger money_rules_keep_newer before update on public.money_rules
   for each row execute function private.keep_newer();
+drop trigger if exists meal_plan_keep_newer on public.meal_plan;
+create trigger meal_plan_keep_newer before update on public.meal_plan
+  for each row execute function private.keep_newer();
 
 drop trigger if exists recipe_photos_keep_newer on public.recipe_photos;
 create trigger recipe_photos_keep_newer
@@ -503,6 +523,7 @@ revoke all on public.money_months      from public, anon, authenticated;
 revoke all on public.money_budgets     from public, anon, authenticated;
 revoke all on public.money_goals       from public, anon, authenticated;
 revoke all on public.money_rules       from public, anon, authenticated;
+revoke all on public.meal_plan         from public, anon, authenticated;
 revoke all on public.push_subscriptions from public, anon, authenticated;
 revoke all on public.payment_reminders  from public, anon, authenticated;
 
@@ -524,6 +545,7 @@ grant select, insert, update on public.money_months             to authenticated
 grant select, insert, update, delete on public.money_budgets    to authenticated;
 grant select, insert, update, delete on public.money_goals      to authenticated;
 grant select, insert, update, delete on public.money_rules      to authenticated;
+grant select, insert, update, delete on public.meal_plan        to authenticated;
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 
 -- Servisní role (funkce send-reminders) dostane jen to, co k rozeslání
@@ -552,6 +574,7 @@ alter table public.money_months      enable row level security;
 alter table public.money_budgets     enable row level security;
 alter table public.money_goals       enable row level security;
 alter table public.money_rules       enable row level security;
+alter table public.meal_plan         enable row level security;
 alter table public.push_subscriptions enable row level security;
 alter table public.payment_reminders  enable row level security;
 
@@ -659,6 +682,12 @@ create policy "clen cte a zapisuje pravidla" on public.money_rules
   using (household_id in (select private.my_household_ids()))
   with check (household_id in (select private.my_household_ids()));
 
+drop policy if exists "clen cte a zapisuje jidelnicek" on public.meal_plan;
+create policy "clen cte a zapisuje jidelnicek" on public.meal_plan
+  for all to authenticated
+  using (household_id in (select private.my_household_ids()))
+  with check (household_id in (select private.my_household_ids()));
+
 drop policy if exists "clen cte a zapisuje skutecnost" on public.money_months;
 create policy "clen cte a zapisuje skutecnost" on public.money_months
   for all to authenticated
@@ -684,7 +713,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops', 'task_comments', 'recipes', 'wishes', 'documents', 'notes', 'money_months', 'money_budgets', 'money_goals', 'money_rules'] loop
+  foreach t in array array['shopping_items', 'shopping_history', 'tasks', 'payments', 'shops', 'task_comments', 'recipes', 'wishes', 'documents', 'notes', 'money_months', 'money_budgets', 'money_goals', 'money_rules', 'meal_plan'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

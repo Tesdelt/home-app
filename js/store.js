@@ -474,6 +474,141 @@ export async function matchRecipes(have) {
     .sort((a, b) => a.missing.length - b.missing.length || a.recipe.name.localeCompare(b.recipe.name, 'cs'));
 }
 
+// ---------- Jídelníček ----------
+// Jídlo: { id, day: 'RRRR-MM-DD', slot: 'obed' | 'vecere', recipeId, text, sort }.
+// V jednom slotu jednoho dne je jedno jídlo (nové ho nahradí).
+export const MEAL_SLOTS = ['obed', 'vecere'];
+
+export async function listMeals(from, to) {
+  return (await live('meals'))
+    .filter((m) => m.day >= from && m.day <= to)
+    .sort((a, b) => a.day.localeCompare(b.day) || MEAL_SLOTS.indexOf(a.slot) - MEAL_SLOTS.indexOf(b.slot) || (a.sort ?? 0) - (b.sort ?? 0));
+}
+
+// Nastaví jídlo do slotu. Vrací { meal, replaced } (replaced = co tam bylo, kvůli Zpět)
+export async function setMeal({ day, slot, recipeId = null, text = null }) {
+  const now = Date.now();
+  const replaced = (await live('meals')).filter((m) => m.day === day && m.slot === slot);
+  if (replaced.length) await markDeleted('meals', replaced);
+  const meal = { id: db.newId(), day, slot, recipeId, text: recipeId ? null : (String(text ?? '').trim() || null), sort: 0, createdAt: now, updatedAt: now };
+  await save('meals', [meal]);
+  await created(meal.id);
+  emit();
+  return { meal, replaced };
+}
+
+export async function removeMeals(ids) {
+  return removeByIds('meals', ids);
+}
+
+// Zpět: vrátí smazaná / nahrazená jídla a odstraní přidaná
+export async function undoMeals({ added = [], removed = [] }) {
+  const now = Date.now();
+  if (added.length) await markDeleted('meals', added);
+  if (removed.length) await save('meals', removed.map((m) => ({ ...m, deleted: false, updatedAt: now })));
+  emit();
+}
+
+// Přesune jídlo na jiný den / slot; jídlo v cílovém slotu se prohodí
+export async function moveMeal(id, day, slot) {
+  const all = await live('meals');
+  const meal = all.find((m) => m.id === id);
+  if (!meal || (meal.day === day && meal.slot === slot)) return null;
+  const now = Date.now();
+  const other = all.find((m) => m.day === day && m.slot === slot);
+  const rows = [{ ...meal, day, slot, updatedAt: now }];
+  if (other) rows.push({ ...other, day: meal.day, slot: meal.slot, updatedAt: now });
+  await save('meals', rows);
+  emit();
+  return rows;
+}
+
+// Dnešní jídla pro Domů: [{ name, recipeId }] (oběd, pak večeře)
+export async function todayMeals() {
+  const [meals, recipes] = await Promise.all([listMeals(today(), today()), live('recipes')]);
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  return meals
+    .map((m) => ({ name: m.recipeId ? byId.get(m.recipeId)?.name : m.text, recipeId: m.recipeId && byId.has(m.recipeId) ? m.recipeId : null }))
+    .filter((m) => m.name);
+}
+
+// Kdy byl recept naposledy v jídelníčku (nejpozději dnes): Map(recipeId -> den)
+export async function lastPlanned(upTo = today()) {
+  const last = new Map();
+  for (const m of await live('meals')) {
+    if (!m.recipeId || m.day > upTo) continue;
+    if (!last.has(m.recipeId) || last.get(m.recipeId) < m.day) last.set(m.recipeId, m.day);
+  }
+  return last;
+}
+
+// Recepty od nejdéle nevařených (nikdy v jídelníčku = úplně nahoře)
+export async function recipesByRest() {
+  const [recipes, last] = await Promise.all([listRecipes(), lastPlanned()]);
+  return recipes.sort((a, b) => (last.get(a.id) ?? '').localeCompare(last.get(b.id) ?? '') || a.name.localeCompare(b.name, 'cs'));
+}
+
+// Navrhne prázdné večeře od dneška do konce týdne (weekEnd): recepty, které
+// nebyly v jídelníčku nejdéle, přednost mají ty, na které je doma všechno
+// (Co uvařit). Recept se v týdnu neopakuje. Vrací přidaná jídla (kvůli Zpět).
+export async function suggestDinners(weekStart, weekEnd) {
+  const day0 = today() > weekStart ? today() : weekStart;
+  const [meals, recipes, pantry, last] = await Promise.all([listMeals(weekStart, weekEnd), listRecipes(), getPantry(), lastPlanned()]);
+  if (!recipes.length) return [];
+  const used = new Set(meals.map((m) => m.recipeId).filter(Boolean));
+  const ready = new Set((await matchRecipes(pantry)).filter((x) => !x.missing.length).map((x) => x.recipe.id));
+  const queue = recipes
+    .filter((r) => !used.has(r.id))
+    .sort((a, b) => (ready.has(b.id) - ready.has(a.id)) || (last.get(a.id) ?? '').localeCompare(last.get(b.id) ?? ''));
+  const added = [];
+  const now = Date.now();
+  for (let day = day0; day <= weekEnd && queue.length; day = addDays(day, 1)) {
+    if (meals.some((m) => m.day === day && m.slot === 'vecere')) continue;
+    const recipe = queue.shift();
+    added.push({ id: db.newId(), day, slot: 'vecere', recipeId: recipe.id, text: null, sort: 0, createdAt: now, updatedAt: now });
+  }
+  if (!added.length) return [];
+  await save('meals', added);
+  for (const m of added) await created(m.id);
+  emit();
+  return added;
+}
+
+// Ingredience receptů z jídelníčku od dneška do weekEnd (i vložených receptů),
+// stejné věci sečtené (stejné jednotky se sčítají), bez toho, co je v Co uvařit
+// a co už je na nákupním seznamu. Vrací [{ name, qty }].
+export async function mealShopping(weekStart, weekEnd) {
+  const from = today() > weekStart ? today() : weekStart;
+  const [meals, recipes, pantry, items] = await Promise.all([listMeals(from, weekEnd), live('recipes'), getPantry(), liveItems()]);
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const onList = items.filter((i) => !i.done).map((i) => i.name);
+  const out = []; // [{ name, amounts: Map(unit -> number), loose: [qty] }]
+  for (const meal of meals) {
+    const recipe = byId.get(meal.recipeId);
+    if (!recipe) continue;
+    for (const ing of expandIngredients(recipe, byId)) {
+      if (hasIngredient(pantry, ing.name) || onList.some((n) => sameThing(n, ing.name))) continue;
+      let entry = out.find((e) => sameThing(e.name, ing.name));
+      if (!entry) {
+        entry = { name: ing.name, amounts: new Map(), loose: [] };
+        out.push(entry);
+      }
+      const m = String(ing.qty ?? '').trim().match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+      if (m) {
+        const unit = m[2].trim();
+        entry.amounts.set(unit, (entry.amounts.get(unit) ?? 0) + Number(m[1].replace(',', '.')));
+      } else if (ing.qty) {
+        entry.loose.push(String(ing.qty).trim());
+      }
+    }
+  }
+  const fmt = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
+  return out.map((e) => ({
+    name: e.name,
+    qty: [...[...e.amounts].map(([unit, n]) => (unit && unit !== 'ks' ? `${fmt(n)} ${unit}` : fmt(n))), ...e.loose].join(' + '),
+  }));
+}
+
 // ---------- Recept v receptu ----------
 
 // Všechny ingredience receptu včetně těch z vložených receptů (i vnořených).
@@ -1494,7 +1629,7 @@ export async function exportAll() {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Sklady s řádky podle id, které se synchronizují stejným způsobem
-const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes', 'documents', 'notes', 'moneymonths', 'budgets', 'goals', 'rules'];
+const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes', 'documents', 'notes', 'moneymonths', 'budgets', 'goals', 'rules', 'meals'];
 
 export async function importAll(backup) {
   if (backup?.app !== 'home-app' || !backup.data) throw new Error('Tohle není záloha této aplikace.');

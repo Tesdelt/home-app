@@ -41,6 +41,7 @@ js/views/demo.js      skrytá ukázka všech komponent (#/ukazka), viz Design sy
 js/views/moneycharts.js  Peníze, grafy Skutečnosti (#/penize/grafy/<segment>)
 js/chart.js           ručně kreslené SVG grafy (sloupce, křivka, štítek po dotyku), bez knihoven
 js/views/recipes.js   recepty (#/recepty, z Domů): seznam, recept, úprava, „co uvařit“
+js/views/meals.js     Recepty > Jídelníček (#/recepty/jidelnicek): týden, Navrhnout, Do nákupu
 js/views/login.js     přihlášení, „Nemáte přístup“, nabídka nahrát stará lokální data
 sw.js                 offline cache
 supabase/schema.sql   tabulky, RLS politiky, oprávnění rolí, Realtime
@@ -382,7 +383,7 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   `toggleFold`, klik na název otevře modul.
   Podsekce `.side-subitem` bez ikon, s menším odsazením, aktivní zvýrazněná stejně jako
   aktivní modul:
-  Peníze (členové, Společné, Grafy), Recepty (Recepty, Co uvařit, Skills), Úkoly (Všechny,
+  Peníze (členové, Společné, Grafy), Recepty (Recepty, Jídelníček, Co uvařit, Skills), Úkoly (Všechny,
   Pro mě, Pro druhého, Pro oba), Administrativa (Společné, Osobní).
   Pořadí modulů jde změnit přetažením (`dragSort`), Nastavení zůstává dole. Tlačítko
   `.side-collapse` dole zúží panel na ikony (64 px, název v `title` při najetí myší).
@@ -834,6 +835,28 @@ Hotovo (0.35.0), Peníze, Postřehy:
 - Skutečnost: pod kartou měsíce karta s větami jako šedé řádky s tečkou (`.month-notes`,
   `.month-note`), bez nadpisu. Na počítači v kartě Peníze na Domů první postřeh pod pruhem
   plánu.
+
+Hotovo (0.36.0), Recepty, Jídelníček (`js/views/meals.js`):
+- Tabulka `meal_plan` (sklad `meals`): day 'RRRR-MM-DD', slot `obed` | `vecere`, recipe_id
+  (bez cizího klíče, offline fronta může poslat jídlo dřív než recept) nebo text (volný
+  zápis: „venku“, „zbytky“), sort. Ve slotu je jedno jídlo (nové nahradí, toast se Zpět).
+  `store.js`: listMeals, setMeal, removeMeals, undoMeals, moveMeal (cílové jídlo se
+  prohodí), lastPlanned, recipesByRest, suggestDinners, mealShopping, todayMeals.
+- Trasa `#/recepty/jidelnicek`: mobil v přepínači Receptů (Recepty / Jídelníček / Skills),
+  počítač podsekce v levém panelu. Týden Po-Ne, šipky, Tento týden; Oběd je jen sbalený
+  „+ Oběd“, dokud v něm nic není; dnešek zvýrazněný (na mobilu se k němu sjede).
+  Prázdný řádek: nabídka s hledáním (fokus, holdKeyboard), recepty od nejdéle nevařených,
+  dole Napsat vlastní. Vyplněný: ťuknutí otevře recept, podržení = Změnit / Vařit / Smazat,
+  podržení a tažení přesune na jiný den, potažení doleva smaže se Zpět; myší pravé
+  tlačítko a tři tečky. Počítač: 7 sloupců a vpravo panel receptů (200 px, hledání),
+  recept i jídlo jde myší přetáhnout na den / slot.
+- Navrhnout: prázdné večeře od dneška do konce týdne doplní recepty, které nebyly
+  v jídelníčku nejdéle, přednost mají ty, na které je všechno v Co uvařit; zvýrazní se,
+  jedno Zpět je vrátí. Do nákupu: ingredience receptů od dneška do konce týdne (i vložených),
+  stejné věci sečtené (stejné jednotky), bez toho, co je v Co uvařit a na seznamu; panel
+  s fajfkami, Přidat přes `addParsed` ze `shopping.js`.
+- Recept má šedě „naposledy v jídelníčku před X dny“. Domů: dlaždice Recepty „Dnes:
+  Lasagne“ (otevře recept), na počítači pod pozdravem „Dnes k jídlu: Lasagne“.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
