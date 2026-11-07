@@ -2,7 +2,7 @@
 // jedné stránce. Není v menu, slouží ke kontrole vzhledu ve světlém i tmavém
 // režimu. Nesahá na data, všechno je tu napevno. Popis je v CLAUDE.md.
 
-import { ICONS, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor } from '../ui.js';
+import { ICONS, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor, rowGestures } from '../ui.js';
 import { drawChart } from '../chart.js';
 
 export const title = 'Ukázka';
@@ -187,11 +187,24 @@ export async function render(el, { extraEl }) {
         <span class="chart-stat-total"><span class="chart-stat-label">Dohromady</span>23 390 Kč</span></div>
     </div>
 
+    <p class="section-label">Řádky s nabídkou: podržet / potáhnout, myší pravé tlačítko nebo tři tečky</p>
+    <ul class="item-list group demo-gestures" style="margin-bottom: var(--s3)">
+      <li class="item" data-id="a"><div class="item-bg" aria-hidden="true">Smazat</div><button type="button" class="item-main"><span class="item-text"><span class="item-name">Řádek s gesty</span><span class="item-sub">ťuknutí, podržení, potažení</span></span></button></li>
+      <li class="item" data-id="b"><div class="item-bg" aria-hidden="true">Smazat</div><button type="button" class="item-main"><span class="item-text"><span class="item-name">Další řádek</span></span><span class="item-amount">1 200 Kč</span></button></li>
+    </ul>
+
     <p class="section-label">Ikony</p>
     <div class="demo-row">${Object.keys(ICONS).map((name) => `<span class="card-icon" title="${name}">${ICONS[name]}</span>`).join('')}</div>
 
     <p class="section-label">Prázdný stav</p>
     <section class="card">${emptyState('gift', 'Zatím žádná přání', 'Patří sem věci, které by udělaly radost, třeba nová sluchátka.')}</section>`;
+
+  const endGestures = rowGestures(root.querySelector('.demo-gestures'), {
+    onTap: () => toast('Ťuknutí'),
+    onPress: () => toast('Upravit'),
+    onSwipe: () => undoToast('Smazáno', () => toast('Vráceno')),
+    actions: () => [{ label: 'Další akce', run: () => toast('Další akce') }],
+  });
 
   // Ukázkové grafy (napevno, bez dat)
   const months = ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04'];
@@ -239,5 +252,6 @@ export async function render(el, { extraEl }) {
   return () => {
     endBars();
     endLine();
+    endGestures();
   };
 }

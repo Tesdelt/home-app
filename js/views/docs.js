@@ -97,7 +97,7 @@ export async function render(el, { params, extraEl }) {
     if (removed.length) undoToast(`${removed[0].title || 'Dokument'}: smazáno`, () => store.restoreDocs(removed));
   }
   const open = (id) => navigate(`administrativa/${id}`);
-  const endGesture = rowGestures(listRoot, { onTap: (li) => open(li.dataset.id), onPress: open, onSwipe: remove });
+  const endGesture = rowGestures(listRoot, { onTap: (li) => open(li.dataset.id), onPress: open, onSwipe: remove, pressLabel: 'Otevřít' });
 
   await draw();
   const unsubscribe = store.subscribe(draw);

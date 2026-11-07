@@ -95,6 +95,7 @@ function makeView({ list, title, route, icon, empty }) {
 
     const open = (id) => navigate(`${route}/${id}`);
     const endGesture = rowGestures(listRoot, {
+      pressLabel: 'Otevřít',
       onTap: (li, target) => (target?.closest?.('.check-tap') ? toggle(li) : open(li.dataset.id)),
       onPress: open,
       onSwipe: remove,

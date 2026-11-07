@@ -29,6 +29,7 @@ export const ICONS = {
   back: '<svg viewBox="0 0 24 24"><path d="m14.5 5-7 7 7 7"/></svg>',
   send: '<svg viewBox="0 0 24 24"><path d="M5 12h13M12.5 6l6 6-6 6"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>',
+  home: '<svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>',
   gear: '<svg viewBox="0 0 24 24"><g transform="translate(1.8 1.8) scale(.85)"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></g></svg>',
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.500l3.500 2"/></svg>',
   trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.500h6V7M6.500 7l1 12.500h9l1-12.500M10 11v5M14 11v5"/></svg>',
@@ -104,17 +105,72 @@ export function openSheet(title, build) {
   return close;
 }
 
+// ---------- Počítač ----------
+// Jedno sdílené rozhodnutí, jestli je appka v rozvržení pro počítač (šířka od
+// 1024 px). CSS má stejnou hranici v media queries. Při změně šířky přes hranici
+// app.js aktuální pohled překreslí (onDesktopChange).
+const desktopQuery = window.matchMedia('(min-width: 1024px)');
+export const isDesktop = () => desktopQuery.matches;
+export function onDesktopChange(fn) {
+  const handler = () => fn(desktopQuery.matches);
+  desktopQuery.addEventListener('change', handler);
+  return () => desktopQuery.removeEventListener('change', handler);
+}
+// Myš (nebo trackpad): hover, pravé tlačítko a tři tečky při najetí na řádek
+const mouseQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+export const hasMouse = () => mouseQuery.matches;
+
+// Nabídka u místa kliknutí (pravé tlačítko): openMenu chce prvek, stačí mu obdélník
+const pointAnchor = (x, y) => ({ getBoundingClientRect: () => ({ left: x, right: x, top: y, bottom: y }) });
+
 // ---------- Gesta na řádcích seznamu ----------
 // Řádek je <li class="item" data-id> s tlačítkem .item-main uvnitř.
 // Ťuknutí = onTap(li, kam se ťuklo), podržení = onPress(id), potažení doleva = onSwipe(id).
+// S myší navíc: pravé tlačítko na řádku a tři tečky při najetí otevřou nabídku se
+// stejnými akcemi (pressLabel = popisek akce podržení, null = žádná; actions(li) =
+// další akce [{ label, run }]; Smazat = potažení).
 // Vrací funkci na úklid, kterou má pohled zavolat při odchodu.
 
 const LONG_PRESS_MS = 500;
 const MOVE_TOLERANCE = 10;
 
-export function rowGestures(listEl, { onTap, onPress, onSwipe }) {
+export function rowGestures(listEl, { onTap, onPress, onSwipe, pressLabel = 'Upravit', actions = null }) {
   let gesture = null;
   let ignoreClicksUntil = 0;
+
+  function rowMenu(anchor, li) {
+    const id = li?.dataset.id;
+    if (!id) return;
+    const list = [
+      ...(pressLabel ? [{ label: pressLabel, run: () => onPress(id) }] : []),
+      ...(actions?.(li) ?? []),
+      { label: 'Smazat', danger: true, run: () => onSwipe(id) },
+    ];
+    openMenu(anchor, (menu, close) => {
+      menu.innerHTML = list
+        .map((a, i) => `<button type="button" class="menu-item${a.danger ? ' is-danger' : ''}" data-i="${i}">${escapeHtml(a.label)}</button>`)
+        .join('');
+      menu.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-i]');
+        if (!btn) return;
+        close();
+        list[Number(btn.dataset.i)].run();
+      });
+    });
+  }
+
+  // Tři tečky se do řádku přidají, až na něj najede myš (řádky se často překreslují)
+  listEl.addEventListener('pointerover', (e) => {
+    if (e.pointerType !== 'mouse' || !hasMouse()) return;
+    const li = e.target.closest('.item');
+    if (!li || !listEl.contains(li) || !li.dataset.id || li.querySelector('.item-more, .row-more')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'row-more';
+    btn.setAttribute('aria-label', 'Další možnosti');
+    btn.innerHTML = ICONS.more;
+    li.append(btn);
+  });
 
   function endGesture() {
     if (!gesture) return;
@@ -189,10 +245,22 @@ export function rowGestures(listEl, { onTap, onPress, onSwipe }) {
   listEl.addEventListener('pointercancel', finish(true));
 
   listEl.addEventListener('contextmenu', (e) => {
-    if (e.target.closest('.item-main')) e.preventDefault();
+    const main = e.target.closest('.item-main');
+    if (!main) return;
+    e.preventDefault();
+    // Pravé tlačítko myši: nabídka s akcemi řádku přímo u kurzoru
+    if (hasMouse() && !main.classList.contains('fold-head')) {
+      endGesture();
+      rowMenu(pointAnchor(e.clientX, e.clientY), main.closest('.item'));
+    }
   });
 
   listEl.addEventListener('click', (e) => {
+    const more = e.target.closest('.row-more');
+    if (more) {
+      rowMenu(more, more.closest('.item'));
+      return;
+    }
     const main = e.target.closest('.item-main');
     if (!main || main.classList.contains('fold-head') || Date.now() < ignoreClicksUntil) return;
     onTap(main.closest('.item'), e.target);
@@ -378,26 +446,34 @@ export function dragSort(listEl, { item, handle, attr, onDrop }) {
     const el = grip?.closest(item);
     if (!el || !listEl.contains(el) || (e.pointerType === 'mouse' && e.button !== 0)) return;
     cancel();
-    drag = { el, active: false, x: e.clientX, y: e.clientY, shift: 0, before: items().map((n) => n.getAttribute(attr)).join() };
-    drag.timer = setTimeout(() => {
-      if (!drag) return;
-      drag.active = true;
-      drag.grab = drag.y - drag.el.getBoundingClientRect().top;
-      drag.el.style.transition = 'box-shadow 170ms ease, background 170ms ease';
-      drag.el.classList.add('is-held');
-      listEl.classList.add('is-sorting');
-      place(0);
-      navigator.vibrate?.(10);
-    }, DRAG_HOLD_MS);
+    drag = { el, active: false, mouse: e.pointerType === 'mouse', x: e.clientX, y: e.clientY, shift: 0, before: items().map((n) => n.getAttribute(attr)).join() };
+    drag.timer = setTimeout(activate, DRAG_HOLD_MS);
   };
+
+  function activate() {
+    if (!drag || drag.active) return;
+    clearTimeout(drag.timer);
+    drag.active = true;
+    drag.grab = drag.y - drag.el.getBoundingClientRect().top;
+    drag.el.style.transition = 'box-shadow 170ms ease, background 170ms ease';
+    drag.el.classList.add('is-held');
+    listEl.classList.add('is-sorting');
+    place(0);
+    navigator.vibrate?.(10);
+  }
 
   const onMove = (e) => {
     if (!drag) return;
     if (!drag.active) {
-      // Pohyb před uplynutím podržení je posouvání stránky, ne řazení
-      if (Math.abs(e.clientX - drag.x) > 8 || Math.abs(e.clientY - drag.y) > 8) cancel();
-      else drag.y = e.clientY;
-      return;
+      // Myš: řazení začne hned pohybem, bez čekání na podržení (stránka se myší
+      // takhle neposouvá). Prst: pohyb před podržením je posouvání stránky.
+      if (drag.mouse && Math.abs(e.clientY - drag.y) > 4) {
+        activate();
+      } else {
+        if (Math.abs(e.clientX - drag.x) > 8 || Math.abs(e.clientY - drag.y) > 8) cancel();
+        else drag.y = e.clientY;
+        return;
+      }
     }
     const { el } = drag;
     const rect = el.getBoundingClientRect();

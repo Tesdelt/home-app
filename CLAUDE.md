@@ -140,9 +140,26 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   uhýbají), nic nesmí skákat po blocích. Totéž platí pro další pohyby v rozhraní. Rozbalené věci se zavírají dalším ťuknutím na ně, ne tlačítkem Hotovo.
 - Volby u malého tlačítka se otevírají jako nabídka přímo u něj (`openMenu` v `ui.js`),
   spodní panel (`openSheet`) je jen pro větší formuláře.
-- Spodní lišta max. 5 položek. Další moduly (recepty, administrativa, wishlist, bucketlist,
+- Spodní lišta (jen mobil) max. 5 položek. Další moduly (recepty, administrativa, wishlist, bucketlist,
   info o domácnosti a každý nový) mají dlaždici na Domů. „Nastavení“ (trasa `#/vice`) je jen nastavení aplikace
   (účet, synchronizace, upozornění, záloha), moduly do něj nepatří.
+
+### Počítač a tablet
+
+- **Mobil (do 599 px) se nemění.** Tablet 600-1023 px: mobilní rozvržení v jednom sloupci
+  uprostřed (max. asi 640 px). Počítač od 1024 px: vlastní rozvržení (níž).
+- Hranice 1024 px je v CSS (media queries) a v JS jediný sdílený `isDesktop()` /
+  `onDesktopChange()` z `ui.js`; při přechodu přes hranici `app.js` pohled překreslí.
+  Trasy (hash) jsou stejné, na počítači se jen jinak vykreslí.
+- Navigace na počítači je levý panel (`.sidenav`, plní `app.js`): Domů, Nákup, Úkoly,
+  Peníze, Recepty, Administrativa, Wishlist, Bucketlist, Byt, dole Nastavení. Spodní lišta
+  se schová, u modulů není šipka zpět (zůstává jen na podstránkách).
+- Myš: jemný podklad při najetí (`@media (hover: hover) and (pointer: fine)`). Na řádku
+  s `rowGestures` otevře pravé tlačítko i tři tečky při najetí (`.row-more`) nabídku se
+  stejnými akcemi jako podržení a potažení (`pressLabel`, `actions`, Smazat). `dragSort`
+  myší začne hned pohybem, bez podržení.
+- Klávesnice: Esc zavře nabídku, dialog i otevřený detail (předtím opustí pole, ať se
+  změna uloží), fokus je vidět (outline `--text-2`).
 
 ## Design systém
 
@@ -221,6 +238,16 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   Překročený limit částku nezvýrazňuje, stačí okrový pruh.
 - **Toast** `toast` / `undoToast` (se Zpět).
 - **Ikony** jen ze sady `ICONS` v `ui.js`: čárové, viewBox 24, tloušťka 1.8, bez výplně.
+
+### Počítač
+
+- **Levý panel** `.sidenav` (240 px): název Domácnost, moduly s ikonou v barvě modulu
+  (`--mod-*`), aktivní položka `--accent-soft` + `--accent` jako aktivní záložka, tečka
+  nepřečtených u Úkolů, počet k zaplacení u Peněz (`.side-badge`).
+- Obsah vpravo, max. 1200 px, centrovaný. **Dialog** místo spodního panelu: `openSheet`
+  se na počítači vykreslí uprostřed (max. 520 px, `--radius`, ztmavené pozadí). `openMenu`
+  zůstává nabídka u tlačítka (u pravého tlačítka myši u kurzoru).
+- **Tři tečky** `.row-more` v řádku při najetí myší (jen s myší, na mobilu nikdy).
 
 ### Ukládání
 
@@ -549,6 +576,11 @@ Hotovo (0.25.1):
 
 Hotovo (0.25.2):
 - Pruh limitu mění barvu plynule podle naplnění: šedá, zelená, žlutá, oranžová, červená.
+
+Hotovo (0.26.0), počítač, část 1 - kostra:
+- Tablet v jednom sloupci uprostřed, počítač s levým panelem místo spodní lišty, obsah max.
+  1200 px, dialog místo spodního panelu, hover, nabídka na pravé tlačítko a tři tečky na
+  řádcích, řazení myší, Esc zavře detail, viditelný fokus. Manifest `orientation: any`.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

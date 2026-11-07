@@ -372,6 +372,7 @@ export async function render(el, { params, extraEl, subEl }) {
         if (e.target.name === 'target') store.updateGoal(li.dataset.id, { target: parse(e.target.value) });
       });
       rowGestures(listEl, {
+        pressLabel: null,
         onTap: () => {},
         onPress: () => {},
         onSwipe: async (id) => {

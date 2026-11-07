@@ -1,6 +1,6 @@
 import { addRoute, startRouter } from './router.js';
 import { openDB, requestPersistentStorage } from './db.js';
-import { escapeHtml } from './ui.js';
+import { escapeHtml, ICONS, isDesktop, onDesktopChange } from './ui.js';
 import * as auth from './auth.js';
 import * as store from './store.js';
 import * as login from './views/login.js';
@@ -38,6 +38,28 @@ const extraEl = document.getElementById('topbar-extra');
 const tabs = document.querySelectorAll('.tab');
 const tabbar = document.querySelector('.tabbar');
 const appEl = document.getElementById('app');
+const sidenav = document.querySelector('.sidenav');
+
+// Levý panel na počítači: všechny moduly v pevném pořadí, dole Nastavení.
+// Ikona v barvě modulu (--mod-*), Domů a Nastavení neutrálně.
+const SIDE = [
+  ['domu', 'home', 'Domů'],
+  ['nakup', 'cart', 'Nákup'],
+  ['ukoly', 'tasks', 'Úkoly'],
+  ['penize', 'wallet', 'Peníze'],
+  ['recepty', 'recipe', 'Recepty'],
+  ['administrativa', 'folder', 'Administrativa'],
+  ['wishlist', 'gift', 'Wishlist'],
+  ['bucketlist', 'star', 'Bucketlist'],
+  ['info', 'house', 'Byt'],
+];
+const sideLink = ([route, icon, label]) => `<a href="#/${route}" data-route="${route}" class="side-item mod-${route}">
+    <span class="side-icon">${ICONS[icon]}</span><span class="side-label">${label}</span><span class="side-badge"></span>
+  </a>`;
+sidenav.innerHTML = `<p class="side-title">Domácnost</p>
+  <div class="side-list">${SIDE.map(sideLink).join('')}</div>
+  <div class="side-bottom">${sideLink(['vice', 'gear', 'Nastavení'])}</div>`;
+const sideItems = sidenav.querySelectorAll('.side-item');
 
 init();
 
@@ -65,6 +87,7 @@ async function init() {
     shown = state.status;
     const inside = state.status === 'ready';
     tabbar.hidden = !inside;
+    sidenav.hidden = !inside;
     if (inside) {
       if (rerender) rerender();
       else rerender = startRouter(route);
@@ -91,7 +114,8 @@ async function init() {
     titleEl.textContent = view.title;
     // Každý modul má vlevo šipku zpět na Domů (i ty, které jsou zároveň ve spodní
     // liště, na Domů mají dlaždici jako ostatní). Bez šipky je jen Domů a Nastavení.
-    backEl.hidden = name === 'domu' || name === 'vice';
+    // Na počítači je navigace v levém panelu, šipka zůstává jen na podstránkách.
+    backEl.hidden = isDesktop() ? !params?.length : name === 'domu' || name === 'vice';
     backEl.href = `#/${view.tab && view.tab !== name ? view.tab : 'domu'}`;
     // Pohled si horní lištu může schovat (stránka úkolu), každý další začíná s ní
     appEl.classList.remove('no-topbar');
@@ -101,6 +125,15 @@ async function init() {
     viewEl.replaceChildren();
     viewEl.scrollTop = 0;
     document.title = `${view.title} · Domácnost`;
+
+    // Levý panel zvýrazní přímo modul (Recepty, Byt…), spodní lišta jeho záložku
+    const side = SIDE.some(([route]) => route === name) ? name : (view.tab ?? name);
+    sideItems.forEach((item) => {
+      const active = item.dataset.route === side;
+      item.classList.toggle('is-active', active);
+      if (active) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
+    });
 
     tabs.forEach((tabEl) => {
       const active = tabEl.dataset.route === (view.tab ?? name);
@@ -119,13 +152,34 @@ async function init() {
   }
 
   // Tečka u záložky Úkoly, dokud je někde nepřečtený komentář
+  // V levém panelu navíc počet plateb k zaplacení u Peněz
   const tasksTab = document.querySelector('.tab[data-route="ukoly"]');
+  const tasksSide = sidenav.querySelector('[data-route="ukoly"]');
+  const moneyBadge = sidenav.querySelector('[data-route="penize"] .side-badge');
   const updateDots = async () => {
     if (auth.getState().status !== 'ready') return;
-    tasksTab.classList.toggle('has-dot', Object.keys(await store.unreadComments()).length > 0);
+    const [unread, due] = await Promise.all([store.unreadComments(), store.duePayments(7)]);
+    const dot = Object.keys(unread).length > 0;
+    tasksTab.classList.toggle('has-dot', dot);
+    tasksSide.classList.toggle('has-dot', dot);
+    moneyBadge.textContent = due.length ? String(due.length) : '';
   };
   store.subscribe(updateDots);
   auth.onChange(updateDots);
+
+  // Přechod přes hranici počítače (zúžení / rozšíření okna): pohled se překreslí
+  onDesktopChange(() => { if (rerender && auth.getState().status === 'ready') rerender(); });
+
+  // Esc zavře otevřený detail (nabídku a dialog zavírají samy). Pole se nejdřív
+  // opustí, ať se rozepsaná změna uloží.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || auth.getState().status !== 'ready') return;
+    if (document.querySelector('.menu-backdrop, .sheet-backdrop, .is-moving-mode, .doc-full')) return;
+    const parts = location.hash.replace(/^#\/?/, '').split('/');
+    if (parts.length < 2 || !parts[1]) return;
+    document.activeElement?.blur?.();
+    setTimeout(() => { location.hash = `#/${parts[0]}`; }, 0);
+  });
 
   tabbar.hidden = true;
   login.render(viewEl, auth.getState());

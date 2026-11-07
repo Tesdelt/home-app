@@ -48,7 +48,7 @@ export async function render(el, { params, extraEl }) {
     if (removed.length) undoToast(`${removed[0].title || 'Poznámka'}: smazáno`, () => store.restoreNotes(removed));
   }
   const open = (id) => navigate(`info/${id}`);
-  const endGesture = rowGestures(listRoot, { onTap: (li) => open(li.dataset.id), onPress: open, onSwipe: remove });
+  const endGesture = rowGestures(listRoot, { onTap: (li) => open(li.dataset.id), onPress: open, onSwipe: remove, pressLabel: 'Otevřít' });
 
   await draw();
   const unsubscribe = store.subscribe(draw);

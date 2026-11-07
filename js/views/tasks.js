@@ -275,6 +275,8 @@ export async function render(el, { params, subEl, extraEl }) {
   // ---------- Gesta ----------
 
   const endGesture = rowGestures(listRoot, {
+    pressLabel: 'Otevřít',
+    actions: (li) => (li.classList.contains('is-done') ? [] : [{ label: 'Přesunout do úkolu', run: () => setMoving(li.dataset.id) }]),
     onTap: tap,
     onPress: (id) => { if (!moveId) navigate(`ukoly/${id}`); },
     onSwipe: (id) => { if (!moveId) deleteTask(id); else renderList(); },
