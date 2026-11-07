@@ -326,6 +326,22 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   částky (`.item-amount`), část „/ Y Kč“ ve spanu `.budget-of` šedě (`--text-2`) a obyčejně.
   Překročený limit částku nezvýrazňuje, stačí okrový pruh.
 - **Toast** `toast` / `undoToast` (se Zpět).
+- **Zvýraznění nové věci** `markNew(id)` / `isNew(id)` z `ui.js` (v paměti, nesynchronizuje
+  se). Volá se ve `store.js` ve všech `add*` (úkol, krok, komentář, položka nákupu i z
+  katalogu a receptu, platba, recept, dokument a jeho stránka, poznámka, přání, cíl) a v úpravě
+  receptu u ingredience a kroku. Řádek s tím id v `data-id` / `data-task` / `data-buy` /
+  `data-pay` / `data-step` / `data-comment` / `data-key` / `data-file` dostane sám třídu
+  `.is-new` (hlídá to MutationObserver, pohled nemusí nic dělat; nový seznam stačí opatřit
+  id v jednom z těch atributů). Podklad `--accent-soft` drží `--new-hold` (300 ms), pak
+  zmizí za `--new-fade` (1 200 ms); překreslení animaci nezačne znovu (`--new-age`).
+  Mimo viditelnou část se k řádku plynule sjede (posune se jen jeho sloupec). `.is-soft`
+  = poloviční sytost: přišlo přes Realtime od druhého (`sync.onInsert`, při stahování
+  po startu nic) a novinky od poslední návštěvy modulu. `prefers-reduced-motion`: jen
+  krátké podbarvení. Ukázka a tlačítko „Přidat ukázkový řádek“ na `#/ukazka`.
+- **Tečka novinek** (`.has-dot`, barva `--accent`, táž komponenta jako nepřečtené
+  komentáře): v levém panelu, ve spodní liště a v hlavičce dlaždice / karty na Domů.
+  Když novinka přijde přes Realtime, položka v panelu / liště a karta na Domů jednou
+  bliknou (`blink(el)` z `ui.js`, `.is-blink`, stejné tokeny).
 - **Ikony** jen ze sady `ICONS` v `ui.js`: čárové, viewBox 24, tloušťka 1.8, bez výplně.
 
 ### Počítač
@@ -723,6 +739,18 @@ Hotovo (0.32.0): hravější vzhled (viz Design systém, Tokeny): teplejší pod
 korálová hlavní barva s přechodem na hlavních tlačítkách, ikony modulů ve čtverečku,
 stíny karet, drobné animace, pozdrav na Domů podle denní doby („Dobré odpoledne, Tome“,
 `greeting` v `home.js`).
+
+Hotovo (0.33.0):
+- Zvýraznění nových věcí (viz Design systém, `markNew`). Vlastní přidání sytě, od druhého
+  přes Realtime jemně.
+- Novinky v modulech: každé zařízení si pamatuje, kdy naposledy otevřelo který modul (meta
+  `modulesSeen`, `setLocal`, nesynchronizuje se, při úplně prvním spuštění = teď). Novinka
+  = nehotová položka, kterou nevytvořilo toto zařízení (meta `createdHere`, posledních 300
+  id) a vznikla po posledním otevření modulu (`moduleNews()` ve `store.js`). Moduly Nákup,
+  Úkoly, Peníze (platby), Recepty, Administrativa (jen společné), Wishlist, Bucketlist, Byt.
+  Otevření modulu (`openModule` v `app.js` před vykreslením) novinky jemně zvýrazní a tečku
+  zruší; karta na Domů je jen zvýrazní. U Úkolů je tečka novinek a nepřečtených komentářů
+  jedna. Když je modul právě otevřený, novinka z Realtime tečku nepřidá.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

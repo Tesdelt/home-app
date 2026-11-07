@@ -596,3 +596,104 @@ export function itemsCount(n) {
   if (n >= 2 && n <= 4) return `${n} položky`;
   return `${n} položek`;
 }
+
+// ---------- Zvýraznění nových věcí ----------
+// markNew(id) si zapamatuje, kdy věc přibyla (jen v paměti, nesynchronizuje se).
+// Řádek s tím id (data-id, data-task, data-step, data-key…) dostane třídu
+// .is-new: podklad --accent-soft drží --new-hold a pak plynule zmizí
+// (--new-fade), celkem NEW_MS. Při překreslení během animace se nezačíná znovu
+// (animation-delay záporně podle stáří). Soft = jemnější varianta (přišlo od
+// druhého, novinky od poslední návštěvy modulu), bez posunu k řádku.
+// Vlastní přidání: když je nový řádek mimo viditelnou část svého seznamu,
+// plynule se k němu sjede (posouvá se jen sloupec, nikdy stránka).
+export const NEW_MS = 1500;
+const fresh = new Map(); // id -> { at, soft, revealed }
+const NEW_ATTRS = ['id', 'task', 'buy', 'pay', 'step', 'comment', 'key', 'file'];
+const NEW_SELECTOR = NEW_ATTRS.map((a) => `[data-${a}]`).join(',');
+let newObserver = null;
+
+export function markNew(id, { soft = false } = {}) {
+  if (id == null) return;
+  fresh.set(String(id), { at: Date.now(), soft, revealed: soft });
+  watchNew();
+}
+
+export function isNew(id) {
+  const entry = fresh.get(String(id));
+  if (!entry) return false;
+  if (Date.now() - entry.at >= NEW_MS) {
+    fresh.delete(String(id));
+    return false;
+  }
+  return true;
+}
+
+const idOfRow = (el) => {
+  for (const a of NEW_ATTRS) if (el.dataset[a] != null) return el.dataset[a];
+  return null;
+};
+
+function watchNew() {
+  if (!newObserver) {
+    newObserver = new MutationObserver(scanNew);
+    newObserver.observe(document.body, { childList: true, subtree: true });
+  }
+  requestAnimationFrame(scanNew);
+}
+
+function scanNew() {
+  for (const id of [...fresh.keys()]) isNew(id);
+  if (!fresh.size) {
+    newObserver?.disconnect();
+    newObserver = null;
+    return;
+  }
+  const now = Date.now();
+  for (const el of document.querySelectorAll(NEW_SELECTOR)) {
+    const id = idOfRow(el);
+    const entry = fresh.get(id);
+    if (!entry || el.classList.contains('is-new')) continue;
+    // Jen vnější prvek řádku, ne tlačítka uvnitř se stejným id
+    const outer = el.parentElement?.closest(NEW_SELECTOR);
+    if (outer && idOfRow(outer) === id) continue;
+    if (el.closest('.kb-ghost, .menu, .sheet')) continue;
+    el.style.setProperty('--new-age', `${-(now - entry.at)}ms`);
+    el.classList.add('is-new');
+    if (entry.soft) el.classList.add('is-soft');
+    el.addEventListener('animationend', (e) => {
+      if (e.target !== el) return;
+      el.classList.remove('is-new', 'is-soft');
+      el.style.removeProperty('--new-age');
+    }, { once: false });
+    if (!entry.revealed && el.offsetParent) {
+      entry.revealed = true;
+      revealRow(el);
+    }
+  }
+}
+
+// Posune nejbližší posouvatelný sloupec tak, aby byl řádek vidět
+function revealRow(el) {
+  let box = el.parentElement;
+  while (box && box !== document.body) {
+    const oy = getComputedStyle(box).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && box.scrollHeight > box.clientHeight) break;
+    box = box.parentElement;
+  }
+  if (!box || box === document.body) return;
+  const r = el.getBoundingClientRect();
+  const b = box.getBoundingClientRect();
+  const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  if (r.top < b.top) box.scrollBy({ top: r.top - b.top - 8, behavior });
+  else if (r.bottom > b.bottom) box.scrollBy({ top: r.bottom - b.bottom + 8, behavior });
+}
+
+// Krátké bliknutí prvku (položka panelu, záložka, karta na Domů), když
+// přes Realtime přijde novinka. Stejné tokeny jako zvýraznění řádků.
+export function blink(el) {
+  if (!el) return;
+  el.classList.remove('is-blink');
+  void el.offsetWidth;
+  el.classList.add('is-blink');
+  el.addEventListener('animationend', () => el.classList.remove('is-blink'), { once: true });
+}

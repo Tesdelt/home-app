@@ -9,7 +9,7 @@
 // Úkoly a Nákupem jen když se vejdou. Data se překreslují živě.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, money, whoClass, budgetColor, undoToast } from '../ui.js';
+import { escapeHtml, ICONS, money, whoClass, budgetColor, undoToast, markNew, blink } from '../ui.js';
 import { today, dueLabel, dueTimeLabel } from '../dates.js';
 import { navigate } from '../router.js';
 import { drawChart } from '../chart.js';
@@ -110,15 +110,25 @@ export async function renderOverview(el) {
   }
 
   let data = null;
+  let first = true;
   let endChart = null;
   let token = 0;
 
   async function load() {
     const mine = ++token;
-    const [tasks, items, shop, members, me, wishes, buckets] = await Promise.all([
+    const [tasks, items, shop, members, me, wishes, buckets, news, unread] = await Promise.all([
       store.listTasks(), store.listItems(), store.currentShop(), store.listMembers(), store.getMe(),
-      store.listWishes('wish'), store.listWishes('bucket'),
+      store.listWishes('wish'), store.listWishes('bucket'), store.moduleNews(), store.unreadComments(),
     ]);
+    // Tečka novinek v hlavičce karty; novinky se při otevření Domů jemně
+    // zvýrazní, ale novinkami zůstávají (tečku ruší jen otevření modulu)
+    const dots = new Set(Object.keys(news));
+    if (Object.keys(unread).length) dots.add('ukoly');
+    for (const [route] of SECTIONS) cards[route].querySelector('.home-card-head').classList.toggle('has-dot', dots.has(route));
+    if (first) {
+      first = false;
+      Object.values(news).flat().forEach((id) => markNew(id, { soft: true }));
+    }
     const segment = members.includes(me) ? me : store.SPLIT;
     const [months, budgetRows, goals, due] = await Promise.all([
       store.listMoneyMonths(segment), store.listBudgets(segment), store.listGoals(segment), store.duePayments(7),
@@ -200,7 +210,7 @@ export async function renderOverview(el) {
     const wishRows = (listName, route) => (listName
       .filter((w) => !w.done)
       .sort((a, b) => (a.untilYear ?? 9999) - (b.untilYear ?? 9999) || a.createdAt - b.createdAt)
-      .map((w) => `<li class="item ${whoClass(w.assignee, members)}"><a class="item-main has-stripe" href="#/${route}/${escapeHtml(w.id)}">
+      .map((w) => `<li class="item ${whoClass(w.assignee, members)}" data-id="${escapeHtml(w.id)}"><a class="item-main has-stripe" href="#/${route}/${escapeHtml(w.id)}">
           <span class="item-text"><span class="item-name">${escapeHtml(w.title)}</span><span class="item-sub">${escapeHtml(horizon(w.untilYear))}</span></span>
           ${w.privateTo ? `<span class="item-lock">${ICONS.lock}</span>` : ''}</a></li>`));
 
@@ -321,8 +331,10 @@ export async function renderOverview(el) {
 
   await load();
   const unsubscribe = store.subscribe(load);
+  const offArrive = store.onArrive((module) => blink(cards[module]));
   return () => {
     unsubscribe();
+    offArrive();
     observer.disconnect();
     cancelAnimationFrame(frame);
     wide.removeEventListener('change', fit);

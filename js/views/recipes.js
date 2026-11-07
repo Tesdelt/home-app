@@ -12,7 +12,7 @@ import { parseEntry, normalize } from '../categories.js';
 import { findProduct } from '../catalog.js';
 import { productChips } from '../catalogui.js';
 import { openCooking, printRecipe } from './cooking.js';
-import { escapeHtml, ICONS, toast, undoToast, openMenu, openSheet, dragSort, holdKeyboard, squarePhoto, emptyState } from '../ui.js';
+import { escapeHtml, ICONS, toast, undoToast, openMenu, openSheet, dragSort, holdKeyboard, squarePhoto, emptyState, markNew } from '../ui.js';
 import { navigate } from '../router.js';
 
 export const title = 'Recepty';
@@ -510,7 +510,9 @@ async function renderEdit(el, id) {
     const parsed = parseEntry(text);
     if (!parsed.name) return;
     const name = findProduct(parsed.name)?.name ?? parsed.name;
-    rows = [...rows, { key: store.newId(), name, ...splitQty(parsed.qty, name) }];
+    const row = { key: store.newId(), name, ...splitQty(parsed.qty, name) };
+    markNew(row.key);
+    rows = [...rows, row];
     drawRows();
   }
 
@@ -627,6 +629,7 @@ async function renderEdit(el, id) {
 
   function addStep(afterKey = null) {
     const step = { key: store.newId(), parts: [''] };
+    markNew(step.key);
     const at = afterKey ? steps.findIndex((s) => s.key === afterKey) + 1 : steps.length;
     steps = [...steps.slice(0, at), step, ...steps.slice(at)];
     drawSteps();
@@ -742,7 +745,9 @@ async function renderEdit(el, id) {
           if (!btn) return;
           close();
           const picked = options.find((r) => r.id === btn.dataset.value);
-          rows = [...rows, { key: store.newId(), name: picked.name, recipeId: picked.id, n: '', unit: '' }];
+          const row = { key: store.newId(), name: picked.name, recipeId: picked.id, n: '', unit: '' };
+          markNew(row.key);
+          rows = [...rows, row];
           drawRows();
         });
       });

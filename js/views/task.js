@@ -7,7 +7,7 @@
 // předem a úkol vznikne až tlačítkem Přidat. Do té doby je jen v paměti (draft).
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openMenu, dragSort, holdKeyboard, whoClass } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openMenu, dragSort, holdKeyboard, whoClass, markNew } from '../ui.js';
 import { navigate } from '../router.js';
 import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
 import { REPEATS, repeatValue, repeatLabel } from './tasks.js';
@@ -105,7 +105,11 @@ export async function renderTask(el, id, { subEl }) {
   // Změna termínu krok zařadí podle data, jinak pořadí určuje ruční posouvání.
   const draftSteps = (steps) => save({ steps });
   const stepsApi = draft ? {
-    add: (stepId) => draftSteps([...task.steps, store.newStep(task, { id: stepId })]),
+    add: (stepId) => {
+      const step = store.newStep(task, { id: stepId });
+      markNew(step.id);
+      return draftSteps([...task.steps, step]);
+    },
     update: (stepId, patch) => {
       const steps = task.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s));
       return draftSteps('due' in patch || 'time' in patch ? store.sortStepsByDue(steps) : steps);

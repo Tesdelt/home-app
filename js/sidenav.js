@@ -133,10 +133,10 @@ export async function markSidenav(name, params = [], tab = null) {
 }
 
 // Poslední stav teček a počtů, ať je překreslení panelu neztratí
-let badges = { dot: false, due: 0 };
-export function updateBadges({ dot, due }) {
-  badges = { dot, due };
-  panel.querySelector('.side-group[data-route="ukoly"] .side-item')?.classList.toggle('has-dot', dot);
+let badges = { dots: new Set(), due: 0 };
+export function updateBadges({ dots = new Set(), due }) {
+  badges = { dots, due };
+  panel.querySelectorAll('.side-item[data-route]').forEach((el) => el.classList.toggle('has-dot', dots.has(el.dataset.route)));
   const badge = panel.querySelector('.side-group[data-route="penize"] .side-badge');
   if (badge) badge.textContent = due ? String(due) : '';
 }

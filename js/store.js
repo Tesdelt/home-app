@@ -11,6 +11,7 @@ import * as sync from './sync.js';
 import { guessCategory, normalize, CATEGORIES, BUILTIN_SHOPS, FOOD } from './categories.js';
 import { findProduct, searchProducts, productsIn } from './catalog.js';
 import { today, addDays, addInterval, nextDayOfMonth, monthRange } from './dates.js';
+import { markNew } from './ui.js';
 
 const listeners = new Set();
 const channel = 'BroadcastChannel' in self ? new BroadcastChannel('home-app') : null;
@@ -32,6 +33,14 @@ function emit() {
 export function subscribe(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
+}
+
+// Věc přidaná na tomto zařízení: zvýrazní se (markNew) a do novinek v modulu
+// se nepočítá (meta createdHere, posledních 300 id, nesynchronizuje se)
+async function created(id) {
+  markNew(id);
+  const list = await getMeta('createdHere', []);
+  await setLocal('createdHere', [...list.filter((x) => x !== id).slice(-299), id]);
 }
 
 // ---------- Nastavení ----------
@@ -148,6 +157,7 @@ export async function addItem({ name, qty = '' }) {
     const item = { ...existing, done: false, doneAt: null, qty: qty || existing.qty, updatedAt: now };
     await saveItems([item]);
     await touchHistory(item.name, item.category, true);
+    markNew(item.id);
     emit();
     return { item, status };
   }
@@ -166,6 +176,7 @@ export async function addItem({ name, qty = '' }) {
   };
   await saveItems([item]);
   await touchHistory(item.name, item.category, true);
+  await created(item.id);
   emit();
   return { item, status: 'added' };
 }
@@ -361,6 +372,7 @@ export async function saveRecipe({ id = null, name, ingredients = [], method = n
     createdAt: before?.createdAt ?? now,
     updatedAt: now,
   };
+  if (!before) await created(recipe.id);
   await save('recipes', [recipe]);
   emit();
   return recipe;
@@ -549,6 +561,7 @@ export async function addWish({ list, title, note = null, assignee = null, until
   const now = Date.now();
   const wish = { id: db.newId(), list, title: clean, note, assignee, untilYear, privateTo: isPrivate ? await myUserId() : null, done: false, doneAt: null, createdAt: now, updatedAt: now };
   await save('wishes', [wish]);
+  await created(wish.id);
   emit();
   return wish;
 }
@@ -590,6 +603,7 @@ export async function addDoc({ title = '', category = 'ostatni', note = null, va
   const doc = { id: db.newId(), title: String(title).trim(), category, note, validUntil, files: files.map(({ id }) => ({ id })), privateTo, createdAt: now, updatedAt: now };
   await save('docfiles', files.map((f) => ({ ...f, docId: doc.id, privateTo, updatedAt: now })));
   await save('documents', [doc]);
+  await created(doc.id);
   emit();
   return doc;
 }
@@ -617,6 +631,7 @@ export async function addDocFile(docId, data) {
   if (!doc) return null;
   const file = { id: db.newId(), docId, data, privateTo: doc.privateTo ?? null, updatedAt: Date.now() };
   await save('docfiles', [file]);
+  markNew(file.id);
   return updateDoc(docId, { files: [...(doc.files ?? []), { id: file.id }] });
 }
 
@@ -655,6 +670,7 @@ export async function addNote({ title = '', body = null } = {}) {
   const now = Date.now();
   const note = { id: db.newId(), title: String(title).trim(), body, createdAt: now, updatedAt: now };
   await save('notes', [note]);
+  await created(note.id);
   emit();
   return note;
 }
@@ -822,6 +838,7 @@ export async function addTask({ title, due = null, time = null, assignee = null,
   };
   if (notify && !task.privateTo) await sync.queueNotification('tasks', task.id, { task: task.id, title: task.title });
   await save('tasks', [task]);
+  await created(task.id);
   emit();
   return task;
 }
@@ -939,7 +956,9 @@ export const newStep = (task, { id = null, title = '' } = {}) => ({
 export async function addStep(taskId, { title = '', id = null } = {}) {
   const task = await getTask(taskId);
   if (!task) return null;
-  return saveSteps(task, [...(task.steps ?? []), newStep(task, { id, title })]);
+  const step = newStep(task, { id, title });
+  markNew(step.id);
+  return saveSteps(task, [...(task.steps ?? []), step]);
 }
 
 // Přesune úkol do jiného úkolu jako krok (i s jeho vlastními kroky). Kroky
@@ -1045,6 +1064,7 @@ export async function addComment(taskId, body, { notify = false } = {}) {
     await sync.queueNotification('comments', comment.id, { task: taskId, title: task?.title ?? '', kind: 'comment', text: clean });
   }
   await save('comments', [comment]);
+  await created(comment.id);
   emit();
   return comment;
 }
@@ -1169,6 +1189,7 @@ export async function addPayment({ name, amount = 0, kind = 'recurring', period 
     updatedAt: now,
   };
   await save('payments', [payment]);
+  await created(payment.id);
   emit();
   return payment;
 }
@@ -1312,6 +1333,7 @@ export async function addGoal(account, { name, target = 0 }) {
     sort: goals.reduce((max, g) => Math.max(max, g.sort ?? 0), 0) + 1, createdAt: now, updatedAt: now,
   };
   await save('goals', [goal]);
+  await created(goal.id);
   emit();
   return goal;
 }
@@ -1384,3 +1406,74 @@ export async function importAll(backup) {
   }
   emit();
 }
+
+// ---------- Novinky v modulech ----------
+// Každé zařízení si pamatuje, kdy naposledy otevřelo který modul (meta
+// modulesSeen, nesynchronizuje se; při úplně prvním spuštění = teď).
+// Novinka = nehotová položka, kterou nevytvořilo toto zařízení (createdHere)
+// a vznikla po posledním otevření modulu.
+export const NEWS_MODULES = ['nakup', 'ukoly', 'penize', 'recepty', 'administrativa', 'wishlist', 'bucketlist', 'info'];
+
+function moduleOf(storeName, row) {
+  switch (storeName) {
+    case 'items': return 'nakup';
+    case 'tasks': case 'comments': return 'ukoly';
+    case 'payments': return 'penize';
+    case 'recipes': return 'recepty';
+    case 'documents': return row.privateTo ? null : 'administrativa';
+    case 'wishes': return row.list === 'bucket' ? 'bucketlist' : 'wishlist';
+    case 'notes': return 'info';
+    default: return null;
+  }
+}
+
+async function seenMap() {
+  let seen = await getMeta('modulesSeen', null);
+  if (!seen) {
+    const now = Date.now();
+    seen = Object.fromEntries(NEWS_MODULES.map((m) => [m, now]));
+    await setLocal('modulesSeen', seen);
+  }
+  return seen;
+}
+
+// { modul: [id, ...] } jen pro moduly, které novinky mají
+export async function moduleNews() {
+  const [seen, here, ...lists] = await Promise.all([
+    seenMap(), getMeta('createdHere', []),
+    live('items'), live('tasks'), live('payments'), live('recipes'), live('documents'), live('wishes'), live('notes'),
+  ]);
+  const mine = new Set(here);
+  const out = {};
+  const stores = ['items', 'tasks', 'payments', 'recipes', 'documents', 'wishes', 'notes'];
+  stores.forEach((name, i) => {
+    for (const row of lists[i]) {
+      if (row.done || mine.has(row.id)) continue;
+      const module = moduleOf(name, row);
+      if (!module || !(row.createdAt > (seen[module] ?? 0))) continue;
+      (out[module] ??= []).push(row.id);
+    }
+  });
+  return out;
+}
+
+// Modul je vidět: novinky se zvýrazní jemnou variantou a přestanou být novinkou
+export async function openModule(module, { highlight = true } = {}) {
+  if (!NEWS_MODULES.includes(module)) return;
+  if (highlight) for (const id of (await moduleNews())[module] ?? []) markNew(id, { soft: true });
+  const seen = await seenMap();
+  await setLocal('modulesSeen', { ...seen, [module]: Date.now() });
+}
+
+// Přes Realtime přišla novinka: fn(modul). Řádek se rovnou jemně zvýrazní.
+const arriveListeners = new Set();
+export function onArrive(fn) {
+  arriveListeners.add(fn);
+  return () => arriveListeners.delete(fn);
+}
+sync.onInsert((storeName, row, newSteps, isNewRow) => {
+  if (isNewRow) markNew(row.id ?? row.key, { soft: true });
+  newSteps.forEach((id) => markNew(id, { soft: true }));
+  const module = isNewRow ? moduleOf(storeName, row) : null;
+  if (module) arriveListeners.forEach((fn) => { try { fn(module); } catch (err) { console.error(err); } });
+});

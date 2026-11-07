@@ -1,6 +1,6 @@
 import { addRoute, startRouter } from './router.js';
 import { openDB, requestPersistentStorage } from './db.js';
-import { escapeHtml, ICONS, isDesktop, onDesktopChange } from './ui.js';
+import { escapeHtml, ICONS, isDesktop, onDesktopChange, blink } from './ui.js';
 import * as auth from './auth.js';
 import * as store from './store.js';
 import * as login from './views/login.js';
@@ -33,6 +33,16 @@ addRoute('ukazka', demo);
 
 const viewEl = document.getElementById('view');
 const titleEl = document.getElementById('screen-title');
+let currentModule = null;
+
+async function updateDots() {
+  if (auth.getState().status !== 'ready') return;
+  const [unread, due, news] = await Promise.all([store.unreadComments(), store.duePayments(7), store.moduleNews()]);
+  const dots = new Set(Object.keys(news));
+  if (Object.keys(unread).length) dots.add('ukoly');
+  document.querySelectorAll('.tab[data-route]').forEach((tab) => tab.classList.toggle('has-dot', dots.has(tab.dataset.route)));
+  updateBadges({ dots, due: due.length });
+}
 const subEl = document.getElementById('screen-sub');
 const backEl = document.getElementById('topbar-back');
 const extraEl = document.getElementById('topbar-extra');
@@ -116,6 +126,13 @@ async function init() {
       else tabEl.removeAttribute('aria-current');
     });
 
+    // Novinky v modulu od poslední návštěvy se jemně zvýrazní a tečka zmizí
+    currentModule = name;
+    if (store.NEWS_MODULES.includes(name)) {
+      await store.openModule(name);
+      updateDots();
+    }
+
     try {
       cleanup = await view.render(viewEl, { params, extraEl, subEl });
       // Levý panel zvýrazní přímo modul (Recepty, Byt…) a jeho podsekci
@@ -129,16 +146,20 @@ async function init() {
 
   // Tečka u záložky Úkoly, dokud je někde nepřečtený komentář
   // V levém panelu navíc počet plateb k zaplacení u Peněz
-  const tasksTab = document.querySelector('.tab[data-route="ukoly"]');
-  const updateDots = async () => {
-    if (auth.getState().status !== 'ready') return;
-    const [unread, due] = await Promise.all([store.unreadComments(), store.duePayments(7)]);
-    const dot = Object.keys(unread).length > 0;
-    tasksTab.classList.toggle('has-dot', dot);
-    updateBadges({ dot, due: due.length });
-  };
+  // Tečka novinek u modulu (ve spodní liště a v levém panelu); u Úkolů je to
+  // táž tečka jako nepřečtené komentáře. Když novinka přijde přes Realtime,
+  // položka v liště a v panelu jednou krátce zablikají.
   store.subscribe(updateDots);
   auth.onChange(updateDots);
+  store.onArrive(async (module) => {
+    if (module === currentModule) {
+      await store.openModule(module, { highlight: false });
+      return;
+    }
+    await updateDots();
+    blink(document.querySelector(`.tab[data-route="${module}"]`));
+    blink(document.querySelector(`.side-item[data-route="${module}"]`));
+  });
 
   // Přechod přes hranici počítače (zúžení / rozšíření okna): pohled se překreslí
   onDesktopChange(() => { if (rerender && auth.getState().status === 'ready') rerender(); });

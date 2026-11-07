@@ -2,7 +2,7 @@
 // jedné stránce. Není v menu, slouží ke kontrole vzhledu ve světlém i tmavém
 // režimu. Nesahá na data, všechno je tu napevno. Popis je v CLAUDE.md.
 
-import { ICONS, escapeHtml, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor, rowGestures } from '../ui.js';
+import { ICONS, escapeHtml, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor, rowGestures, markNew, blink } from '../ui.js';
 import { drawChart } from '../chart.js';
 import { openCooking } from './cooking.js';
 
@@ -128,6 +128,12 @@ export async function render(el, { extraEl }) {
       ${row({ who: 'who-both', name: 'Společná platba', sub: 'čt 15. 10.', amount: '12 000 Kč' })}
       ${row({ who: 'who-2', name: 'Hotový úkol', sub: 'Tom 9:12', done: true })}
     </ul>
+    <ul class="item-list group demo-new" style="margin: var(--s3) 0" hidden></ul>
+    <div class="demo-row">
+      <button type="button" class="btn btn-small" data-demo="new">Přidat ukázkový řádek</button>
+      <button type="button" class="btn btn-small" data-demo="new-soft">Přišlo od druhého</button>
+      <a class="card tile mod-nakup demo-blink has-dot" href="#/ukazka" style="width: 160px; min-height: 0"><span class="card-icon">${ICONS.cart}</span><h2 class="card-title">Nákup</h2></a>
+    </div>
 
     <p class="section-label">Skutečnost: karta a skupiny Příjmy / Výdaje / Přesuny</p>
     <section class="card summary flow-card">
@@ -292,6 +298,16 @@ export async function render(el, { extraEl }) {
     const btn = e.target.closest('[data-demo]');
     if (!btn) return;
     if (btn.dataset.demo === 'toast') toast('Uloženo');
+    if (btn.dataset.demo === 'new' || btn.dataset.demo === 'new-soft') {
+      // Nový řádek se zvýrazní (markNew); „od druhého“ jemně a karta blikne
+      const list = root.querySelector('.demo-new');
+      const id = `demo-${Date.now()}`;
+      const soft = btn.dataset.demo === 'new-soft';
+      markNew(id, { soft });
+      list.hidden = false;
+      list.insertAdjacentHTML('beforeend', row({ who: soft ? 'who-1' : 'who-2', name: soft ? 'Od Domi' : 'Nový řádek', sub: 'právě teď' }).replace('<li class="item ', `<li data-id="${id}" class="item `));
+      if (soft) blink(root.querySelector('.demo-blink'));
+    }
     if (btn.dataset.demo === 'cook') {
       const recipe = { id: 'demo', name: 'Palačinky', method: 'Smíchej mouku, mléko a vejce\n|| Mezitím rozehřej pánev\nUsmaž tenké palačinky', hints: [] };
       openCooking({ recipe, subs: [], ingredients: [{ name: 'Mléko', qty: '500 ml' }, { name: 'Vejce', qty: '2 ks' }, { name: 'Hladká mouka', qty: '250 g' }] }, {

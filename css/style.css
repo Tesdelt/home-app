@@ -2006,3 +2006,55 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .btn:active, .add-btn:active, .chip:active, .chip-btn:active, .opt:active, .icon-btn:active, .notify-btn:active,
   a.card:hover, button.card:hover, .home-card:hover { transform: none; }
 }
+
+/* ---------- Zvýraznění nových věcí (markNew v ui.js) ----------
+   Podklad --accent-soft drží --new-hold, pak plynule zmizí za --new-fade.
+   --new-age (záporné) zajistí, že překreslení animaci nezačne znovu.
+   .is-soft = poloviční sytost (přišlo od druhého, novinky v modulu). */
+:root { --new-hold: 300ms; --new-fade: 1200ms; --new-tint: var(--accent-soft); }
+.is-new { position: relative; }
+.is-new::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  background: var(--new-tint);
+  pointer-events: none;
+  animation: new-row calc(var(--new-hold) + var(--new-fade)) linear var(--new-age, 0ms) both;
+}
+.is-new.is-soft { --new-tint: color-mix(in srgb, var(--accent) 7%, transparent); }
+@keyframes new-row {
+  0%, 20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* Bliknutí položky panelu, záložky nebo karty, když přijde novinka */
+.is-blink { position: relative; }
+.is-blink::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent-soft);
+  pointer-events: none;
+  animation: blink-once calc(var(--new-hold) + var(--new-fade)) linear both;
+}
+@keyframes blink-once { 0%, 20% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  /* Místo přechodu jen krátké podbarvení */
+  @keyframes new-row { 0%, 99% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes blink-once { 0%, 99% { opacity: 1; } 100% { opacity: 0; } }
+  .is-new::after { animation-duration: 600ms; }
+  .is-blink::before { animation-duration: 600ms; }
+}
+/* Tečka novinek v modulu (stejná jako tečka nepřečtených komentářů) */
+.tile.has-dot .card-title::after, .home-card-head.has-dot .card-title::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: var(--s2);
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 0.15em;
+}

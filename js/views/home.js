@@ -4,7 +4,7 @@
 // Nový modul = další řádek v poli tiles a barva --mod-* v css/style.css.
 
 import * as store from '../store.js';
-import { ICONS, todayLabel, itemsCount, money, isDesktop } from '../ui.js';
+import { ICONS, todayLabel, itemsCount, money, isDesktop, blink } from '../ui.js';
 import { today } from '../dates.js';
 import { renderOverview } from './homedesk.js';
 
@@ -42,10 +42,13 @@ export async function render(el, { subEl }) {
   el.append(root);
 
   async function draw() {
-    const [items, tasks, payments, summary, soon, recipes, docs, wishes, buckets, notes] = await Promise.all([
+    const [items, tasks, payments, summary, soon, recipes, docs, wishes, buckets, notes, news, unread] = await Promise.all([
       store.listItems(), store.listTasks(), store.listPayments(), store.paymentsSummary(), store.duePayments(7),
       store.listRecipes(), store.listDocs(), store.listWishes('wish'), store.listWishes('bucket'), store.listNotes(),
+      store.moduleNews(), store.unreadComments(),
     ]);
+    const dots = new Set(Object.keys(news));
+    if (Object.keys(unread).length) dots.add('ukoly');
     const day = today();
     const count = (list) => list.filter((row) => !row.done).length;
 
@@ -76,7 +79,7 @@ export async function render(el, { subEl }) {
       ['bucketlist', 'star', 'Bucketlist', bucketCount ? plural(bucketCount, 'nápad', 'nápady', 'nápadů') : ''],
       ['info', 'house', 'Byt', notes.length ? plural(notes.length, 'poznámka', 'poznámky', 'poznámek') : ''],
     ];
-    root.innerHTML = `<div class="tiles">${tiles.map(([route, icon, name, info]) => `<a class="card tile mod-${route}" href="#/${route}">
+    root.innerHTML = `<div class="tiles">${tiles.map(([route, icon, name, info]) => `<a class="card tile mod-${route}${dots.has(route) ? ' has-dot' : ''}" href="#/${route}">
         <span class="card-icon">${ICONS[icon]}</span>
         <h2 class="card-title">${name}</h2>
         <p class="card-line">${info || 'Prázdné'}</p>
@@ -84,5 +87,10 @@ export async function render(el, { subEl }) {
   }
 
   await draw();
-  return store.subscribe(draw);
+  const offArrive = store.onArrive((module) => blink(root.querySelector(`.tile.mod-${module}`)));
+  const offData = store.subscribe(draw);
+  return () => {
+    offArrive();
+    offData();
+  };
 }

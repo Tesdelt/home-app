@@ -496,6 +496,14 @@ export function onData(fn) {
   return () => dataListeners.delete(fn);
 }
 
+// Přes Realtime přibyla nová věc od druhého: fn(store, row, newStepIds).
+// Při stahování (start, obnovení spojení) se nevolá.
+const insertListeners = new Set();
+export function onInsert(fn) {
+  insertListeners.add(fn);
+  return () => insertListeners.delete(fn);
+}
+
 // Změnil se stav synchronizace (počet čekajících změn, chyba)
 export function onStatus(fn) {
   statusListeners.add(fn);
@@ -755,6 +763,15 @@ async function applyRemote(store, row) {
   } else {
     if (local && !local.deleted && sameRow(local, next)) return;
     await db.put(store, next);
+  }
+  // Nový řádek, nebo nové kroky v úkolu
+  const isNew = !row.deleted && (!local || local.deleted);
+  const before = new Set((local?.steps ?? []).map((st) => st.id));
+  const newSteps = !isNew && store === 'tasks' ? (next.steps ?? []).filter((st) => !before.has(st.id)).map((st) => st.id) : [];
+  if (isNew || newSteps.length) {
+    insertListeners.forEach((fn) => {
+      try { fn(store, next, newSteps, isNew); } catch (err) { console.error(err); }
+    });
   }
   fire(dataListeners);
 }
