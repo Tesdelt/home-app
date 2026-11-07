@@ -147,7 +147,7 @@ async function init() {
   // opustí, ať se rozepsaná změna uloží.
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || auth.getState().status !== 'ready') return;
-    if (document.querySelector('.menu-backdrop, .sheet-backdrop, .is-moving-mode, .doc-full')) return;
+    if (document.querySelector('.menu-backdrop, .sheet-backdrop, .is-moving-mode, .doc-full, .cook')) return;
     const parts = location.hash.replace(/^#\/?/, '').split('/');
     if (parts.length < 2 || !parts[1]) return;
     document.activeElement?.blur?.();

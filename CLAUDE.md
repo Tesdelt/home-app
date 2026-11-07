@@ -192,6 +192,14 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   = bez termínu; do Po termínu nejde) nebo pro koho, toast se Zpět. Klik otevře detail vpravo
   a sloupce se zúží (posouvají se vodorovně). Klávesa N kdekoliv v Úkolech (mimo psaní do
   pole) = nový úkol.
+- Recepty, režim vaření (`js/views/cooking.js`, i na mobilu): tlačítko Vařit na stránce
+  receptu otevře celou obrazovku: vlevo ingredience s odškrtáváním, vpravo jeden krok velkým
+  písmem (`--fs-title`), souběžné části vedle sebe, vysvětlivky jako v receptu. Další / Zpět
+  tlačítky, klávesami ← → a mezerníkem, na mobilu potažením; na mobilu jsou ingredience nahoře
+  a sbalitelné (u víc než 4 zpočátku sbalené). Obrazovka nezhasíná (Screen Wake Lock API, když
+  je k dispozici, po návratu do appky se obnoví). Esc nebo křížek zavře, poslední krok má Hotovo.
+  Tisk: v nabídce tří teček receptu (`printRecipe`, `@media print`): jen název, fotka,
+  ingredience a postup.
 - Peníze > Tabulka (`#/penize/tabulka/<segment>`, `js/views/moneytable.js`, jen počítač, na
   mobilu přesměruje na `#/penize`): řádky kategorie výdajů, pod nimi Příjmy a Přesuny,
   sloupce měsíce období (Období sdílí s grafem: `periodMonthsOf`, `openPeriodMenu`,
@@ -301,6 +309,8 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
 - **Tři tečky** `.row-more` v řádku při najetí myší (jen s myší, na mobilu nikdy).
 - Na počítači jsou schované přepínače, které dublují levý panel: Recepty / Skills a Co uvařit
   v Receptech (`.recipe-toolbar`), segmenty v Penězích (`.money-segments`).
+- **Režim vaření** `.cook` (celá obrazovka nad appkou, `z-index` pod nabídkou, ať fungují
+  vysvětlivky): hlavička, `.cook-ings`, `.cook-step` s `.cook-text`, dole `.cook-nav`.
 - **Sloupce** `.kb` > `.kb-col` (podklad `--surface-2`, cíl přetažení `.is-target`
   `--accent-soft` s orámováním) > `.kb-list` s kartami `.kb-card` (řádek seznamu jako karta);
   tažená karta jede jako kopie `.kb-ghost` a plynule dosedne.
@@ -662,6 +672,8 @@ Hotovo (0.28.2):
 Hotovo (0.29.0): Peníze > Tabulka na počítači (viz Počítač a tablet).
 
 Hotovo (0.30.0): Úkoly ve sloupcích na počítači a klávesa N pro nový úkol.
+
+Hotovo (0.31.0): Recepty, režim vaření (i na mobilu) a tisk receptu.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

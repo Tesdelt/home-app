@@ -2,8 +2,9 @@
 // jedné stránce. Není v menu, slouží ke kontrole vzhledu ve světlém i tmavém
 // režimu. Nesahá na data, všechno je tu napevno. Popis je v CLAUDE.md.
 
-import { ICONS, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor, rowGestures } from '../ui.js';
+import { ICONS, escapeHtml, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor, rowGestures } from '../ui.js';
 import { drawChart } from '../chart.js';
+import { openCooking } from './cooking.js';
 
 export const title = 'Ukázka';
 export const tab = 'vice';
@@ -64,6 +65,7 @@ export async function render(el, { extraEl }) {
       <button type="button" class="btn btn-small" data-demo="sheet">Spodní panel</button>
       <button type="button" class="btn btn-small" data-demo="toast">Toast</button>
       <button type="button" class="btn btn-small" data-demo="undo">Toast se Zpět</button>
+      <button type="button" class="btn btn-small" data-demo="cook">Režim vaření</button>
     </div>
 
     <p class="section-label">Přepínač</p>
@@ -270,6 +272,13 @@ export async function render(el, { extraEl }) {
     const btn = e.target.closest('[data-demo]');
     if (!btn) return;
     if (btn.dataset.demo === 'toast') toast('Uloženo');
+    if (btn.dataset.demo === 'cook') {
+      const recipe = { id: 'demo', name: 'Palačinky', method: 'Smíchej mouku, mléko a vejce\n|| Mezitím rozehřej pánev\nUsmaž tenké palačinky', hints: [] };
+      openCooking({ recipe, subs: [], ingredients: [{ name: 'Mléko', qty: '500 ml' }, { name: 'Vejce', qty: '2 ks' }, { name: 'Hladká mouka', qty: '250 g' }] }, {
+        parseMethod: (m) => m.split('\n').reduce((steps, line) => (line.startsWith('||') ? (steps.at(-1).parts.push(line.slice(2).trim()), steps) : [...steps, { parts: [line] }]), []),
+        methodHtml: (text) => escapeHtml(text),
+      });
+    }
     if (btn.dataset.demo === 'undo') undoToast('Mléko: smazáno', () => toast('Vráceno'));
     if (btn.dataset.demo === 'menu') {
       openMenu(btn, (menu, close) => {

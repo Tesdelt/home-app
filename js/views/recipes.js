@@ -11,6 +11,7 @@ import { splitView } from '../split.js';
 import { parseEntry, normalize } from '../categories.js';
 import { findProduct } from '../catalog.js';
 import { productChips } from '../catalogui.js';
+import { openCooking, printRecipe } from './cooking.js';
 import { escapeHtml, ICONS, toast, undoToast, openMenu, openSheet, dragSort, holdKeyboard, squarePhoto, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 
@@ -159,12 +160,17 @@ async function renderList(el, extraEl) {
       const recipeId = more.closest('.rcard').dataset.id;
       openMenu(more, (menu, close) => {
         menu.innerHTML = `<button type="button" class="menu-item" data-value="link">Přidat do receptu</button>
+          <button type="button" class="menu-item" data-value="print">Tisk</button>
           <button type="button" class="menu-item is-danger" data-value="remove">Smazat</button>`;
-        menu.addEventListener('click', (ev) => {
+        menu.addEventListener('click', async (ev) => {
           const value = ev.target.closest('[data-value]')?.dataset.value;
           if (!value) return;
           close();
           if (value === 'link') setLinking(recipeId);
+          if (value === 'print') {
+            const [printView, photos] = await Promise.all([store.recipeView(recipeId), store.recipePhotos()]);
+            if (printView) printRecipe(printView, photos[recipeId] ?? null, { parseMethod, methodHtml });
+          }
           if (value === 'remove') remove(recipeId);
         });
       });
@@ -221,6 +227,7 @@ async function renderRecipe(el, id, fromPantry) {
       <div class="detail-head">${back}
         <span class="detail-name">${escapeHtml(recipe.name)}</span>
         <a class="btn btn-ghost btn-small" href="#/recepty/${escapeHtml(id)}/upravit">Upravit</a>
+        ${recipe.method || subs.some((s) => s.method) ? '<button type="button" class="btn btn-primary btn-small" data-action="cook">Vařit</button>' : ''}
       </div>
       ${photo ? `<img class="recipe-photo" src="${photo}" alt="">` : ''}
       ${store.recipeTime(recipe) ? `<p class="recipe-time">${escapeHtml(store.recipeTime(recipe))}</p>` : ''}
@@ -257,6 +264,10 @@ async function renderRecipe(el, id, fromPantry) {
       return;
     }
     const action = e.target.closest('[data-action]')?.dataset.action;
+    if (action === 'cook') {
+      openCooking(view, { parseMethod, methodHtml });
+      return;
+    }
     const { ingredients } = view;
     if (action === 'all') {
       const all = picked.size === ingredients.length;

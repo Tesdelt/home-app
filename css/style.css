@@ -1787,3 +1787,65 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
 
 .demo-kb { display: none !important; }
 @media (min-width: 1024px) { .demo-kb { display: grid !important; } }
+
+/* ---------- Režim vaření (i na mobilu) ---------- */
+.cook {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--safe-top) + var(--s3)) var(--s4) calc(var(--safe-bottom) + var(--s3));
+  background: var(--bg);
+  animation: fade-in 0.15s ease;
+}
+.cook-head { flex: none; display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s3); }
+.cook-title { flex: 1; min-width: 0; font-size: var(--fs-section); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cook-count { color: var(--text-2); font-size: var(--fs-small); white-space: nowrap; }
+.cook-close { width: 44px; height: 44px; font-size: var(--fs-title); line-height: 1; }
+.cook-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.cook-ings { flex: none; max-height: 40%; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.cook-ings-toggle { display: flex; justify-content: space-between; width: 100%; min-height: 44px; padding: 0 var(--s3); border: 0; background: transparent; font-weight: 600; text-align: left; }
+.cook-ings-toggle span { color: var(--text-2); font-weight: 400; }
+.cook.ings-collapsed .cook-ing-list { display: none; }
+.cook.ings-collapsed .cook-ings { max-height: none; }
+.cook-ing-list { list-style: none; margin: 0; padding: 0 0 var(--s1); }
+.cook-ing { display: flex; align-items: center; gap: var(--s3); width: 100%; min-height: 44px; padding: var(--s1) var(--s3); border: 0; background: transparent; text-align: left; }
+.cook-ing-name { flex: 1; min-width: 0; }
+.cook-ing-qty { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.cook-ing.is-done .check { background: var(--accent); border-color: var(--accent); }
+.cook-ing.is-done .check svg { opacity: 1; }
+.cook-ing.is-done .cook-ing-name, .cook-ing.is-done .cook-ing-qty { color: var(--text-3); text-decoration: line-through; }
+.cook-step { flex: 1; min-height: 0; overflow-y: auto; touch-action: pan-y; }
+.cook-from { margin: 0 0 var(--s2); color: var(--text-2); font-size: var(--fs-small); font-weight: 600; }
+.cook-parts { display: grid; gap: var(--s4); }
+.cook-parts.is-split { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.cook-part { display: flex; flex-direction: column; gap: var(--s2); }
+.cook-text { margin: 0; font-size: var(--fs-title); line-height: 1.3; font-weight: 500; }
+.cook-text .hint-term { font-size: inherit; }
+.cook-nav { flex: none; display: flex; gap: var(--s3); padding-top: var(--s3); }
+.cook-nav .btn { flex: 1; min-height: 52px; font-size: var(--fs-section); }
+.cook-nav .btn svg { width: 22px; height: 22px; }
+@media (min-width: 1024px) {
+  .cook { padding: var(--s5) calc(var(--s5) * 2); }
+  .cook-body { flex-direction: row; gap: var(--s5); }
+  .cook-ings { width: 320px; max-height: none; align-self: stretch; }
+  .cook.ings-collapsed .cook-ing-list { display: block; }
+  .cook-ings-toggle { pointer-events: none; }
+  .cook-step { display: flex; flex-direction: column; justify-content: center; padding: 0 var(--s5); }
+  .cook-nav { justify-content: flex-end; }
+  .cook-nav .btn { flex: none; min-width: 200px; }
+}
+
+/* ---------- Tisk receptu ---------- */
+.print-sheet { display: none; }
+@media print {
+  body.is-printing > *:not(.print-sheet) { display: none !important; }
+  body.is-printing { background: #fff; overflow: visible; }
+  .print-sheet { display: block; color: #000; font-family: var(--font); font-size: 12pt; line-height: 1.45; }
+  .print-sheet h1 { margin: 0 0 8pt; font-size: 22pt; }
+  .print-sheet h2 { margin: 14pt 0 6pt; font-size: 14pt; }
+  .print-sheet img { display: block; width: 6cm; height: 6cm; object-fit: cover; border-radius: 6pt; margin: 0 0 10pt; }
+  .print-sheet li { margin-bottom: 4pt; }
+}
+.cook-part .rstep-num { align-self: flex-start; }
