@@ -60,6 +60,79 @@ function valueOf(row, s) {
   return Number(value?.items?.[s.i]) || 0;
 }
 
+// ---------- Období (sdílí ho graf i tabulka v Penězích) ----------
+// rows = řádky money_months vzestupně podle měsíce, prefs = { period, from, to }.
+// Měsíce v období; bez dat na začátku a na konci se vynechají, uprostřed zůstanou.
+export function periodMonthsOf(rows, prefs) {
+  if (!rows.length) return [];
+  const first = rows[0].month;
+  const last = rows[rows.length - 1].month;
+  let from = first;
+  let to = last;
+  if (['3', '6', '12'].includes(prefs.period)) from = shiftMonth(last, -(Number(prefs.period) - 1));
+  if (prefs.period === 'year') from = `${new Date().getFullYear()}-01`;
+  if (prefs.period === 'custom') {
+    from = prefs.from || first;
+    to = prefs.to || last;
+    if (from > to) [from, to] = [to, from];
+  }
+  const has = new Set(rows.map((r) => r.month));
+  const months = monthRange(from, to);
+  while (months.length && !has.has(months[0])) months.shift();
+  while (months.length && !has.has(months[months.length - 1])) months.pop();
+  return months;
+}
+
+export function periodLabelOf(rows, prefs) {
+  if (prefs.period === 'custom') {
+    const months = periodMonthsOf(rows, prefs);
+    return months.length ? `${shortMonth(months[0])} - ${shortMonth(months[months.length - 1])}` : 'Vybrat';
+  }
+  return PERIODS.find(([id]) => id === prefs.period)?.[1] ?? '12 měsíců';
+}
+
+// Nabídka Období u tlačítka. onChange(patch) dostane { period, from, to }.
+export function openPeriodMenu(btn, rows, getPrefs, onChange) {
+  openMenu(btn, (menu, close) => {
+    const months = rows.map((r) => r.month);
+    const paint = () => {
+      const prefs = getPrefs();
+      const current = periodMonthsOf(rows, prefs);
+      menu.innerHTML = PERIODS.map(([id, label]) => `<button type="button" class="menu-item" data-period="${id}" aria-pressed="${prefs.period === id}">${label}</button>`).join('')
+        + `<p class="menu-head">Vybrat</p>
+          <label class="menu-item menu-pick" aria-pressed="${prefs.period === 'custom'}">Od<span class="menu-pick-value">${escapeHtml(prefs.period === 'custom' && current.length ? shortMonth(current[0]) : '')}</span>
+            <input type="month" name="from" value="${escapeHtml(prefs.from ?? months[0] ?? '')}" aria-label="Od"></label>
+          <label class="menu-item menu-pick" aria-pressed="${prefs.period === 'custom'}">Do<span class="menu-pick-value">${escapeHtml(prefs.period === 'custom' && current.length ? shortMonth(current[current.length - 1]) : '')}</span>
+            <input type="month" name="to" value="${escapeHtml(prefs.to ?? months[months.length - 1] ?? '')}" aria-label="Do"></label>`;
+    };
+    paint();
+    menu.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-period]');
+      if (!b) return;
+      close();
+      await onChange({ period: b.dataset.period });
+    });
+    // Výběr z kalendáře se uloží hned a nabídka zůstane otevřená
+    menu.addEventListener('change', async (e) => {
+      const input = e.target.closest('input[type="month"]');
+      if (!input?.value) return;
+      const prefs = getPrefs();
+      await onChange({ period: 'custom', from: prefs.from ?? months[0], to: prefs.to ?? months[months.length - 1], [input.name]: input.value });
+      paint();
+    });
+  });
+}
+
+// Uložené volby grafu pro segment (meta moneyChart); tabulka z nich bere období
+export async function loadChartPrefs(segment) {
+  const all = await store.getMeta('moneyChart', {});
+  return { ...DEFAULTS, ...(all[segment] ?? {}) };
+}
+export async function saveChartPrefs(segment, patch) {
+  const all = await store.getMeta('moneyChart', {});
+  await store.setLocal('moneyChart', { ...all, [segment]: { ...DEFAULTS, ...(all[segment] ?? {}), ...patch } });
+}
+
 // embedded: graf vložený do Peněz na počítači (bez vlastní hlavičky, pevná výška),
 // onMonth(month) se zavolá po ťuknutí na měsíc v grafu
 export async function renderCharts(el, segment, { subEl, embedded = false, onMonth = null } = {}) {
@@ -154,25 +227,7 @@ export async function renderCharts(el, segment, { subEl, embedded = false, onMon
   }
 
   // Měsíce v období. Bez dat na začátku a na konci se vynechají, uprostřed zůstanou (0).
-  function periodMonths() {
-    if (!rows.length) return [];
-    const first = rows[0].month;
-    const last = rows[rows.length - 1].month;
-    let from = first;
-    let to = last;
-    if (['3', '6', '12'].includes(prefs.period)) from = shiftMonth(last, -(Number(prefs.period) - 1));
-    if (prefs.period === 'year') from = `${new Date().getFullYear()}-01`;
-    if (prefs.period === 'custom') {
-      from = prefs.from || first;
-      to = prefs.to || last;
-      if (from > to) [from, to] = [to, from];
-    }
-    const has = new Set(rows.map((r) => r.month));
-    const months = monthRange(from, to);
-    while (months.length && !has.has(months[0])) months.shift();
-    while (months.length && !has.has(months[months.length - 1])) months.pop();
-    return months;
-  }
+  const periodMonths = () => periodMonthsOf(rows, prefs);
 
   // "za 12 měsíců", "od začátku roku", "za celé období"
   function changeLabel() {
@@ -181,13 +236,7 @@ export async function renderCharts(el, segment, { subEl, embedded = false, onMon
     return `za ${periodLabel()}`;
   }
 
-  function periodLabel() {
-    if (prefs.period === 'custom') {
-      const months = periodMonths();
-      return months.length ? `${shortMonth(months[0])} - ${shortMonth(months[months.length - 1])}` : 'Vybrat';
-    }
-    return PERIODS.find(([id]) => id === prefs.period)?.[1] ?? '12 měsíců';
-  }
+  const periodLabel = () => periodLabelOf(rows, prefs);
 
   function draw() {
     const series = decorate(prefs.series);
@@ -319,35 +368,10 @@ export async function renderCharts(el, segment, { subEl, embedded = false, onMon
 
   // ---------- Období ----------
   function openPeriod() {
-    openMenu(periodBtn, (menu, close) => {
-      const months = rows.map((r) => r.month);
-      const paint = () => {
-        const current = periodMonths();
-        menu.innerHTML = PERIODS.map(([id, label]) => `<button type="button" class="menu-item" data-period="${id}" aria-pressed="${prefs.period === id}">${label}</button>`).join('')
-          + `<p class="menu-head">Vybrat</p>
-            <label class="menu-item menu-pick" aria-pressed="${prefs.period === 'custom'}">Od<span class="menu-pick-value">${escapeHtml(prefs.period === 'custom' && current.length ? shortMonth(current[0]) : '')}</span>
-              <input type="month" name="from" value="${escapeHtml(prefs.from ?? months[0] ?? '')}" aria-label="Od"></label>
-            <label class="menu-item menu-pick" aria-pressed="${prefs.period === 'custom'}">Do<span class="menu-pick-value">${escapeHtml(prefs.period === 'custom' && current.length ? shortMonth(current[current.length - 1]) : '')}</span>
-              <input type="month" name="to" value="${escapeHtml(prefs.to ?? months[months.length - 1] ?? '')}" aria-label="Do"></label>`;
-      };
-      paint();
-      menu.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-period]');
-        if (!btn) return;
-        prefs.period = btn.dataset.period;
-        close();
-        draw();
-        await savePrefs();
-      });
-      // Výběr z kalendáře se uloží hned a nabídka zůstane otevřená
-      menu.addEventListener('change', async (e) => {
-        const input = e.target.closest('input[type="month"]');
-        if (!input?.value) return;
-        prefs = { ...prefs, period: 'custom', from: prefs.from ?? months[0], to: prefs.to ?? months[months.length - 1], [input.name]: input.value };
-        paint();
-        draw();
-        await savePrefs();
-      });
+    openPeriodMenu(periodBtn, rows, () => prefs, async (patch) => {
+      prefs = { ...prefs, ...patch };
+      draw();
+      await savePrefs();
     });
   }
 

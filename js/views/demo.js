@@ -210,6 +210,16 @@ export async function render(el, { extraEl }) {
         <div class="side-sub-wrap"><div class="side-sub"><a href="#/ukazka" class="side-subitem">Recepty</a></div></div></div>
     </div>
 
+    <p class="section-label">Počítač: tabulka Peněz (buňka nad limitem podbarvená, Průměr a Limit)</p>
+    <div class="mt-wrap demo-mt" style="margin-bottom: var(--s3)"><table class="mt-table">
+      <thead><tr><th class="mt-corner"></th><th>srp 26</th><th>zář 26</th><th>říj 26</th><th class="mt-sum">Průměr</th><th class="mt-limit">Limit</th></tr></thead>
+      <tbody>
+        <tr class="mt-group"><th>Výdaje</th><td colspan="5"></td></tr>
+        <tr class="mt-row has-items is-open"><th><span class="mt-name">Potraviny</span></th><td>3 312</td><td>3 294</td><td class="is-over" style="background: color-mix(in oklab, ${budgetColor(1.2)} 28%, transparent)">4 800</td><td class="mt-sum">3 802</td><td class="mt-limit">4 000</td></tr>
+        <tr class="mt-item"><th>Albert</th><td>2 900</td><td>2 823</td><td>4 100</td><td class="mt-sum">3 274</td><td class="mt-limit"></td></tr>
+        <tr class="mt-row"><th><span class="mt-name">Oblečení</span></th><td>3 274</td><td></td><td>11 834</td><td class="mt-sum">5 036</td><td class="mt-limit"><span class="mt-add">+</span></td></tr>
+      </tbody></table></div>
+
     <p class="section-label">Ikony</p>
     <div class="demo-row">${Object.keys(ICONS).map((name) => `<span class="card-icon" title="${name}">${ICONS[name]}</span>`).join('')}</div>
 

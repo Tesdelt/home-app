@@ -44,6 +44,7 @@ async function loadSubs() {
       ...members.map((m) => ({ key: `seg:${m}`, label: m, href: '#/penize', meta: ['moneySegment', m] })),
       { key: `seg:${store.SPLIT}`, label: 'Společné', href: '#/penize', meta: ['moneySegment', store.SPLIT] },
       { key: 'grafy', label: 'Grafy', href: '#/penize/grafy' },
+      { key: 'tabulka', label: 'Tabulka', href: '#/penize/tabulka' },
     ],
     recepty: [
       { key: 'recipes', label: 'Recepty', href: '#/recepty/recepty' },
@@ -112,7 +113,7 @@ export async function markSidenav(name, params = [], tab = null) {
     // Segment jako v Penězích: uložený, jinak přihlášený člen
     const [seg, me, members] = await Promise.all([store.getMeta('moneySegment', null), store.getMe(), store.listMembers()]);
     const valid = [...members, store.SPLIT].includes(seg) ? seg : (members.includes(me) ? me : store.SPLIT);
-    sub = params[0] === 'grafy' ? 'grafy' : `seg:${valid}`;
+    sub = params[0] === 'grafy' || params[0] === 'tabulka' ? params[0] : `seg:${valid}`;
   }
   if (name === 'ukoly') sub = await store.getMeta('taskFilter', 'all');
   if (name === 'recepty') sub = params[0] === 'zasoby' ? 'zasoby' : listTabNow();

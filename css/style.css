@@ -1720,3 +1720,39 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .chart-embedded .chart-bar { flex-wrap: wrap; }
   .chart-embedded .chart-bar .segmented { min-width: 180px; }
 }
+
+/* ---------- Peníze, Tabulka (jen počítač) ---------- */
+@media (min-width: 1024px) {
+  .view:has(> .mt) { overflow: hidden; padding-bottom: 0; }
+  .mt { display: flex; flex-direction: column; height: 100%; }
+  .mt-bar { flex: none; }
+  .mt-pick { display: inline-flex; gap: var(--s2); }
+  .mt-pick[hidden] { display: none; }
+  .mt-wrap { flex: 1; min-height: 0; overflow: auto; margin-bottom: var(--s4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .mt-table { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+  .mt-table th, .mt-table td { padding: var(--s2) var(--s3); border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  .mt-table thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); font-weight: 600; color: var(--text-2); }
+  .mt-table tbody th { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; font-weight: 400; color: var(--text); min-width: 200px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  .mt-table thead th.mt-corner { left: 0; z-index: 3; }
+  .mt-month { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+  .mt-month:hover { color: var(--accent); }
+  .mt-group th { font-size: var(--fs-small); font-weight: 600; color: var(--text-2); background: var(--surface-2) !important; }
+  .mt-group td { background: var(--surface-2); }
+  .mt-row.has-items th { cursor: pointer; }
+  .mt-row.has-items .mt-name::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: var(--s2); border-right: 1.6px solid var(--text-3); border-bottom: 1.6px solid var(--text-3); transform: rotate(-45deg); vertical-align: 0.15em; transition: transform 200ms ease; }
+  .mt-row.is-open .mt-name::after { transform: rotate(45deg); }
+  .mt-row.is-open th { font-weight: 600; }
+  .mt-item th { padding-left: calc(var(--s3) + var(--s4)); color: var(--text-2); }
+  .mt-item td { color: var(--text-2); }
+  .mt-sum { font-weight: 600; color: var(--text); background: var(--surface-2); }
+  td.mt-sum { background: color-mix(in oklab, var(--surface-2) 60%, var(--surface)); }
+  .mt-limit { min-width: 96px; color: var(--text-2); }
+  td.mt-limit[data-limit] { cursor: pointer; }
+  td.mt-limit[data-limit]:hover { background: var(--surface-2); }
+  .mt-add { color: var(--text-3); }
+  .mt-input { width: 90px; min-height: 32px; padding: 0 var(--s2); font-size: var(--fs-text); text-align: right; }
+  td.is-over { color: var(--text); font-weight: 600; }
+}
+
+.demo-mt { display: none; }
+@media (min-width: 1024px) { .demo-mt { display: block; } }

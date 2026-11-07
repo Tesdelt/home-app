@@ -7,6 +7,7 @@ import * as store from '../store.js';
 import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold, dragSort, budgetColor, isDesktop } from '../ui.js';
 import { today, dueLabel, shiftMonth } from '../dates.js';
 import { renderCharts } from './moneycharts.js';
+import { renderTable } from './moneytable.js';
 
 export const title = 'Peníze';
 
@@ -80,6 +81,24 @@ let pickedMonth = null;
 export async function render(el, { params, extraEl, subEl }) {
   // #/penize/grafy/<segment> jsou grafy Skutečnosti
   // Na počítači je graf rovnou vedle Skutečnosti, podstránka grafů tam nemá smysl
+  // #/penize/tabulka/<segment>: tabulka Skutečnosti po měsících (jen počítač)
+  if (params?.[0] === 'tabulka') {
+    if (!isDesktop()) {
+      location.replace('#/penize');
+      return undefined;
+    }
+    const [seg, me] = await Promise.all([store.getMeta('moneySegment', null), store.getMe()]);
+    const tableSegment = params[1] || seg || me || store.SPLIT;
+    if (params[1]) await store.setLocal('moneySegment', params[1]);
+    return renderTable(el, tableSegment, {
+      subEl,
+      onMonth: (month) => {
+        pickedMonth = month;
+        location.hash = '#/penize';
+      },
+    });
+  }
+
   // Na počítači #/penize/grafy vykreslí Peníze a odroluje na graf vedle Skutečnosti
   const chartFocus = params?.[0] === 'grafy';
   if (chartFocus && !isDesktop()) return renderCharts(el, params[1] || store.SPLIT, { subEl });

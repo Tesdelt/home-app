@@ -184,6 +184,14 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   volby a meta `moneyChart`). Ťuknutí na měsíc v grafu přepne Skutečnost (`onSelect`
   v `drawChart`). `#/penize/grafy/<segment>` na počítači vykreslí Peníze a odroluje na graf.
 - Nastavení na počítači: karty ve 2 sloupcích.
+- Peníze > Tabulka (`#/penize/tabulka/<segment>`, `js/views/moneytable.js`, jen počítač, na
+  mobilu přesměruje na `#/penize`): řádky kategorie výdajů, pod nimi Příjmy a Přesuny,
+  sloupce měsíce období (Období sdílí s grafem: `periodMonthsOf`, `openPeriodMenu`,
+  `loadChartPrefs` / `saveChartPrefs` z `moneycharts.js`), na konci Průměr a Limit.
+  Buňka nad limitem podbarvená `budgetColor` (28 % přes podklad). Záhlaví řádků i sloupců
+  sticky. Klik na kategorii rozbalí položky, klik do Limitu ho upraví v buňce (Enter /
+  opuštění uloží přes `setBudget`, Esc zruší), klik na měsíc otevře Skutečnost toho měsíce.
+  „Srovnat 2 měsíce“: dva vybrané měsíce vedle sebe a sloupec Rozdíl.
 - Klávesnice: Esc zavře nabídku, dialog i otevřený detail (předtím opustí pole, ať se
   změna uloží), fokus je vidět (outline `--text-2`).
 
@@ -285,6 +293,9 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
 - **Tři tečky** `.row-more` v řádku při najetí myší (jen s myší, na mobilu nikdy).
 - Na počítači jsou schované přepínače, které dublují levý panel: Recepty / Skills a Co uvařit
   v Receptech (`.recipe-toolbar`), segmenty v Penězích (`.money-segments`).
+- **Tabulka** `.mt-wrap` > `table.mt-table`: čísla bez „Kč“, tabulková číslice, sticky záhlaví
+  (`thead th`) a první sloupec (`tbody th`), skupina `tr.mt-group`, rozbalitelný řádek
+  `tr.mt-row.has-items`, položky `tr.mt-item`, souhrnný sloupec `.mt-sum`, limit `.mt-limit`.
 - **Seznam a detail** `.split` > `.split-list` (380 px) + `.split-detail`, každá část se
   posouvá zvlášť. Stránka položky v detailu je beze změny, jen bez šipky zpět a s horní lištou
   modulu. Vybraný řádek `.item.is-selected` (podklad `--surface-2`), recept `.rcard.is-selected`.
@@ -636,6 +647,8 @@ Hotovo (0.28.1):
 Hotovo (0.28.2):
 - Počítač: Peníze ve sloupcích, které se posouvají zvlášť (od 1280 px tři), schované
   dublující přepínače, aktivní podsekce panelu zvýrazněná a rozbalená, Domů jako přehled.
+
+Hotovo (0.29.0): Peníze > Tabulka na počítači (viz Počítač a tablet).
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

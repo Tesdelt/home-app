@@ -1,6 +1,6 @@
 // Service worker: offline cache. Při každém nasazení zvýšit VERSION
 // (a APP_VERSION v js/config.js) a nové soubory doplnit do ASSETS.
-const VERSION = '0.28.2';
+const VERSION = '0.29.0';
 const CACHE = `home-app-v${VERSION}`;
 
 const ASSETS = [
@@ -40,6 +40,7 @@ const ASSETS = [
   'js/split.js',
   'js/sidenav.js',
   'js/views/homedesk.js',
+  'js/views/moneytable.js',
   'icons/apple-touch-icon.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
