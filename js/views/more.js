@@ -5,7 +5,7 @@ import * as store from '../store.js';
 import * as auth from '../auth.js';
 import * as push from '../push.js';
 import { APP_VERSION } from '../config.js';
-import { escapeHtml, ICONS, toast } from '../ui.js';
+import { escapeHtml, ICONS, toast, isDesktop, playChime } from '../ui.js';
 
 export const title = 'Nastavení';
 
@@ -18,6 +18,7 @@ export async function render(el) {
     const me = await store.getMe();
     const { email } = auth.getState();
     const pushState = await push.status();
+    const sound = await store.getMeta('pushSound', true);
     root.innerHTML = `
       <p class="section-label">Na tomto telefonu</p>
       <section class="card">
@@ -35,6 +36,10 @@ export async function render(el) {
         <div class="card-head"><span class="card-icon">${ICONS.bell}</span><h2 class="card-title">Upozornění</h2><span class="card-meta">${pushState === 'on' ? 'zapnuto' : ''}</span></div>
         ${PUSH_TEXT[pushState] ? `<p class="card-meta" style="margin: 0 0 var(--s2)">${escapeHtml(PUSH_TEXT[pushState])}</p>` : ''}
         ${pushState === 'off' ? '<button type="button" class="btn btn-primary" data-action="push-on">Zapnout upozornění</button>' : ''}
+        ${pushState === 'on' && isDesktop() ? `<div class="switch-row">
+          <span>Zvuk na tomto počítači</span>
+          <button type="button" class="switch" role="switch" aria-checked="${sound}" aria-label="Zvuk na tomto počítači" data-action="push-sound"></button>
+        </div>` : ''}
         ${pushState === 'on' ? `<div class="btn-row">
           <button type="button" class="btn" data-action="push-test">Zkusit</button>
           <button type="button" class="btn" data-action="push-off">Vypnout</button>
@@ -56,7 +61,18 @@ export async function render(el) {
   root.addEventListener('click', async (e) => {
     const action = e.target.closest('[data-action]')?.dataset.action;
     if (action === 'signout') signOut(e.target.closest('button'));
-    if (action === 'push-test') push.test();
+    if (action === 'push-test') {
+      push.test();
+      if (isDesktop() && await store.getMeta('pushSound', true)) playChime();
+    }
+    if (action === 'push-sound') {
+      // Jen tento počítač, nesynchronizuje se
+      const btn = e.target.closest('button');
+      const on = btn.getAttribute('aria-checked') !== 'true';
+      btn.setAttribute('aria-checked', String(on));
+      await store.setLocal('pushSound', on);
+      if (on) playChime();
+    }
     if (action === 'push-on' || action === 'push-off') {
       e.target.closest('button').disabled = true;
       try {

@@ -710,3 +710,38 @@ export function blink(el) {
   el.classList.add('is-blink');
   el.addEventListener('animationend', () => el.classList.remove('is-blink'), { once: true });
 }
+
+// ---------- Zvuk upozornění na počítači ----------
+// macOS u webových push upozornění zvuk nepřehraje, appka si proto zahraje
+// krátký tón sama (dva tóny nahoru, asi 300 ms, Web Audio API, bez souboru).
+// Prohlížeč pustí zvuk až po první interakci se stránkou: unlockAudio() se
+// volá při prvním kliknutí nebo klávese (app.js).
+let audioCtx = null;
+
+export function unlockAudio() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audioCtx = new Ctx();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+
+export function playChime() {
+  const ctx = unlockAudio();
+  if (!ctx) return;
+  const t = ctx.currentTime + 0.01;
+  for (const [freq, at] of [[659.25, 0], [880, 0.13]]) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t + at);
+    gain.gain.linearRampToValueAtTime(0.16, t + at + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.17);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t + at);
+    osc.stop(t + at + 0.2);
+  }
+}

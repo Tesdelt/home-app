@@ -312,6 +312,9 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
 - **Řádek seznamu** `.item` > `.item-main` v `ul.item-list.group`: všude stejná výška a odsazení,
   vlevo pruh v barvě osoby (`.has-stripe` + `whoClass`), `.item-name`, šedý `.item-sub`,
   nadpis skupiny `li.cat-head`. Gesta přes `rowGestures`.
+- **Přepínač zapnuto / vypnuto** `.switch` (`button role="switch"`, `aria-checked`) v řádku
+  `.switch-row` (popisek vlevo, přepínač vpravo): zapnutý `--accent`, plocha 44 px.
+  Pro volby, které platí hned (Zvuk na tomto počítači). Ukázka na `#/ukazka`.
 - **Segmentový přepínač** `.segmented`: vybraný stav je všude stejný (světlý podklad, tučně),
   bez barev osob.
 - **Čip** `.chip` a malé tlačítko volby `.opt`, **nabídka** `openMenu` (u tlačítka) a
@@ -777,6 +780,16 @@ a `silent: false`, takže nové upozornění se stejným tagem znovu zazvoní / 
 Hotovo (0.33.3): odlišnější barvy modulů (Nákup modrá, Peníze zelená…), na Domů místo
 barevného rámečku karty Peníze pruh „Utraceno z plánu“ (i ve Skutečnosti), pruhy limitů
 a cílů přes celou šířku řádku, takže mají všechny stejnou délku.
+
+Hotovo (0.33.4): zvuk upozornění na počítači. macOS u webových push upozornění zvuk
+nepřehraje, proto `sw.js` po `showNotification` (i když selže) pošle všem otevřeným oknům
+appky zprávu `{ type: 'push', tag }` a `app.js` zahraje krátký tón (`playChime` v `ui.js`:
+dva tóny nahoru, asi 300 ms, Web Audio API, bez souboru), jen na počítači a jen když je
+zapnutý přepínač „Zvuk na tomto počítači“ v Nastavení > Upozornění (jen na počítači,
+výchozí zapnuto, meta `pushSound` přes `setLocal`, nesynchronizuje se). Zkusit přehraje
+i tón. Prohlížeč pustí zvuk až po první interakci, `AudioContext` se proto vytvoří /
+odemkne při prvním kliknutí nebo klávese v appce (`unlockAudio`). Zavřené okno appky tón
+nezahraje.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

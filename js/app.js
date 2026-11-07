@@ -1,6 +1,6 @@
 import { addRoute, startRouter } from './router.js';
 import { openDB, requestPersistentStorage } from './db.js';
-import { escapeHtml, ICONS, isDesktop, onDesktopChange, blink } from './ui.js';
+import { escapeHtml, ICONS, isDesktop, onDesktopChange, blink, unlockAudio, playChime } from './ui.js';
 import * as auth from './auth.js';
 import * as store from './store.js';
 import * as login from './views/login.js';
@@ -192,6 +192,22 @@ async function registerServiceWorker() {
     if (hadController) document.getElementById('update-bar').hidden = false;
   });
   document.getElementById('update-reload').addEventListener('click', () => location.reload());
+
+  // Přišlo push upozornění: na počítači zahrát tón (macOS ho u webových
+  // upozornění nepřehraje), když ho uživatel v Nastavení nevypnul
+  navigator.serviceWorker.addEventListener('message', async (e) => {
+    if (e.data?.type !== 'push' || !isDesktop()) return;
+    if (await store.getMeta('pushSound', true)) playChime();
+  });
+  navigator.serviceWorker.startMessages?.();
+  // Zvuk smí hrát až po první interakci se stránkou
+  const unlock = () => {
+    unlockAudio();
+    window.removeEventListener('pointerdown', unlock, true);
+    window.removeEventListener('keydown', unlock, true);
+  };
+  window.addEventListener('pointerdown', unlock, true);
+  window.addEventListener('keydown', unlock, true);
 
   try {
     const reg = await navigator.serviceWorker.register('sw.js');

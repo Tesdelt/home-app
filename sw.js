@@ -1,6 +1,6 @@
 // Service worker: offline cache. Při každém nasazení zvýšit VERSION
 // (a APP_VERSION v js/config.js) a nové soubory doplnit do ASSETS.
-const VERSION = '0.33.3';
+const VERSION = '0.33.4';
 const CACHE = `home-app-v${VERSION}`;
 
 const ASSETS = [
@@ -92,16 +92,26 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data?.json() ?? {}; } catch { /* zpráva bez obsahu */ }
-  event.waitUntil(self.registration.showNotification(data.title || 'Domácnost', {
-    body: data.body || '',
-    icon: 'icons/icon-192.png',
-    tag: data.tag || 'platby',
-    // Tag je vždy vyplněný (renotify bez tagu by spadlo): každé nové upozornění
-    // se stejným tagem znovu zazvoní / zavibruje, nenahradí předchozí potichu
-    renotify: true,
-    silent: false,
-    data: { url: data.url || '' },
-  }));
+  const tag = data.tag || 'platby';
+  event.waitUntil((async () => {
+    try {
+      await self.registration.showNotification(data.title || 'Domácnost', {
+        body: data.body || '',
+        icon: 'icons/icon-192.png',
+        tag,
+        // Tag je vždy vyplněný (renotify bez tagu by spadlo): každé nové upozornění
+        // se stejným tagem znovu zazvoní / zavibruje, nenahradí předchozí potichu
+        renotify: true,
+        silent: false,
+        data: { url: data.url || '' },
+      });
+    } finally {
+      // macOS u webových upozornění zvuk nepřehraje: otevřená okna appky si
+      // tón zahrají sama (app.js, jen na počítači a když je zapnutý)
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      windows.forEach((client) => client.postMessage({ type: 'push', tag }));
+    }
+  })());
 });
 
 // Ťuknutí na upozornění otevře appku na správné obrazovce

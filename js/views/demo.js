@@ -79,6 +79,12 @@ export async function render(el, { extraEl }) {
       <button type="button" class="btn btn-small" data-demo="cook">Režim vaření</button>
     </div>
 
+    <p class="section-label">Přepínač zapnuto / vypnuto</p>
+    <section class="card">
+      <div class="switch-row"><span>Zvuk na tomto počítači</span><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Zapnuto" data-demo="switch"></button></div>
+      <div class="switch-row" style="margin: 0"><span>Vypnuto</span><button type="button" class="switch" role="switch" aria-checked="false" aria-label="Vypnuto" data-demo="switch"></button></div>
+    </section>
+
     <p class="section-label">Přepínač</p>
     <div class="segmented" style="margin-bottom: var(--s3)">
       <button type="button" aria-pressed="true">Tom</button>
@@ -299,6 +305,7 @@ export async function render(el, { extraEl }) {
     const btn = e.target.closest('[data-demo]');
     if (!btn) return;
     if (btn.dataset.demo === 'toast') toast('Uloženo');
+    if (btn.dataset.demo === 'switch') btn.setAttribute('aria-checked', String(btn.getAttribute('aria-checked') !== 'true'));
     if (btn.dataset.demo === 'new' || btn.dataset.demo === 'new-soft') {
       // Nový řádek se zvýrazní (markNew); „od druhého“ jemně a karta blikne
       const list = root.querySelector('.demo-new');
