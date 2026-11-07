@@ -6,13 +6,14 @@
 
 import * as store from '../store.js';
 import { CATEGORIES, categoryName, parseEntry, stepQty, qtyNumber } from '../categories.js';
-import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount, rowGestures, dragSort, emptyState } from '../ui.js';
-import { productChips } from '../catalogui.js';
+import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount, rowGestures, dragSort, emptyState, isDesktop } from '../ui.js';
+import { productChips, catalogPanel } from '../catalogui.js';
 
 export const title = 'Nákup';
 
 export async function render(el, { subEl, extraEl }) {
-  el.innerHTML = `
+  // Na počítači je vpravo trvale otevřený katalog kategorií
+  el.innerHTML = `<div class="shop-layout"><div class="shop-main">
     <div class="add-bar">
       <form class="add-form" autocomplete="off">
         <input class="input" name="entry" type="text" placeholder="Přidat položku…" aria-label="Přidat položku"
@@ -22,7 +23,8 @@ export async function render(el, { subEl, extraEl }) {
       <div class="chips"></div>
     </div>
     <div class="toolbar"></div>
-    <div class="list-root"></div>`;
+    <div class="list-root"></div>
+    </div>${isDesktop() ? '<aside class="shop-catalog"></aside>' : ''}</div>`;
 
   const form = el.querySelector('.add-form');
   const input = form.elements.entry;
@@ -60,6 +62,23 @@ export async function render(el, { subEl, extraEl }) {
   // ---------- Bublinky pod polem a katalog kategorií ----------
   // Společné s recepty (js/catalogui.js), ať se všude chovají stejně.
 
+  // Kolik dané věci je na seznamu a přidání / ubrání (bublinky, katalog i panel)
+  async function countOf(name) {
+    const item = await store.shoppingItem(name);
+    return item ? qtyNumber(item.qty) : 0;
+  }
+  async function stepOf(name, direction) {
+    const item = await store.shoppingItem(name);
+    if (!item) {
+      if (direction > 0) await store.addItem({ name });
+    } else if (direction < 0 && stepQty(item.qty, -1) === item.qty) {
+      // Z jednoho kusu dolů = pryč ze seznamu
+      await store.removeItems([item.id]);
+    } else {
+      await store.updateItem(item.id, { qty: stepQty(item.qty, direction) });
+    }
+  }
+
   const refreshChips = productChips(chipsEl, {
     input,
     // Při psaní našeptává z historie i z katalogu, jinak nabízí často kupované
@@ -69,22 +88,11 @@ export async function render(el, { subEl, extraEl }) {
       input.value = '';
       await add(name, typed.qty);
     },
-    count: async (name) => {
-      const item = await store.shoppingItem(name);
-      return item ? qtyNumber(item.qty) : 0;
-    },
-    step: async (name, direction) => {
-      const item = await store.shoppingItem(name);
-      if (!item) {
-        if (direction > 0) await store.addItem({ name });
-      } else if (direction < 0 && stepQty(item.qty, -1) === item.qty) {
-        // Z jednoho kusu dolů = pryč ze seznamu
-        await store.removeItems([item.id]);
-      } else {
-        await store.updateItem(item.id, { qty: stepQty(item.qty, direction) });
-      }
-    },
+    count: countOf,
+    step: stepOf,
   });
+  const catalogEl = el.querySelector('.shop-catalog');
+  const refreshCatalog = catalogEl ? catalogPanel(catalogEl, { count: countOf, step: stepOf, onChange: () => refreshChips() }) : null;
 
   // ---------- Obchody ----------
 
@@ -306,6 +314,7 @@ export async function render(el, { subEl, extraEl }) {
   const unsubscribe = store.subscribe(() => {
     renderList();
     refreshChips();
+    refreshCatalog?.();
   });
   return () => {
     unsubscribe();

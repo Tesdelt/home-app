@@ -12,6 +12,60 @@ import * as store from './store.js';
 import { categoryName, FOOD } from './categories.js';
 import { escapeHtml, openSheet } from './ui.js';
 
+// Řádky katalogu jedné kategorie (stejné v panelu i v trvalém katalogu na počítači)
+async function catalogRows(category, count) {
+  const products = await store.catalogProducts(category);
+  const counts = await Promise.all(products.map((p) => count(p.name)));
+  return `<ul class="item-list group catalog">${products.map((p, i) => `<li class="catalog-row${counts[i] ? ' is-on' : ''}" data-name="${escapeHtml(p.name)}">
+      <span class="item-text"><span class="item-name">${escapeHtml(p.name)}</span></span>
+      <span class="stepper">
+        <button type="button" data-step="-1" aria-label="Ubrat"${counts[i] ? '' : ' disabled'}>−</button>
+        <span class="stepper-value">${escapeHtml(counts[i] || '0')}</span>
+        <button type="button" data-step="1" aria-label="Přidat">+</button>
+      </span>
+    </li>`).join('')}</ul>`;
+}
+
+// Trvale otevřený katalog (Nákup na počítači): nahoře kategorie, pod nimi
+// produkty vybrané kategorie s - a +. Vrací refresh(), který ho překreslí.
+let panelCategory = null;
+export function catalogPanel(el, { foodOnly = false, count, step, onChange }) {
+  el.innerHTML = '<div class="chips catalog-cats"></div><div class="catalog-body"></div>';
+  const catsEl = el.querySelector('.catalog-cats');
+  const bodyEl = el.querySelector('.catalog-body');
+  let token = 0;
+
+  async function refresh() {
+    const mine = ++token;
+    const shop = await store.currentShop();
+    const cats = shop.order.filter((id) => !foodOnly || FOOD.includes(id));
+    if (!cats.includes(panelCategory)) panelCategory = cats[0];
+    const rows = await catalogRows(panelCategory, count);
+    if (mine !== token) return;
+    catsEl.innerHTML = cats
+      .map((id) => `<button type="button" class="chip cat-chip" data-cat="${id}" aria-pressed="${id === panelCategory}">${escapeHtml(categoryName(id))}</button>`)
+      .join('');
+    bodyEl.innerHTML = rows;
+  }
+
+  el.addEventListener('click', async (e) => {
+    const cat = e.target.closest('[data-cat]');
+    if (cat) {
+      panelCategory = cat.dataset.cat;
+      refresh();
+      return;
+    }
+    const btn = e.target.closest('[data-step]');
+    if (!btn) return;
+    await step(btn.closest('.catalog-row').dataset.name, Number(btn.dataset.step));
+    await refresh();
+    onChange?.();
+  });
+
+  refresh();
+  return refresh;
+}
+
 // chipsEl   prvek .chips, do kterého se řádek kreslí
 // input     pole, podle kterého se našeptává
 // foodOnly  jen kategorie jídla (recepty)
@@ -42,16 +96,7 @@ export function productChips(chipsEl, { input, foodOnly = false, quick, onPick, 
   function openCatalog(category) {
     openSheet(categoryName(category), (body, close) => {
       const draw = async () => {
-        const products = await store.catalogProducts(category);
-        const counts = await Promise.all(products.map((p) => count(p.name)));
-        body.innerHTML = `<ul class="item-list group catalog">${products.map((p, i) => `<li class="catalog-row${counts[i] ? ' is-on' : ''}" data-name="${escapeHtml(p.name)}">
-            <span class="item-text"><span class="item-name">${escapeHtml(p.name)}</span></span>
-            <span class="stepper">
-              <button type="button" data-step="-1" aria-label="Ubrat"${counts[i] ? '' : ' disabled'}>−</button>
-              <span class="stepper-value">${escapeHtml(counts[i] || '0')}</span>
-              <button type="button" data-step="1" aria-label="Přidat">+</button>
-            </span>
-          </li>`).join('')}</ul>
+        body.innerHTML = `${await catalogRows(category, count)}
         <div class="sheet-done"><button type="button" class="btn btn-primary btn-block" data-action="done">Hotovo</button></div>`;
       };
 

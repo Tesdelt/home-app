@@ -1616,3 +1616,31 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .split-list .rgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .view > div > .list-root > .rgrid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 }
+
+/* ---------- Počítač, část 3: Domů, Nákup, Peníze, Nastavení ---------- */
+.shop-catalog { display: none; }
+@media (min-width: 1024px) {
+  /* Domů: dlaždice ve 3-4 sloupcích, vyšší, až tři řádky informací */
+  .home { height: auto; }
+  .home .tiles { height: auto; max-height: none; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); grid-auto-rows: minmax(170px, auto); gap: var(--s4); }
+  a.card.tile { justify-content: flex-start; padding: var(--s4); text-align: left; align-items: flex-start; }
+  .tile .card-title { margin-top: var(--s3); }
+  .tile .card-line { margin-top: var(--s1); }
+  .tile .card-line:first-of-type { margin-top: auto; padding-top: var(--s2); }
+  .tile .card-more { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+  /* Nákup: vlevo pole a seznam, vpravo trvale otevřený katalog */
+  .shop-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--s5); align-items: start; }
+  .shop-catalog { display: block; position: sticky; top: 0; max-height: calc(100dvh - 140px); overflow-y: auto; padding-bottom: var(--s5); }
+  .catalog-cats { flex-wrap: wrap; overflow: visible; margin: 0 0 var(--s3); padding: 0; }
+  .catalog-cats .cat-chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+
+  /* Peníze: vlevo sloupec s platbami, vpravo Skutečnost a graf */
+  .money-desk { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: var(--s5); align-items: start; }
+  .money-right { min-width: 0; }
+  .chart-embedded { margin-top: var(--s3); }
+
+  /* Nastavení: karty ve 2 sloupcích */
+  .settings { column-count: 2; column-gap: var(--s5); }
+  .settings > .card, .settings > .section-label { break-inside: avoid; }
+}

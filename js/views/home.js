@@ -4,8 +4,9 @@
 // Nový modul = další řádek v poli tiles a barva --mod-* v css/style.css.
 
 import * as store from '../store.js';
-import { ICONS, todayLabel, itemsCount, money } from '../ui.js';
-import { today } from '../dates.js';
+import { ICONS, todayLabel, itemsCount, money, isDesktop, escapeHtml } from '../ui.js';
+import { today, dueTimeLabel } from '../dates.js';
+import { sortTasks } from './tasks.js';
 
 export const title = 'Dnes';
 
@@ -23,10 +24,11 @@ export async function render(el, { subEl }) {
   el.append(root);
 
   async function draw() {
-    const [items, tasks, payments, summary, soon, recipes, docs, wishes, buckets, notes] = await Promise.all([
+    const [items, tasks, payments, summary, soon, recipes, docs, wishes, buckets, notes, me] = await Promise.all([
       store.listItems(), store.listTasks(), store.listPayments(), store.paymentsSummary(), store.duePayments(7),
-      store.listRecipes(), store.listDocs(), store.listWishes('wish'), store.listWishes('bucket'), store.listNotes(),
+      store.listRecipes(), store.listDocs(), store.listWishes('wish'), store.listWishes('bucket'), store.listNotes(), store.getMe(),
     ]);
+    const desktop = isDesktop();
     const day = today();
     const count = (list) => list.filter((row) => !row.done).length;
 
@@ -57,10 +59,26 @@ export async function render(el, { subEl }) {
       ['bucketlist', 'star', 'Bucketlist', bucketCount ? plural(bucketCount, 'nápad', 'nápady', 'nápadů') : ''],
       ['info', 'house', 'Byt', notes.length ? plural(notes.length, 'poznámka', 'poznámky', 'poznámek') : ''],
     ];
+    // Počítač: Úkoly, Nákup a Peníze mají až tři řádky informací (výjimka
+    // z „jedné informace“, viz Design systém), ostatní dlaždice jednu
+    const more = {};
+    if (desktop) {
+      const next = sortTasks(tasks, 'due').flatMap((g) => g.tasks).slice(0, 3);
+      more.ukoly = next.map((t) => `${escapeHtml(t.title)}${t.due ? ` · ${escapeHtml(dueTimeLabel(t.due, t.time))}` : ''}`);
+      const buyList = items.filter((i) => !i.done);
+      if (buyList.length) more.nakup = [buyList.slice(0, 4).map((i) => escapeHtml(i.name)).join(', ') + (buyList.length > 4 ? '…' : '')];
+      const money_ = [];
+      if (soon.length) money_.push(soon.slice(0, 2).map((p) => escapeHtml(p.name)).join(', '));
+      const rows = me ? await store.listMoneyMonths(me) : [];
+      const { map, anchored } = store.moneyBalances(rows);
+      if (anchored) money_.push(`zůstatek ${money([...map.values()].at(-1))}`);
+      more.penize = money_;
+    }
     root.innerHTML = `<div class="tiles">${tiles.map(([route, icon, name, info]) => `<a class="card tile mod-${route}" href="#/${route}">
         <span class="card-icon">${ICONS[icon]}</span>
         <h2 class="card-title">${name}</h2>
         <p class="card-line">${info || 'Prázdné'}</p>
+        ${(more[route] ?? []).slice(0, 2).map((line) => `<p class="card-line card-more">${line}</p>`).join('')}
       </a>`).join('')}</div>`;
   }
 

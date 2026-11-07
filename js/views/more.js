@@ -11,6 +11,7 @@ export const title = 'Nastavení';
 
 export async function render(el) {
   const root = document.createElement('div');
+  root.className = 'settings';
   el.append(root);
 
   async function draw() {

@@ -165,6 +165,16 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   označily jako přečtené). Nová položka (+) se otevře vpravo jako koncept, smazání otevřené
   položky detail zavře. Režimy na místě (přesun úkolu, recept do receptu) fungují i tak.
   Recepty bez otevřeného receptu mají mřížku přes celou šířku, s otevřeným 2 sloupce vlevo.
+- Domů na počítači: dlaždice ve 3-4 sloupcích, vyšší; Úkoly, Nákup a Peníze mají až tři
+  řádky informací (`.card-more`: nejbližší úkoly, první položky, k zaplacení a poslední
+  zůstatek přihlášeného), ostatní jednu jako na mobilu.
+- Nákup na počítači: vlevo pole a seznam, vpravo trvale otevřený katalog kategorií
+  (`catalogPanel` v `catalogui.js`, stejné řádky jako katalog v panelu), přidání kliknutím.
+- Peníze na počítači: vlevo (400 px) segmenty, souhrn, Cíle a platby; vpravo Skutečnost a
+  pod ní graf (`renderCharts(..., { embedded: true, onMonth })` z `moneycharts.js`, stejné
+  volby a meta `moneyChart`). Ťuknutí na měsíc v grafu přepne Skutečnost (`onSelect`
+  v `drawChart`). `#/penize/grafy/<segment>` na počítači přesměruje na `#/penize`.
+- Nastavení na počítači: karty ve 2 sloupcích.
 - Klávesnice: Esc zavře nabídku, dialog i otevřený detail (předtím opustí pole, ať se
   změna uloží), fokus je vidět (outline `--text-2`).
 
@@ -255,6 +265,8 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   se na počítači vykreslí uprostřed (max. 520 px, `--radius`, ztmavené pozadí). `openMenu`
   zůstává nabídka u tlačítka (u pravého tlačítka myši u kurzoru).
 - **Tři tečky** `.row-more` v řádku při najetí myší (jen s myší, na mobilu nikdy).
+- **Dlaždice na Domů** smí mít na počítači až tři řádky informací (`.card-more`, šedě,
+  jednořádkově zkrácené). Výjimka z pravidla „jedna informace“, platí jen pro počítač.
 - **Seznam a detail** `.split` > `.split-list` (380 px) + `.split-detail`, každá část se
   posouvá zvlášť. Stránka položky v detailu je beze změny, jen bez šipky zpět a s horní lištou
   modulu. Vybraný řádek `.item.is-selected` (podklad `--surface-2`), recept `.rcard.is-selected`.
@@ -593,6 +605,9 @@ Hotovo (0.26.0), počítač, část 1 - kostra:
   řádcích, řazení myší, Esc zavře detail, viditelný fokus. Manifest `orientation: any`.
 
 Hotovo (0.27.0), počítač, část 2: seznam a detail vedle sebe (`js/split.js`).
+
+Hotovo (0.28.0), počítač, část 3: Domů ve 3-4 sloupcích s více řádky, Nákup s trvalým
+katalogem, Peníze se Skutečností a grafem vedle plateb, Nastavení ve 2 sloupcích.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

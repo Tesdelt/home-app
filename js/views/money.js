@@ -4,7 +4,7 @@
 // dole Zaplacené. Ťuknutí = zaplaceno (se Zpět), podržení = úprava, potažení = smazat.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold, dragSort, budgetColor } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, openSheet, openMenu, rowGestures, holdKeyboard, money, whoClass, wireSegmented, emptyState, toggleFold, dragSort, budgetColor, isDesktop } from '../ui.js';
 import { today, dueLabel, shiftMonth } from '../dates.js';
 import { renderCharts } from './moneycharts.js';
 
@@ -79,16 +79,60 @@ let pickedMonth = null;
 
 export async function render(el, { params, extraEl, subEl }) {
   // #/penize/grafy/<segment> jsou grafy Skutečnosti
-  if (params?.[0] === 'grafy') return renderCharts(el, params[1] || store.SPLIT, { subEl });
+  // Na počítači je graf rovnou vedle Skutečnosti, podstránka grafů tam nemá smysl
+  if (params?.[0] === 'grafy') {
+    if (isDesktop()) {
+      location.replace('#/penize');
+      return undefined;
+    }
+    return renderCharts(el, params[1] || store.SPLIT, { subEl });
+  }
 
+  const desktop = isDesktop();
   const root = document.createElement('div');
   el.append(root);
-  root.innerHTML = `
+  // Počítač: vlevo segmenty, souhrn, cíle a platby, vpravo Skutečnost a pod ní graf
+  root.innerHTML = desktop ? `
+    <div class="money-desk">
+      <div class="money-left">
+        <div class="toolbar"><div class="segmented" role="tablist"></div></div>
+        <div class="summary-root"></div>
+        <div class="goals-root"></div>
+        <div class="list-root"></div>
+      </div>
+      <div class="money-right">
+        <div class="actual-root"></div>
+        <div class="chart-root"></div>
+      </div>
+    </div>` : `
     <div class="toolbar"><div class="segmented" role="tablist"></div></div>
     <div class="summary-root"></div>
     <div class="goals-root"></div>
     <div class="actual-root"></div>
     <div class="list-root"></div>`;
+  const chartRoot = root.querySelector('.chart-root');
+  let chartSegment = null;
+  let endEmbedded = null;
+
+  // Graf v pravém sloupci (jen počítač). Ťuknutí na měsíc přepne Skutečnost.
+  async function mountChart() {
+    const want = desktop && months.length >= 2 ? segment : null;
+    if (want === chartSegment) return;
+    chartSegment = want;
+    if (typeof endEmbedded === 'function') endEmbedded();
+    endEmbedded = null;
+    chartRoot?.replaceChildren();
+    if (!want) return;
+    endEmbedded = await renderCharts(chartRoot, want, {
+      embedded: true,
+      onMonth: (month) => {
+        if (!months.some((m) => m.month === month)) return;
+        pickedMonth = month;
+        openCat = null;
+        draw();
+      },
+    });
+  }
 
   const segEl = root.querySelector('.segmented');
   const summaryRoot = root.querySelector('.summary-root');
@@ -196,6 +240,7 @@ export async function render(el, { params, extraEl, subEl }) {
     budgets = new Map(budgetRows.map((b) => [b.category, b.monthlyLimit]));
     drawGoals(goals);
     drawActual(summary);
+    mountChart();
     const inSeg = (p) => store.inPaymentSegment(p, segment, members);
 
     // Přepínač segmentů s počtem plateb k zaplacení
@@ -283,7 +328,7 @@ export async function render(el, { params, extraEl, subEl }) {
       <div class="toolbar actual-bar">
         <p class="section-label">Skutečnost</p>
         <button type="button" class="opt" data-action="month"><span class="opt-text">${escapeHtml(monthName(row.month))}</span></button>
-        ${months.length >= 2 ? `<a class="opt opt-icon" href="#/penize/grafy/${encodeURIComponent(segment)}" aria-label="Grafy">${ICONS.chart}</a>` : ''}
+        ${months.length >= 2 && !desktop ? `<a class="opt opt-icon" href="#/penize/grafy/${encodeURIComponent(segment)}" aria-label="Grafy">${ICONS.chart}</a>` : ''}
       </div>
       <section class="card summary flow-card">
         <div class="sum-row">
@@ -677,5 +722,6 @@ export async function render(el, { params, extraEl, subEl }) {
   return () => {
     unsubscribe();
     endGesture();
+    if (typeof endEmbedded === 'function') endEmbedded();
   };
 }

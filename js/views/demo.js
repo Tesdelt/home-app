@@ -92,9 +92,9 @@ export async function render(el, { extraEl }) {
     <p class="section-label">Pole</p>
     <label class="field"><span>Název</span><input class="input" placeholder="Nájem"></label>
 
-    <p class="section-label">Dlaždice modulů</p>
+    <p class="section-label">Dlaždice modulů (Úkoly s dalšími řádky jako na počítači)</p>
     <div class="tiles" style="margin-bottom: var(--s3)">
-      <a class="card tile mod-ukoly" href="#/ukazka"><span class="card-icon">${ICONS.tasks}</span><h2 class="card-title">Úkoly</h2><p class="card-line"><span class="is-late">1 po termínu</span></p></a>
+      <a class="card tile mod-ukoly" href="#/ukazka"><span class="card-icon">${ICONS.tasks}</span><h2 class="card-title">Úkoly</h2><p class="card-line"><span class="is-late">1 po termínu</span></p><p class="card-line card-more">Zalít kytky · před 2 dny</p><p class="card-line card-more">Vynést odpad · dnes 18:00</p></a>
       <a class="card tile mod-nakup" href="#/ukazka"><span class="card-icon">${ICONS.cart}</span><h2 class="card-title">Nákup</h2><p class="card-line">6 položek</p></a>
       <a class="card tile mod-penize" href="#/ukazka"><span class="card-icon">${ICONS.wallet}</span><h2 class="card-title">Peníze</h2><p class="card-line">1 k zaplacení</p></a>
       <a class="card tile mod-recepty" href="#/ukazka"><span class="card-icon">${ICONS.recipe}</span><h2 class="card-title">Recepty</h2><p class="card-line">12 receptů</p></a>

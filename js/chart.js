@@ -12,6 +12,7 @@
 //   format: (číslo) => text do štítku,
 //   height: výška v px (výchozí 220, menší se nepoužije),
 //   lines: [{ value, color, label }] čárkované vodorovné čáry (průměr, plán)
+//   onSelect: (index měsíce) => po ťuknutí / puštění prstu na měsíci,
 //          s malým popiskem u pravého okraje,
 // })
 // Vrací funkci na úklid (odebere posluchače na dokumentu).
@@ -55,7 +56,7 @@ function node(name, attrs = {}) {
   return el;
 }
 
-export function drawChart(el, { months, series, type = 'bars', format = String, height = MIN_HEIGHT, lines = [] }) {
+export function drawChart(el, { months, series, type = 'bars', format = String, height = MIN_HEIGHT, lines = [], onSelect = null }) {
   const HEIGHT = Math.max(MIN_HEIGHT, Math.round(height));
   el.classList.add('chart');
   el.replaceChildren();
@@ -151,6 +152,7 @@ export function drawChart(el, { months, series, type = 'bars', format = String, 
     const scale = width / box.width;
     const x = (clientX - box.left) * scale;
     const i = Math.max(0, Math.min(n - 1, Math.floor((x - PAD.left) / band)));
+    picked = i;
     cursor.setAttribute('x1', cx(i));
     cursor.setAttribute('x2', cx(i));
     cursor.setAttribute('visibility', 'visible');
@@ -166,6 +168,7 @@ export function drawChart(el, { months, series, type = 'bars', format = String, 
   }
 
   let dragging = false;
+  let picked = null;
   hit.addEventListener('pointerdown', (e) => {
     dragging = true;
     show(e.clientX);
@@ -174,7 +177,10 @@ export function drawChart(el, { months, series, type = 'bars', format = String, 
     if (dragging || e.pointerType === 'mouse') show(e.clientX);
   });
   const stop = () => { dragging = false; };
-  hit.addEventListener('pointerup', stop);
+  hit.addEventListener('pointerup', () => {
+    stop();
+    if (onSelect && picked != null) onSelect(picked);
+  });
   hit.addEventListener('pointercancel', stop);
   const outside = (e) => { if (!el.contains(e.target)) hide(); };
   document.addEventListener('pointerdown', outside);

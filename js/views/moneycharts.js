@@ -60,15 +60,20 @@ function valueOf(row, s) {
   return Number(value?.items?.[s.i]) || 0;
 }
 
-export async function renderCharts(el, segment, { subEl }) {
-  // Hlavička jako u ostatních podstránek: šipka zpět na Peníze, název Grafy,
-  // segment jako šedý podtitul
-  document.getElementById('screen-title').textContent = 'Grafy';
-  document.getElementById('topbar-back').href = '#/penize';
-  document.title = 'Grafy · Domácnost';
-  subEl.textContent = segment === store.SPLIT ? SHARED : segment;
-  subEl.hidden = false;
+// embedded: graf vložený do Peněz na počítači (bez vlastní hlavičky, pevná výška),
+// onMonth(month) se zavolá po ťuknutí na měsíc v grafu
+export async function renderCharts(el, segment, { subEl, embedded = false, onMonth = null } = {}) {
+  if (!embedded) {
+    // Hlavička jako u ostatních podstránek: šipka zpět na Peníze, název Grafy,
+    // segment jako šedý podtitul
+    document.getElementById('screen-title').textContent = 'Grafy';
+    document.getElementById('topbar-back').href = '#/penize';
+    document.title = 'Grafy · Domácnost';
+    subEl.textContent = segment === store.SPLIT ? SHARED : segment;
+    subEl.hidden = false;
+  }
   const root = document.createElement('div');
+  if (embedded) root.className = 'chart-embedded';
   el.append(root);
 
   root.innerHTML = `
@@ -247,8 +252,11 @@ export async function renderCharts(el, segment, { subEl }) {
 
     // Graf zabere výšku, která zbude mezi volbami a souhrnem nad spodní lištou
     const view = document.getElementById('view');
-    const free = view.getBoundingClientRect().bottom - chartEl.getBoundingClientRect().top - legendEl.offsetHeight - 40;
-    endChart = drawChart(chartEl, { months, series: data, type: balanceOnly ? 'line' : prefs.type, format: money, height: free, lines });
+    const free = embedded ? 300 : view.getBoundingClientRect().bottom - chartEl.getBoundingClientRect().top - legendEl.offsetHeight - 40;
+    endChart = drawChart(chartEl, {
+      months, series: data, type: balanceOnly ? 'line' : prefs.type, format: money, height: free, lines,
+      onSelect: onMonth ? (i) => onMonth(months[i]) : null,
+    });
   }
 
   async function load() {
