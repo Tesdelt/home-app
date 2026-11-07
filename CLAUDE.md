@@ -771,6 +771,9 @@ Hotovo (0.33.0):
 Hotovo (0.33.1): Domů na počítači, rychlé přidání úkolu a položky nákupu přímo v kartě
 a tón karty Peníze podle poměru Utraceno / Plán (v 0.33.3 nahrazen pruhem `planMeter`).
 
+Hotovo (0.33.2): upozornění v `sw.js` mají `renotify: true` (tag je vždy vyplněný)
+a `silent: false`, takže nové upozornění se stejným tagem znovu zazvoní / zavibruje.
+
 Hotovo (0.33.3): odlišnější barvy modulů (Nákup modrá, Peníze zelená…), na Domů místo
 barevného rámečku karty Peníze pruh „Utraceno z plánu“ (i ve Skutečnosti), pruhy limitů
 a cílů přes celou šířku řádku, takže mají všechny stejnou délku.
