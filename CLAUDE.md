@@ -165,9 +165,11 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   označily jako přečtené). Nová položka (+) se otevře vpravo jako koncept, smazání otevřené
   položky detail zavře. Režimy na místě (přesun úkolu, recept do receptu) fungují i tak.
   Recepty bez otevřeného receptu mají mřížku přes celou šířku, s otevřeným 2 sloupce vlevo.
-- Domů na počítači: dlaždice ve 3-4 sloupcích, vyšší; Úkoly, Nákup a Peníze mají až tři
-  řádky informací (`.card-more`: nejbližší úkoly, první položky, k zaplacení a poslední
-  zůstatek přihlášeného), ostatní jednu jako na mobilu.
+- Domů na počítači (`js/views/homedesk.js`): přehled ve dvou sloupcích místo dlaždic
+  (moduly jsou v levém panelu). Vlevo úkoly na dnes a po termínu (kolečko splní, řádek
+  otevře) a nákup s odškrtnutím. Vpravo Peníze segmentu (meta `moneySegment`, jinak
+  přihlášený): karta posledního měsíce, kategorie přes limit, platby k zaplacení do 7 dní,
+  cíle a malý graf zůstatku za 12 měsíců bez voleb. Mobil má dál dlaždice.
 - Nákup na počítači: vlevo pole a seznam, vpravo trvale otevřený katalog kategorií
   (`catalogPanel` v `catalogui.js`, stejné řádky jako katalog v panelu), přidání kliknutím.
 - Podsekce levého panelu nastavují stav modulu: segment Peněz (meta `moneySegment`), filtr
@@ -175,8 +177,10 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   Úkolů), záložku Receptů (`#/recepty/recepty`, `#/recepty/skills`, `#/recepty/zasoby`)
   a část Administrativy (`#/administrativa/spolecne`, `/osobni`). „Grafy“ u Peněz vede na
   `#/penize/grafy`, které na počítači vykreslí Peníze a odroluje na graf.
-- Peníze na počítači: vlevo (400 px) segmenty, souhrn, Cíle a platby; vpravo Skutečnost a
-  pod ní graf (`renderCharts(..., { embedded: true, onMonth })` z `moneycharts.js`, stejné
+- Peníze na počítači: sloupce se posouvají každý zvlášť, stránka jako celek ne. Vlevo
+  souhrn, Cíle a platby (přepínač segmentů je schovaný, segment se volí v levém panelu a je
+  v hlavičce jako podtitul); uprostřed Skutečnost; od 1280 px vpravo graf, pod 1280 px graf
+  mezi kartou Skutečnosti a kategoriemi (graf se jen přesune). Graf (`renderCharts(..., { embedded: true, onMonth })` z `moneycharts.js`, stejné
   volby a meta `moneyChart`). Ťuknutí na měsíc v grafu přepne Skutečnost (`onSelect`
   v `drawChart`). `#/penize/grafy/<segment>` na počítači vykreslí Peníze a odroluje na graf.
 - Nastavení na počítači: karty ve 2 sloupcích.
@@ -268,7 +272,8 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   záložka, tečka nepřečtených u Úkolů, počet k zaplacení u Peněz (`.side-badge`).
   Moduly s podsekcemi (`.side-group.has-subs`) se rozbalí šipkou `.side-toggle` (klik na
   název otevře modul), plynule jako `toggleFold`, víc modulů může být rozbalených.
-  Podsekce `.side-subitem` bez ikon, s menším odsazením, aktivní zvýrazněná:
+  Podsekce `.side-subitem` bez ikon, s menším odsazením, aktivní zvýrazněná stejně jako
+  aktivní modul; modul s aktivní podsekcí se při načtení sám rozbalí:
   Peníze (členové, Společné, Grafy), Recepty (Recepty, Co uvařit, Skills), Úkoly (Všechny,
   Pro mě, Pro druhého, Pro oba), Administrativa (Společné, Osobní).
   Pořadí modulů jde změnit přetažením (`dragSort`), Nastavení zůstává dole. Tlačítko
@@ -278,8 +283,8 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   se na počítači vykreslí uprostřed (max. 520 px, `--radius`, ztmavené pozadí). `openMenu`
   zůstává nabídka u tlačítka (u pravého tlačítka myši u kurzoru).
 - **Tři tečky** `.row-more` v řádku při najetí myší (jen s myší, na mobilu nikdy).
-- **Dlaždice na Domů** smí mít na počítači až tři řádky informací (`.card-more`, šedě,
-  jednořádkově zkrácené). Výjimka z pravidla „jedna informace“, platí jen pro počítač.
+- Na počítači jsou schované přepínače, které dublují levý panel: Recepty / Skills a Co uvařit
+  v Receptech (`.recipe-toolbar`), segmenty v Penězích (`.money-segments`).
 - **Seznam a detail** `.split` > `.split-list` (380 px) + `.split-detail`, každá část se
   posouvá zvlášť. Stránka položky v detailu je beze změny, jen bez šipky zpět a s horní lištou
   modulu. Vybraný řádek `.item.is-selected` (podklad `--surface-2`), recept `.rcard.is-selected`.
@@ -627,6 +632,10 @@ Hotovo (0.28.1):
   modulů přetažením, zúžení na ikony; vše se pamatuje na každém počítači (meta `sidebar`).
 - Oprava: Recepty si nenačítaly `emptyState`, prázdná záložka Skills (a prázdný seznam
   receptů) spadla s chybou. Chyba tu byla od 0.16.0.
+
+Hotovo (0.28.2):
+- Počítač: Peníze ve sloupcích, které se posouvají zvlášť (od 1280 px tři), schované
+  dublující přepínače, aktivní podsekce panelu zvýrazněná a rozbalená, Domů jako přehled.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

@@ -108,13 +108,26 @@ export async function markSidenav(name, params = [], tab = null) {
     else el.removeAttribute('aria-current');
   });
   let sub = null;
-  if (name === 'penize') sub = params[0] === 'grafy' ? 'grafy' : `seg:${await store.getMeta('moneySegment', '')}`;
+  if (name === 'penize') {
+    // Segment jako v Penězích: uložený, jinak přihlášený člen
+    const [seg, me, members] = await Promise.all([store.getMeta('moneySegment', null), store.getMe(), store.listMembers()]);
+    const valid = [...members, store.SPLIT].includes(seg) ? seg : (members.includes(me) ? me : store.SPLIT);
+    sub = params[0] === 'grafy' ? 'grafy' : `seg:${valid}`;
+  }
   if (name === 'ukoly') sub = await store.getMeta('taskFilter', 'all');
   if (name === 'recepty') sub = params[0] === 'zasoby' ? 'zasoby' : listTabNow();
   if (name === 'administrativa') sub = scopeNow();
   panel.querySelectorAll('.side-subitem').forEach((el) => {
-    const group = el.closest('.side-group').dataset.route;
-    el.classList.toggle('is-active', group === name && el.dataset.sub === sub);
+    const group = el.closest('.side-group');
+    const active = group.dataset.route === name && el.dataset.sub === sub;
+    el.classList.toggle('is-active', active);
+    if (active) el.setAttribute('aria-current', 'page');
+    else el.removeAttribute('aria-current');
+    // Modul s aktivní podsekcí se sám rozbalí
+    if (active && !group.classList.contains('is-open')) {
+      group.classList.add('is-open');
+      group.querySelector('.side-toggle')?.setAttribute('aria-expanded', 'true');
+    }
   });
 }
 

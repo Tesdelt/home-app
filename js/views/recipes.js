@@ -54,7 +54,7 @@ async function renderList(el, extraEl) {
   const root = document.createElement('div');
   el.append(root);
   root.innerHTML = `
-    <div class="toolbar">
+    <div class="toolbar recipe-toolbar">
       <div class="segmented" role="tablist">
         <button type="button" role="tab" data-tab="recipes">Recepty</button>
         <button type="button" role="tab" data-tab="skills">Skills</button>

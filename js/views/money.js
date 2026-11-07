@@ -88,26 +88,42 @@ export async function render(el, { params, extraEl, subEl }) {
   const desktop = isDesktop();
   const root = document.createElement('div');
   el.append(root);
-  // Počítač: vlevo segmenty, souhrn, cíle a platby, vpravo Skutečnost a pod ní graf
+  // Počítač: sloupce se posouvají každý zvlášť. Vlevo segmenty (na počítači
+  // schované, volí se v panelu), souhrn, cíle a platby; uprostřed Skutečnost;
+  // od 1280 px vpravo graf, pod 1280 px graf mezi kartou Skutečnosti a kategoriemi.
   root.innerHTML = desktop ? `
     <div class="money-desk">
-      <div class="money-left">
-        <div class="toolbar"><div class="segmented" role="tablist"></div></div>
+      <div class="money-col money-left">
+        <div class="toolbar money-segments"><div class="segmented" role="tablist"></div></div>
         <div class="summary-root"></div>
         <div class="goals-root"></div>
         <div class="list-root"></div>
       </div>
-      <div class="money-right">
-        <div class="actual-root"></div>
-        <div class="chart-root"></div>
+      <div class="money-col money-mid">
+        <div class="actual-root"><div class="actual-head"></div><div class="chart-slot"></div><div class="actual-cats"></div></div>
       </div>
+      <div class="money-col money-right"></div>
     </div>` : `
     <div class="toolbar"><div class="segmented" role="tablist"></div></div>
     <div class="summary-root"></div>
     <div class="goals-root"></div>
-    <div class="actual-root"></div>
+    <div class="actual-root"><div class="actual-head"></div><div class="actual-cats"></div></div>
     <div class="list-root"></div>`;
-  const chartRoot = root.querySelector('.chart-root');
+  const chartRoot = desktop ? document.createElement('div') : null;
+  let endWide = null;
+  if (desktop) {
+    chartRoot.className = 'chart-root';
+    const desk = root.querySelector('.money-desk');
+    const wideQuery = window.matchMedia('(min-width: 1280px)');
+    // Graf se jen přesune, nepřekresluje se (šířku si přizpůsobí sám při resize)
+    const place = () => {
+      desk.classList.toggle('is-wide', wideQuery.matches);
+      (wideQuery.matches ? root.querySelector('.money-right') : root.querySelector('.chart-slot')).append(chartRoot);
+    };
+    place();
+    wideQuery.addEventListener('change', place);
+    endWide = () => wideQuery.removeEventListener('change', place);
+  }
   let chartSegment = null;
   let endEmbedded = null;
 
@@ -136,6 +152,8 @@ export async function render(el, { params, extraEl, subEl }) {
   const summaryRoot = root.querySelector('.summary-root');
   const listRoot = root.querySelector('.list-root');
   const actualRoot = root.querySelector('.actual-root');
+  const actualHead = root.querySelector('.actual-head');
+  const actualCats = root.querySelector('.actual-cats');
   const goalsRoot = root.querySelector('.goals-root');
   let budgets = new Map(); // kategorie výdajů -> měsíční limit (vybraný segment)
   let months = [];
@@ -241,6 +259,12 @@ export async function render(el, { params, extraEl, subEl }) {
     mountChart();
     const inSeg = (p) => store.inPaymentSegment(p, segment, members);
 
+    // Na počítači se segment volí v levém panelu, v hlavičce je jako podtitul
+    if (desktop) {
+      subEl.textContent = segment === store.SPLIT ? SHARED : segment;
+      subEl.hidden = false;
+    }
+
     // Přepínač segmentů s počtem plateb k zaplacení
     segEl.innerHTML = segments().map((value) => {
       const count = due.filter((p) => store.inPaymentSegment(p, value, members)).length;
@@ -289,7 +313,8 @@ export async function render(el, { params, extraEl, subEl }) {
   // a kategorie od největší. Segment bez měsíců sekci nemá.
   function drawActual(summary) {
     if (!months.length) {
-      actualRoot.innerHTML = '';
+      actualHead.innerHTML = '';
+      actualCats.innerHTML = '';
       return;
     }
     const row = months.find((m) => m.month === pickedMonth) ?? months[0];
@@ -322,7 +347,7 @@ export async function render(el, { params, extraEl, subEl }) {
       .filter(([, , cats]) => cats.length)
       .map(([id, label, cats]) => `<li class="cat-head"><span class="flow-dot flow-${id}"></span>${label}</li>${cats.map(fold(id)).join('')}`)
       .join('');
-    actualRoot.innerHTML = `
+    actualHead.innerHTML = `
       <div class="toolbar actual-bar">
         <p class="section-label">Skutečnost</p>
         <button type="button" class="opt" data-action="month"><span class="opt-text">${escapeHtml(monthName(row.month))}</span></button>
@@ -335,8 +360,8 @@ export async function render(el, { params, extraEl, subEl }) {
           <div class="sum-cell"><span class="sum-label">Odloženo</span><span class="sum-value flow-move">${money(saved)}</span></div>
         </div>
         <span class="sum-note">Plán ${money(summary.total + limitSum)}</span>
-      </section>
-      ${lists ? `<ul class="item-list group money-cats">${lists}</ul>` : ''}`;
+      </section>`;
+    actualCats.innerHTML = lists ? `<ul class="item-list group money-cats">${lists}</ul>` : '';
   }
 
   // ---------- Cíle spoření ----------
@@ -721,5 +746,6 @@ export async function render(el, { params, extraEl, subEl }) {
     unsubscribe();
     endGesture();
     if (typeof endEmbedded === 'function') endEmbedded();
+    endWide?.();
   };
 }
