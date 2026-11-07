@@ -4,6 +4,7 @@
 // doleva smaže. Existující se ukládá sama.
 
 import * as store from '../store.js';
+import { splitView } from '../split.js';
 import { escapeHtml, ICONS, undoToast, rowGestures, holdKeyboard, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 
@@ -12,7 +13,7 @@ export const tab = 'domu';
 
 const NEW = 'novy';
 
-export async function render(el, { params, extraEl }) {
+async function renderPage(el, { params, extraEl }) {
   if (params?.[0]) return renderNote(el, params[0]);
 
   const listRoot = document.createElement('div');
@@ -139,4 +140,10 @@ async function renderNote(el, id) {
     return undefined;
   }
   return store.subscribe(draw);
+}
+
+// Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
+export const split = true;
+export function render(el, ctx) {
+  return splitView(el, ctx, renderPage, { key: 'info', empty: ['house', 'Vyberte poznámku', 'Otevře se tady celá, třeba heslo na Wi-Fi.'] });
 }

@@ -5,6 +5,7 @@
 // stránka položky, potažení doleva = smazat, + = nová položka na vlastní stránce.
 
 import * as store from '../store.js';
+import { splitView } from '../split.js';
 import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 
@@ -25,8 +26,8 @@ function horizonLabel(untilYear) {
 
 const whoName = (value) => (!value ? 'Kdokoliv' : value === store.BOTH ? 'Oba' : value);
 
-function makeView({ list, title, route, icon, empty }) {
-  async function render(el, { params, extraEl }) {
+function makeView({ list, title, route, icon, empty, detailEmpty }) {
+  async function renderPage(el, { params, extraEl }) {
     if (params?.[0]) return renderItem(el, params[0]);
 
     const listRoot = document.createElement('div');
@@ -293,14 +294,18 @@ function makeView({ list, title, route, icon, empty }) {
     return store.subscribe(draw);
   }
 
-  return { title, tab: 'domu', render };
+  // Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
+  const render = (el, ctx) => splitView(el, ctx, renderPage, { key: route, empty: detailEmpty });
+  return { title, tab: 'domu', render, split: true };
 }
 
 export const wishlist = makeView({
   list: 'wish', title: 'Wishlist', route: 'wishlist', icon: 'gift',
   empty: ['Zatím žádná přání', 'Patří sem věci, které by udělaly radost, třeba nová sluchátka nebo víkend ve Vídni.'],
+  detailEmpty: ['gift', 'Vyberte přání', 'Otevře se tady s podrobnostmi, třeba nová sluchátka.'],
 });
 export const bucketlist = makeView({
   list: 'bucket', title: 'Bucketlist', route: 'bucketlist', icon: 'star',
   empty: ['Zatím žádné nápady', 'Patří sem, co chcete jednou zažít, třeba přejít Alpy nebo vidět polární záři.'],
+  detailEmpty: ['star', 'Vyberte nápad', 'Otevře se tady s podrobnostmi, třeba přejít Alpy.'],
 });

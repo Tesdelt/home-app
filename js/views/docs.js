@@ -6,6 +6,7 @@
 // tlačítkem Přidat), ťuknutí otevře, potažení doleva smaže. Existující se ukládá sám.
 
 import * as store from '../store.js';
+import { splitView } from '../split.js';
 import { escapeHtml, ICONS, toast, undoToast, rowGestures, openMenu, holdKeyboard, scalePhoto, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 import { today, daysBetween } from '../dates.js';
@@ -34,7 +35,7 @@ function validHtml(day) {
   return left < 30 ? `<span class="is-late">${escapeHtml(text)}</span>` : escapeHtml(text);
 }
 
-export async function render(el, { params, extraEl }) {
+async function renderPage(el, { params, extraEl }) {
   if (params?.[0]) return renderDoc(el, params[0]);
 
   const root = document.createElement('div');
@@ -301,4 +302,10 @@ async function renderDoc(el, id) {
     unsubscribe();
     document.querySelector('.doc-full')?.remove();
   };
+}
+
+// Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
+export const split = true;
+export function render(el, ctx) {
+  return splitView(el, ctx, renderPage, { key: 'administrativa', empty: ['folder', 'Vyberte dokument', 'Otevře se tady i s naskenovanými stránkami, třeba záruka na pračku.'] });
 }

@@ -11,6 +11,7 @@
 // se lehce třese) a ťuknutí na cílový úkol ho tam rovnou přesune.
 
 import * as store from '../store.js';
+import { splitView } from '../split.js';
 import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 import { renderTask, NEW } from './task.js';
@@ -81,7 +82,7 @@ export function sortTasks(tasks, sort = 'due', members = [], day = today()) {
   ].filter((group) => group.tasks.length);
 }
 
-export async function render(el, { params, subEl, extraEl }) {
+async function renderPage(el, { params, subEl, extraEl }) {
   // #/ukoly/<id> je stránka jednoho úkolu
   if (params?.[0]) return renderTask(el, params[0], { subEl, extraEl });
 
@@ -312,4 +313,10 @@ export async function render(el, { params, subEl, extraEl }) {
     document.removeEventListener('keydown', onKey);
     renderToken += 1;
   };
+}
+
+// Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
+export const split = true;
+export function render(el, ctx) {
+  return splitView(el, ctx, renderPage, { key: 'ukoly', empty: ['tasks', 'Vyberte úkol', 'Otevře se tady i s kroky a komentáři, třeba Vynést tříděný odpad.'] });
 }

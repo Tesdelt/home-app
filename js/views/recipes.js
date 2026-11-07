@@ -7,6 +7,7 @@
 //   #/recepty/<id>/zasoby      recept otevřený ze zásob (předvybrané jen to, co chybí)
 
 import * as store from '../store.js';
+import { splitView } from '../split.js';
 import { parseEntry, normalize } from '../categories.js';
 import { findProduct } from '../catalog.js';
 import { productChips } from '../catalogui.js';
@@ -25,7 +26,7 @@ function plural(n, one, few, many) {
   return `${n} ${many}`;
 }
 
-export async function render(el, { params, extraEl }) {
+async function renderPage(el, { params, extraEl }) {
   const [first, second] = params ?? [];
   if (first === PANTRY) return renderPantry(el);
   if (first === NEW) return renderEdit(el, null);
@@ -934,4 +935,10 @@ async function renderPantry(el) {
   await draw();
   refreshChips();
   return store.subscribe(draw);
+}
+
+// Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
+export const split = true;
+export function render(el, ctx) {
+  return splitView(el, ctx, renderPage, { key: 'recepty', empty: ['recipe', 'Vyberte recept', 'Otevře se tady s postupem, třeba lasagne.'], fullWhenEmpty: true });
 }

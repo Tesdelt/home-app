@@ -1596,3 +1596,23 @@ a.opt { display: inline-flex; align-items: center; justify-content: center; text
 
 /* Klávesnice: fokus je vidět */
 a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-visible { outline: 2px solid var(--text-2); outline-offset: 2px; }
+
+/* ---------- Počítač: seznam a detail vedle sebe (js/split.js) ---------- */
+@media (min-width: 1024px) {
+  /* Stránka položky na počítači nechává horní lištu modulu (název a +) */
+  .no-topbar .topbar { display: block; }
+  .no-topbar .view { grid-row: 2; }
+  .view:has(> .split) { overflow: hidden; padding-bottom: 0; }
+  .split { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: var(--s5); height: 100%; }
+  .split-list, .split-detail { min-height: 0; overflow-y: auto; padding-bottom: var(--s5); }
+  .split-list { padding-right: var(--s1); }
+  .split-detail .back-btn { display: none; }
+  .split-detail .detail-head { padding-left: var(--s3); }
+  .split-detail > .empty { padding-top: calc(var(--s5) * 3); }
+  .item.is-selected > .item-main, .item.is-selected > .item-slide > .item-main { background: var(--surface-2); }
+  .item.is-selected > .item-main.has-stripe, .item.is-selected .item-slide .item-main.has-stripe { box-shadow: inset 9px 0 0 var(--who, transparent), inset 0 0 0 2px var(--accent-soft); }
+  .rcard.is-selected { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Recepty: v seznamu vlevo 2 sloupce, přes celou šířku víc */
+  .split-list .rgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .view > div > .list-root > .rgrid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}

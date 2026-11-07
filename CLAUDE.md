@@ -158,6 +158,13 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   s `rowGestures` otevře pravé tlačítko i tři tečky při najetí (`.row-more`) nabídku se
   stejnými akcemi jako podržení a potažení (`pressLabel`, `actions`, Smazat). `dragSort`
   myší začne hned pohybem, bez podržení.
+- Úkoly, Recepty, Administrativa, Wishlist, Bucketlist a Byt jsou na počítači seznam (vlevo,
+  380 px) a detail (vpravo) vedle sebe (`splitView` v `js/split.js`, pohled má `split = true`).
+  `#/ukoly/<id>` vykreslí obojí, vybraný řádek je zvýrazněný (`.is-selected`), bez vybrané
+  položky je vpravo prázdný stav modulu. Detail se sám neotevírá (u úkolů by se komentáře
+  označily jako přečtené). Nová položka (+) se otevře vpravo jako koncept, smazání otevřené
+  položky detail zavře. Režimy na místě (přesun úkolu, recept do receptu) fungují i tak.
+  Recepty bez otevřeného receptu mají mřížku přes celou šířku, s otevřeným 2 sloupce vlevo.
 - Klávesnice: Esc zavře nabídku, dialog i otevřený detail (předtím opustí pole, ať se
   změna uloží), fokus je vidět (outline `--text-2`).
 
@@ -248,6 +255,9 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   se na počítači vykreslí uprostřed (max. 520 px, `--radius`, ztmavené pozadí). `openMenu`
   zůstává nabídka u tlačítka (u pravého tlačítka myši u kurzoru).
 - **Tři tečky** `.row-more` v řádku při najetí myší (jen s myší, na mobilu nikdy).
+- **Seznam a detail** `.split` > `.split-list` (380 px) + `.split-detail`, každá část se
+  posouvá zvlášť. Stránka položky v detailu je beze změny, jen bez šipky zpět a s horní lištou
+  modulu. Vybraný řádek `.item.is-selected` (podklad `--surface-2`), recept `.rcard.is-selected`.
 
 ### Ukládání
 
@@ -581,6 +591,8 @@ Hotovo (0.26.0), počítač, část 1 - kostra:
 - Tablet v jednom sloupci uprostřed, počítač s levým panelem místo spodní lišty, obsah max.
   1200 px, dialog místo spodního panelu, hover, nabídka na pravé tlačítko a tři tečky na
   řádcích, řazení myší, Esc zavře detail, viditelný fokus. Manifest `orientation: any`.
+
+Hotovo (0.27.0), počítač, část 2: seznam a detail vedle sebe (`js/split.js`).
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

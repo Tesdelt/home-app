@@ -193,6 +193,15 @@ export async function render(el, { extraEl }) {
       <li class="item" data-id="b"><div class="item-bg" aria-hidden="true">Smazat</div><button type="button" class="item-main"><span class="item-text"><span class="item-name">Další řádek</span></span><span class="item-amount">1 200 Kč</span></button></li>
     </ul>
 
+    <p class="section-label">Počítač: seznam a detail vedle sebe (vybraný řádek zvýrazněný)</p>
+    <div class="split demo-split" style="height: auto; margin-bottom: var(--s3)">
+      <div class="split-list"><ul class="item-list group">
+        <li class="item who-2" data-id="x1"><button type="button" class="item-main has-stripe"><span class="item-text"><span class="item-name">Zalít kytky</span><span class="item-sub">dnes</span></span></button></li>
+        <li class="item who-1 is-selected" data-id="x2"><button type="button" class="item-main has-stripe"><span class="item-text"><span class="item-name">Vynést odpad</span><span class="item-sub">zítra</span></span></button></li>
+      </ul></div>
+      <div class="split-detail"><div class="detail-head"><span class="detail-name">Vynést odpad</span></div></div>
+    </div>
+
     <p class="section-label">Ikony</p>
     <div class="demo-row">${Object.keys(ICONS).map((name) => `<span class="card-icon" title="${name}">${ICONS[name]}</span>`).join('')}</div>
 
