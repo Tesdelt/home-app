@@ -165,11 +165,16 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   označily jako přečtené). Nová položka (+) se otevře vpravo jako koncept, smazání otevřené
   položky detail zavře. Režimy na místě (přesun úkolu, recept do receptu) fungují i tak.
   Recepty bez otevřeného receptu mají mřížku přes celou šířku, s otevřeným 2 sloupce vlevo.
-- Domů na počítači (`js/views/homedesk.js`): přehled ve dvou sloupcích místo dlaždic
-  (moduly jsou v levém panelu). Vlevo úkoly na dnes a po termínu (kolečko splní, řádek
-  otevře) a nákup s odškrtnutím. Vpravo Peníze segmentu (meta `moneySegment`, jinak
-  přihlášený): karta posledního měsíce, kategorie přes limit, platby k zaplacení do 7 dní,
-  cíle a malý graf zůstatku za 12 měsíců bez voleb. Mobil má dál dlaždice.
+- Domů na počítači (`js/views/homedesk.js`): místo dlaždic přehled pěti sekcí jako karet
+  (`.home-card`: ikona v barvě modulu a název, klik na hlavičku otevře modul; uvnitř běžné
+  řádky `.item`, nejvýš 5, pod nimi šedě „a dalších X“; prázdná sekce šedý řádek „Nic“).
+  Od 1280 px tři sloupce: Úkoly a Nákup | Peníze | Wishlist a Bucketlist; pod 1280 px dva:
+  Úkoly, Nákup, Wishlist, Bucketlist | Peníze. Úkoly: po termínu, dnes a nejbližší, kolečko
+  splní, řádek otevře úkol vpravo v Úkolech. Nákup: nekoupené podle pořadí obchodu, klik =
+  koupeno se Zpět. Peníze přihlášeného: poslední měsíc Přišlo / Utraceno / Odloženo, limity
+  přes 90 %, platby do 7 dní (kolečko zaplatí se Zpět), cíle a malý graf zůstatku (klik
+  otevře Grafy). Wishlist a Bucketlist: nejbližší podle „do kdy“. Recepty, Administrativa
+  a Byt na Domů na počítači nejsou. Data živě přes `store.subscribe`. Mobil má dál dlaždice.
 - Nákup na počítači: vlevo pole a seznam, vpravo trvale otevřený katalog kategorií
   (`catalogPanel` v `catalogui.js`, stejné řádky jako katalog v panelu), přidání kliknutím.
 - Podsekce levého panelu nastavují stav modulu: segment Peněz (meta `moneySegment`), filtr
@@ -674,6 +679,8 @@ Hotovo (0.29.0): Peníze > Tabulka na počítači (viz Počítač a tablet).
 Hotovo (0.30.0): Úkoly ve sloupcích na počítači a klávesa N pro nový úkol.
 
 Hotovo (0.31.0): Recepty, režim vaření (i na mobilu) a tisk receptu.
+
+Hotovo (0.31.1): Domů na počítači jako karty pěti sekcí ve třech (dvou) sloupcích.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

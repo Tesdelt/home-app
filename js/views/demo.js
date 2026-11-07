@@ -231,6 +231,15 @@ export async function render(el, { extraEl }) {
         <li class="item kb-card who-any"><button type="button" class="item-main has-stripe"><span class="check-tap"><span class="check">${ICONS.check}</span></span><span class="item-text"><span class="item-name">Koupit dárek</span></span></button></li></ul></section>
     </div>
 
+    <p class="section-label">Počítač: karta sekce na Domů</p>
+    <section class="card home-card mod-wishlist demo-home" style="max-width: 380px; margin-bottom: var(--s3)">
+      <a class="home-card-head" href="#/ukazka"><span class="card-icon">${ICONS.gift}</span><h2 class="card-title">Wishlist</h2></a>
+      <div class="home-card-body"><ul class="item-list home-list">
+        <li class="item who-1"><a class="item-main has-stripe" href="#/ukazka"><span class="item-text"><span class="item-name">Sluchátka</span><span class="item-sub">Do roka</span></span></a></li>
+        <li class="item who-2"><a class="item-main has-stripe" href="#/ukazka"><span class="item-text"><span class="item-name">Batoh</span><span class="item-sub">Někdy</span></span></a></li>
+      </ul><p class="home-more">a dalších 3</p></div>
+    </section>
+
     <p class="section-label">Ikony</p>
     <div class="demo-row">${Object.keys(ICONS).map((name) => `<span class="card-icon" title="${name}">${ICONS[name]}</span>`).join('')}</div>
 
