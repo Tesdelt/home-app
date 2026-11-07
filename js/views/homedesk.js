@@ -9,7 +9,8 @@
 // Úkoly a Nákupem jen když se vejdou. Data se překreslují živě.
 
 import * as store from '../store.js';
-import { escapeHtml, ICONS, money, whoClass, budgetColor, undoToast, markNew, blink } from '../ui.js';
+import { escapeHtml, ICONS, money, whoClass, budgetColor, flowTone, undoToast, markNew, isNew, blink } from '../ui.js';
+import { addEntry } from './shopping.js';
 import { today, dueLabel, dueTimeLabel } from '../dates.js';
 import { navigate } from '../router.js';
 import { drawChart } from '../chart.js';
@@ -38,6 +39,9 @@ function horizon(untilYear) {
   return `Do ${years} let`;
 }
 
+// Rychlé přidání nahoře v kartě (Enter přidá, fokus zůstane v poli)
+const QUICK = { ukoly: '+ Úkol', nakup: '+ Položka' };
+
 const SECTIONS = [
   ['ukoly', 'tasks', 'Úkoly'],
   ['nakup', 'cart', 'Nákup'],
@@ -57,21 +61,37 @@ function fillList(box, rows, route, avail, head = '') {
   box.innerHTML = `${head}<ul class="item-list home-list">${rows.slice(0, MAX_ROWS).join('')}</ul><a class="home-more" href="#/${route}">a dalších ${rows.length}</a>`;
   const ul = box.querySelector('.home-list');
   const more = box.querySelector('.home-more');
-  const lis = [...ul.children];
+  let lis = [...ul.children];
   const top = box.getBoundingClientRect().top;
-  const bottoms = lis.map((li) => li.getBoundingClientRect().bottom - top);
-  if (rows.length <= MAX_ROWS && bottoms[bottoms.length - 1] <= avail) {
+  const bottoms = () => lis.map((li) => li.getBoundingClientRect().bottom - top);
+  let ends = bottoms();
+  if (rows.length <= MAX_ROWS && ends[ends.length - 1] <= avail) {
     more.remove();
     return rows.length;
   }
   const moreH = more.offsetHeight;
-  let n = 0;
-  while (n < lis.length && bottoms[n] + moreH <= avail) n++;
+  const fit = () => {
+    let n = 0;
+    while (n < lis.length && ends[n] + moreH <= avail) n++;
+    return n;
+  };
+  let n = fit();
+  // Právě přidaný řádek, který by se nevešel, zabere poslední viditelná místa
+  // (první, nejdůležitější řádek zůstává)
+  const hiddenNew = lis.slice(n).filter((li) => isNew(rowId(li), { ownOnly: true })).slice(-Math.max(1, n - 1));
+  if (hiddenNew.length) {
+    lis = [...lis.slice(0, n - hiddenNew.length), ...hiddenNew, ...lis.filter((li, i) => i >= n - hiddenNew.length && !hiddenNew.includes(li))];
+    ul.replaceChildren(...lis);
+    ends = bottoms();
+    n = fit();
+  }
   lis.slice(n).forEach((li) => li.remove());
   if (!n) ul.remove();
   more.textContent = `a dalších ${rows.length - n}`;
   return n;
 }
+
+const rowId = (li) => li.dataset.task ?? li.dataset.buy ?? li.dataset.pay ?? li.dataset.id;
 
 export async function renderOverview(el) {
   const root = document.createElement('div');
@@ -83,7 +103,10 @@ export async function renderOverview(el) {
   for (const [route, icon, name] of SECTIONS) {
     const card = document.createElement('section');
     card.className = `card home-card mod-${route}`;
-    card.innerHTML = `<a class="home-card-head" href="#/${route}"><span class="card-icon">${ICONS[icon]}</span><h2 class="card-title">${name}</h2></a><div class="home-card-body"></div>`;
+    const quick = QUICK[route];
+    card.innerHTML = `<a class="home-card-head" href="#/${route}"><span class="card-icon">${ICONS[icon]}</span><h2 class="card-title">${name}</h2></a>
+      ${quick ? `<form class="home-add" data-quick="${route}"><input class="input" name="text" placeholder="${quick}" aria-label="${quick}" autocomplete="off" enterkeyhint="done"></form>` : ''}
+      <div class="home-card-body"></div>`;
     cards[route] = card;
   }
   const body = (route) => cards[route].querySelector('.home-card-body');
@@ -130,8 +153,9 @@ export async function renderOverview(el) {
       Object.values(news).flat().forEach((id) => markNew(id, { soft: true }));
     }
     const segment = members.includes(me) ? me : store.SPLIT;
-    const [months, budgetRows, goals, due] = await Promise.all([
+    const [months, budgetRows, goals, due, summary] = await Promise.all([
       store.listMoneyMonths(segment), store.listBudgets(segment), store.listGoals(segment), store.duePayments(7),
+      store.paymentsSummary(segment),
     ]);
     if (mine !== token) return;
     const day = today();
@@ -163,6 +187,13 @@ export async function renderOverview(el) {
     // ---------- Peníze přihlášeného ----------
     let top = '';
     const row = months[0];
+    // Tón karty podle posledního měsíce: Utraceno / Plán (pravidelné platby
+    // segmentu za měsíc + limity), bez plánu neutrální
+    const plan = summary.total + budgetRows.reduce((sum, b) => sum + (Number(b.monthlyLimit) || 0), 0);
+    const tone = row ? flowTone(plan > 0 ? row.outgo / plan : null) : null;
+    cards.penize.classList.toggle('has-tone', Boolean(tone));
+    if (tone) cards.penize.style.setProperty('--tone', tone);
+    else cards.penize.style.removeProperty('--tone');
     if (row) {
       const saved = Object.values(row.moves ?? {}).reduce((s, v) => s + totalOf(v), 0);
       top += `<a class="home-month" href="#/penize">
@@ -294,6 +325,20 @@ export async function renderOverview(el) {
 
   // Úkol: kolečko splní, řádek otevře úkol vpravo v Úkolech.
   // Nákup: klik = koupeno se Zpět. Platba: klik = zaplaceno se Zpět.
+  // Rychlé přidání: Enter přidá a fokus zůstane v poli pro další
+  root.addEventListener('submit', async (e) => {
+    const form = e.target.closest('[data-quick]');
+    if (!form) return;
+    e.preventDefault();
+    const input = form.elements.text;
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    input.focus();
+    if (form.dataset.quick === 'ukoly') await store.addTask({ title: text });
+    else await addEntry(text);
+  });
+
   root.addEventListener('click', async (e) => {
     const task = e.target.closest('[data-task]');
     if (task) {

@@ -2,7 +2,7 @@
 // jedné stránce. Není v menu, slouží ke kontrole vzhledu ve světlém i tmavém
 // režimu. Nesahá na data, všechno je tu napevno. Popis je v CLAUDE.md.
 
-import { ICONS, escapeHtml, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor, rowGestures, markNew, blink } from '../ui.js';
+import { ICONS, escapeHtml, toast, undoToast, openSheet, openMenu, emptyState, toggleFold, money, budgetColor, rowGestures, markNew, blink, flowTone } from '../ui.js';
 import { drawChart } from '../chart.js';
 import { openCooking } from './cooking.js';
 
@@ -58,6 +58,10 @@ export async function render(el, { extraEl }) {
       <span class="demo-swatch" style="background: var(--surface); box-shadow: var(--shadow)" title="--shadow"></span>
       <span class="demo-swatch flow-card" title="karta posledního měsíce"></span>
     </div>
+
+    <p class="section-label">Tón karty Peníze: Utraceno / Plán (flowTone)</p>
+    <div class="demo-row">${[0.6, 0.85, 0.95, 1, 1.1, 1.2, 1.3, 1.5].map((p) => `<span class="demo-tone" style="--tone: ${flowTone(p)}">${String(p).replace('.', ',')}</span>`).join('')}
+      <span class="demo-tone" style="--tone: ${flowTone(null)}">bez plánu</span></div>
 
     <p class="section-label">Rozestupy 4 / 8 / 12 / 16 / 24</p>
     <div class="demo-row">${[1, 2, 3, 4, 5].map((n) => `<span class="demo-swatch" style="width: var(--s${n}); background: var(--text-3)"></span>`).join('')}</div>

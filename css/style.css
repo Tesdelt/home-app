@@ -2058,3 +2058,20 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   background: var(--accent);
   vertical-align: 0.15em;
 }
+
+/* ---------- Domů na počítači: rychlé přidání a tón karty Peníze ---------- */
+@media (min-width: 1024px) {
+  .home-add { flex: none; padding: 0 var(--s4) var(--s2); }
+  .home-add .input { width: 100%; min-height: 40px; font-size: var(--fs-text); }
+}
+/* Tón karty Peníze podle posledního měsíce (flowTone v ui.js): okraj 2 px
+   a jemný podklad, nikdy červená */
+.home-card.has-tone, .demo-tone {
+  border: 2px solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 8%, var(--surface));
+}
+.home-card.has-tone a.home-month {
+  background: linear-gradient(135deg, transparent, color-mix(in srgb, var(--accent) 8%, transparent));
+}
+.demo-tone { display: flex; align-items: center; justify-content: center; width: 72px; height: 48px; border-radius: var(--radius-sm); font-size: var(--fs-small); color: var(--text-2); }
+.home-card.has-tone .item-main, .home-card.has-tone .item-slide { background: transparent; }

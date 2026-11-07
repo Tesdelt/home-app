@@ -9,6 +9,20 @@ import { CATEGORIES, categoryName, parseEntry, stepQty, qtyNumber } from '../cat
 import { escapeHtml, ICONS, toast, undoToast, openSheet, itemsCount, rowGestures, dragSort, emptyState, isDesktop } from '../ui.js';
 import { productChips, catalogPanel } from '../catalogui.js';
 
+// Přidání zápisu jako v poli Nákupu („mléko 2“, „2x rohlíky“): stejné
+// parsování, katalog i kategorie. Sdílí ho rychlé pole na Domů na počítači.
+export async function addEntry(text) {
+  const { name, qty } = parseEntry(text);
+  return name ? addParsed(name, qty) : null;
+}
+
+async function addParsed(name, qty) {
+  const result = await store.addItem({ name, qty });
+  if (result.status === 'exists') toast(`${result.item.name} už na seznamu je`);
+  else if (result.status === 'restored') toast(`${result.item.name} je zpátky na seznamu`);
+  return result;
+}
+
 export const title = 'Nákup';
 
 export async function render(el, { subEl, extraEl }) {
@@ -44,19 +58,13 @@ export async function render(el, { subEl, extraEl }) {
 
   // ---------- Přidávání ----------
 
-  async function add(name, qty) {
-    const { item, status } = await store.addItem({ name, qty });
-    if (status === 'exists') toast(`${item.name} už na seznamu je`);
-    else if (status === 'restored') toast(`${item.name} je zpátky na seznamu`);
-  }
-
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { name, qty } = parseEntry(input.value);
-    if (!name) return;
+    const text = input.value;
+    if (!parseEntry(text).name) return;
     input.value = '';
     input.focus();
-    await add(name, qty);
+    await addEntry(text);
   });
 
   // ---------- Bublinky pod polem a katalog kategorií ----------
@@ -86,7 +94,7 @@ export async function render(el, { subEl, extraEl }) {
     onPick: async (name) => {
       const typed = input.value.trim() ? parseEntry(input.value) : { qty: '' };
       input.value = '';
-      await add(name, typed.qty);
+      await addParsed(name, typed.qty);
     },
     count: countOf,
     step: stepOf,

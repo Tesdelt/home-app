@@ -183,6 +183,13 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   přednost, grafu nechají aspoň 110 px, jinak graf ustoupí. Wishlist a Bucketlist:
   nejbližší podle „do kdy“. Recepty, Administrativa a Byt na Domů na počítači nejsou. Data
   živě přes `store.subscribe`. Mobil má dál dlaždice.
+  Rychlé přidání (0.33.1): v kartě Úkoly a Nákup úplně nahoře pole „+ Úkol“ / „+ Položka“
+  (`.home-add`, počítá se do výšky karty). Enter přidá a fokus zůstane v poli, uživatel
+  zůstává na Domů. Úkol jen s názvem, nákup přes `addEntry` z `shopping.js` (stejné
+  parsování „mléko 2“, katalog a kategorie jako pole v Nákupu). Nový řádek se zvýrazní; když
+  by se do karty nevešel, zabere poslední viditelná místa (první řádek zůstává).
+  Karta Peníze má tón podle posledního měsíce: p = Utraceno / Plán (pravidelné platby
+  segmentu za měsíc + limity), okraj 2 px a podklad 8 % barvy z `flowTone(p)`.
 - Stránka jako celek se na počítači nikdy neposouvá: posouvá se jen sloupec, jehož obsah se
   nevejde (split, Peníze, Nákup: seznam i katalog zvlášť), posuvník tenký a nenápadný
   (`scrollbar-width: thin`, barva `--border`). Stránky s jediným sloupcem posouvají obsah
@@ -325,6 +332,11 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
   Cíl `.is-goal` má pevně `--flow-move`. Částka vedle ve tvaru „X / Y Kč“ stejně velká a tučná jako ostatní
   částky (`.item-amount`), část „/ Y Kč“ ve spanu `.budget-of` šedě (`--text-2`) a obyčejně.
   Překročený limit částku nezvýrazňuje, stačí okrový pruh.
+- **Tón podle plánu** `flowTone(p)` z `ui.js` (p = Utraceno / Plán): plynule jako
+  `budgetColor`: do 0,8 olivová `--flow-in`, 0,8-1,0 do neutrální `--border`, 1,0-1,2 do
+  okrové `--warn`, 1,2-1,4 do oranžové `--bar-3`. Nikdy červená, bez plánu neutrální. Okraj
+  2 px a podklad `color-mix(tón 8 %, --surface)` (`.home-card.has-tone`, `--tone`). Ukázka
+  s několika hodnotami p na `#/ukazka`.
 - **Toast** `toast` / `undoToast` (se Zpět).
 - **Zvýraznění nové věci** `markNew(id)` / `isNew(id)` z `ui.js` (v paměti, nesynchronizuje
   se). Volá se ve `store.js` ve všech `add*` (úkol, krok, komentář, položka nákupu i z
@@ -751,6 +763,9 @@ Hotovo (0.33.0):
   Otevření modulu (`openModule` v `app.js` před vykreslením) novinky jemně zvýrazní a tečku
   zruší; karta na Domů je jen zvýrazní. U Úkolů je tečka novinek a nepřečtených komentářů
   jedna. Když je modul právě otevřený, novinka z Realtime tečku nepřidá.
+
+Hotovo (0.33.1): Domů na počítači, rychlé přidání úkolu a položky nákupu přímo v kartě
+a tón karty Peníze podle poměru Utraceno / Plán (`flowTone`).
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
