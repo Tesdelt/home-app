@@ -1705,16 +1705,6 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .side-subitem.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: var(--fs-text); }
 }
 
-/* Domů na počítači: přehled ve dvou sloupcích, každý se posouvá zvlášť */
-@media (min-width: 1024px) {
-  .view:has(> .home-desk) { overflow: hidden; padding-bottom: 0; }
-  .home-desk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s5); height: 100%; }
-  .home-col { min-height: 0; overflow-y: auto; padding-bottom: var(--s5); padding-right: var(--s1); }
-  .home-col > .section-label:first-child { margin-top: 0; }
-  .home-col .item-list { margin-bottom: var(--s4); }
-  a.home-link { display: block; color: inherit; text-decoration: none; }
-  .home-chart { margin-bottom: var(--s4); }
-}
 @media (min-width: 1024px) {
   .money-desk.is-wide { grid-template-columns: 320px minmax(0, 1fr) minmax(0, 1fr); }
   .chart-embedded .chart-bar { flex-wrap: wrap; }
@@ -1852,11 +1842,18 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
 
 /* ---------- Domů na počítači: karty sekcí ve sloupcích ---------- */
 @media (min-width: 1024px) {
-  .home-desk { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s4); }
+  /* Stránka má výšku okna a neposouvá se, karty mají výšku podle mřížky */
+  .view:has(> .home-desk) { overflow: hidden; padding-bottom: 0; }
+  .home-desk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s4); height: 100%; padding-bottom: var(--s4); }
   .home-desk.is-wide { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .home-desk:not(.is-wide) > .home-col:empty { display: none; }
-  .home-col { display: flex; flex-direction: column; gap: var(--s4); }
+  .home-col { display: flex; flex-direction: column; gap: var(--s4); min-height: 0; }
   .home-card { margin: 0; padding: var(--s2) 0 var(--s2); overflow: hidden; }
+  .home-col > .home-card { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+  .home-col .home-card-body { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
+  .home-col .home-card-head { flex: none; }
+  .home-desk:not(.is-wide) .home-col > .home-card { flex-grow: 3; }
+  .home-desk:not(.is-wide) .home-col > .mod-wishlist, .home-desk:not(.is-wide) .home-col > .mod-bucketlist { flex-grow: 2; }
   .home-card-head { display: flex; align-items: center; gap: var(--s2); min-height: 44px; padding: 0 var(--s4); color: var(--text); text-decoration: none; }
   .home-card-head .card-icon { width: 22px; height: 22px; }
   .home-card-head .card-title { margin: 0; font-size: var(--fs-section); }
@@ -1867,16 +1864,34 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .home-card.mod-bucketlist .card-icon { color: var(--mod-bucketlist); }
   .home-list { border-top: 1px solid var(--border); }
   .home-list .item-main { min-height: 48px; }
-  .home-none, .home-more { margin: 0; padding: var(--s2) var(--s4); color: var(--text-2); font-size: var(--fs-small); }
+  .home-none, .home-more { flex: none; margin: 0; padding: var(--s2) var(--s4); color: var(--text-2); font-size: var(--fs-small); }
+  a.home-more { display: block; border-top: 1px solid var(--border); text-decoration: none; }
+  .home-list, .home-month, .home-goals, .home-card-body > .section-label { flex: none; }
   .home-none { border-top: 1px solid var(--border); }
-  .home-card-body > .section-label { margin: var(--s3) var(--s4) var(--s1); }
+  .home-card-body .section-label { flex: none; margin: var(--s3) var(--s4) var(--s1); }
   a.home-month { display: block; padding: var(--s2) var(--s4) var(--s3); border-top: 1px solid var(--border); color: inherit; text-decoration: none; }
   .home-month .sum-row { margin-top: var(--s1); }
   .home-month .sum-value { font-size: var(--fs-text); }
-  .home-chart { padding: 0 var(--s3) var(--s2); cursor: pointer; }
+  /* Cíle jako jeden řádek s pruhy vedle sebe */
+  a.home-goals { display: flex; gap: var(--s4); padding: var(--s1) var(--s4) var(--s2); color: inherit; text-decoration: none; }
+  .home-goal { flex: 1 1 0; min-width: 0; font-size: var(--fs-small); }
+  .home-goal-name { display: flex; gap: var(--s2); }
+  .home-goal-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Graf zůstatku vyplní zbytek karty, výšku mu dává flex, ne obsah */
+  .home-chart { flex: 1 1 0; min-height: 0; margin: 0; padding: 0 var(--s3); overflow: hidden; cursor: pointer; }
   a.item-main { color: inherit; text-decoration: none; }
 }
 
 .demo-home { display: none; }
 @media (min-width: 1024px) { .demo-home { display: block; } }
-@media (min-width: 1024px) { .home-col > .home-card { flex: none; } }
+
+/* ---------- Počítač: stránka jako celek se neposouvá ----------
+   Posouvá se jen sloupec, jehož obsah se nevejde (split, Peníze, Nákup),
+   s tenkým nenápadným posuvníkem. */
+@media (min-width: 1024px) {
+  * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .view:has(> .shop-layout) { overflow: hidden; padding-bottom: 0; }
+  .shop-layout { height: 100%; align-items: stretch; }
+  .shop-main, .shop-catalog { min-height: 0; overflow-y: auto; padding-bottom: var(--s5); padding-right: var(--s1); }
+  .shop-catalog { position: static; max-height: none; }
+}

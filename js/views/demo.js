@@ -237,7 +237,7 @@ export async function render(el, { extraEl }) {
       <div class="home-card-body"><ul class="item-list home-list">
         <li class="item who-1"><a class="item-main has-stripe" href="#/ukazka"><span class="item-text"><span class="item-name">Sluchátka</span><span class="item-sub">Do roka</span></span></a></li>
         <li class="item who-2"><a class="item-main has-stripe" href="#/ukazka"><span class="item-text"><span class="item-name">Batoh</span><span class="item-sub">Někdy</span></span></a></li>
-      </ul><p class="home-more">a dalších 3</p></div>
+      </ul><a class="home-more" href="#/ukazka">a dalších 3</a></div>
     </section>
 
     <p class="section-label">Ikony</p>

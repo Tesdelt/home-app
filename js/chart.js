@@ -10,7 +10,8 @@
 //   series: [{ label, color: 'var(--flow-out)', values: [čísla podle months] }],
 //   type: 'bars' | 'line',
 //   format: (číslo) => text do štítku,
-//   height: výška v px (výchozí 220, menší se nepoužije),
+//   height: výška v px (výchozí 220, menší než minHeight se nepoužije),
+//   minHeight: nejmenší výška (výchozí 220, Domů na počítači menší),
 //   lines: [{ value, color, label }] čárkované vodorovné čáry (průměr, plán)
 //   onSelect: (index měsíce) => po ťuknutí / puštění prstu na měsíci,
 //          s malým popiskem u pravého okraje,
@@ -56,8 +57,8 @@ function node(name, attrs = {}) {
   return el;
 }
 
-export function drawChart(el, { months, series, type = 'bars', format = String, height = MIN_HEIGHT, lines = [], onSelect = null }) {
-  const HEIGHT = Math.max(MIN_HEIGHT, Math.round(height));
+export function drawChart(el, { months, series, type = 'bars', format = String, height = MIN_HEIGHT, minHeight = MIN_HEIGHT, lines = [], onSelect = null }) {
+  const HEIGHT = Math.max(minHeight, Math.round(height));
   el.classList.add('chart');
   el.replaceChildren();
   const width = Math.max(240, el.clientWidth || 340);
