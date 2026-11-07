@@ -1,17 +1,24 @@
 /* ---------- Barvy a proměnné ---------- */
 :root {
-  --bg: #F6F4EF;
+  --bg: #FAF6F0;
   --surface: #FFFFFF;
-  --surface-2: #EFECE5;
-  --border: #E4E0D7;
-  --text: #1F1D1A;
-  --text-2: #6E695F;
-  --text-3: #A19C92;
-  /* Hlavní barva je teplá (terakota). Chyba a "hoří" je malinová, aby se
-     s ní nepletla. */
-  --accent: #B8612B;
-  --accent-soft: #F7E8DB;
-  --on-accent: #FFFFFF;
+  --surface-2: #F4EDE3;
+  --border: #EADFD1;
+  --text: #211B15;
+  --text-2: #6F6559;
+  --text-3: #A3978A;
+  /* Hlavní barva je korálově oranžová, --accent-2 je světlejší konec přechodu
+     hlavních tlačítek. Text v barvě (--accent-ink, --mod-ink) je ve světlém
+     režimu namíchaný s --text (--ink), aby měl kontrast aspoň 4.5:1. */
+  --accent: #E8643A;
+  --accent-2: #F59A52;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #2B1409;
+  --on-fill: #FFFFFF;
+  --ink: 60%;
+  --accent-ink: color-mix(in srgb, var(--accent) var(--ink), var(--text));
+  --shadow: 0 1px 2px rgb(60 40 20 / 6%), 0 6px 20px rgb(60 40 20 / 6%);
+  --shadow-hover: 0 2px 4px rgb(60 40 20 / 8%), 0 10px 28px rgb(60 40 20 / 10%);
   --danger: #C4291C;
   --danger-soft: #FBE4E1;
 
@@ -25,14 +32,14 @@
   --who-both-soft: #E3F2E5;
   /* Barvy ikon modulů na Domů. Teplé, bez modré, růžové, zelené a červené
      (ty patří osobám a stavu po termínu). */
-  --mod-ukoly: #C98600;
-  --mod-nakup: #C2622D;
-  --mod-penize: #9A7A1E;
-  --mod-recepty: #DE7C3A;
-  --mod-administrativa: #7A5A44;
-  --mod-wishlist: #8660B4;
-  --mod-bucketlist: #D9A400;
-  --mod-info: #8E6886;
+  --mod-ukoly: #D08600;
+  --mod-nakup: #D9562A;
+  --mod-penize: #B38A10;
+  --mod-recepty: #E57A33;
+  --mod-administrativa: #8E6040;
+  --mod-wishlist: #9A57C8;
+  --mod-bucketlist: #C99700;
+  --mod-info: #8F6A9A;
   /* Peníze, Skutečnost: barvy skupin (jen číslo v kartě a tečka u nadpisu).
      Olivová, vínová, šedá: nesmí splývat s osobami, --danger ani --accent. */
   --flow-in: #6E6A1C;
@@ -79,16 +86,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121311;
-    --surface: #1C1D1B;
-    --surface-2: #262825;
-    --border: #2F312D;
-    --text: #ECEAE4;
-    --text-2: #A29E95;
-    --text-3: #6F6C65;
-    --accent: #E39A62;
-    --accent-soft: #3A2A1C;
-    --on-accent: #24160B;
+    --bg: #15120E;
+    --surface: #1F1A15;
+    --surface-2: #2A241D;
+    --border: #3A3128;
+    --text: #F5EFE7;
+    --text-2: #A99D90;
+    --text-3: #75695C;
+    --accent: #F27848;
+    --accent-2: #F7A962;
+    --on-accent: #1A0E07;
+    --on-fill: #1A0E07;
+    --ink: 100%;
+    --shadow: none;
+    --shadow-hover: none;
     --danger: #FF6B5C;
     --danger-soft: #40201C;
     --who-1: #FF7FC2;
@@ -97,14 +108,14 @@
     --who-2-soft: #172B45;
     --who-both: #8FD19A;
     --who-both-soft: #1F3324;
-    --mod-ukoly: #F0B33C;
-    --mod-nakup: #E58A57;
-    --mod-penize: #C9A94E;
-    --mod-recepty: #F5A066;
-    --mod-administrativa: #B8977F;
-    --mod-wishlist: #B596E0;
-    --mod-bucketlist: #F2CB45;
-    --mod-info: #C19DB9;
+    --mod-ukoly: #FFBC3D;
+    --mod-nakup: #FF8E5E;
+    --mod-penize: #E6BC52;
+    --mod-recepty: #FFA86C;
+    --mod-administrativa: #D9AA84;
+    --mod-wishlist: #CDA2F5;
+    --mod-bucketlist: #FFD84D;
+    --mod-info: #D4ABD1;
     --flow-in: #BDB65C;
     --flow-out: #B5726B;
     --chart-1: #B39BD9;
@@ -194,7 +205,7 @@ a.card:active { background: var(--surface-2); }
 
 .card-head { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
 .card-title { margin: 0; font-size: var(--fs-text); font-weight: 600; flex: 1; }
-.card-icon { width: 22px; height: 22px; color: var(--accent); flex: none; }
+.card-icon { width: 22px; height: 22px; color: var(--accent-ink); flex: none; }
 .card-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .card-meta { color: var(--text-2); font-size: var(--fs-text); }
 .card.is-muted { background: transparent; border-style: dashed; }
@@ -228,7 +239,7 @@ a.card:active { background: var(--surface-2); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn-danger, .btn-ghost.btn-danger { color: var(--danger); }
 .btn-small { min-height: 34px; padding: 0 var(--s3); font-size: var(--fs-text); }
-.btn-ghost { border-color: transparent; background: transparent; color: var(--accent); padding: 0 var(--s2); }
+.btn-ghost { border-color: transparent; background: transparent; color: var(--accent-ink); padding: 0 var(--s2); }
 .btn-row { display: flex; gap: var(--s2); flex-wrap: wrap; }
 .btn-row .btn { flex: 1 1 140px; white-space: nowrap; }
 
@@ -310,7 +321,7 @@ a.card:active { background: var(--surface-2); }
   font-size: var(--fs-text);
   white-space: nowrap;
 }
-.chip::before { content: "+ "; color: var(--accent); font-weight: 600; }
+.chip::before { content: "+ "; color: var(--accent-ink); font-weight: 600; }
 .chip:active { background: var(--accent-soft); }
 
 .item-list { list-style: none; margin: 0; padding: 0; }
@@ -375,7 +386,7 @@ a.card:active { background: var(--surface-2); }
   height: 44px;
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: var(--fs-section);
   line-height: 1;
 }
@@ -387,7 +398,7 @@ a.card:active { background: var(--surface-2); }
 .catalog-row { display: flex; align-items: center; gap: var(--s2); min-height: 48px; padding: 2px 0 2px var(--s3); background: var(--surface); }
 .catalog-row + .catalog-row { border-top: 1px solid var(--border); }
 .catalog-row.is-on .item-name { font-weight: 600; }
-.catalog-row.is-on .stepper-value { color: var(--accent); font-weight: 700; }
+.catalog-row.is-on .stepper-value { color: var(--accent-ink); font-weight: 700; }
 .catalog-row .btn-ghost { margin-right: var(--s2); }
 .shop-pick { flex: 1; display: flex; align-items: center; gap: var(--s3); min-height: 48px; border: 0; background: transparent; text-align: left; padding: 0; }
 .catalog-row.is-on .check { background: var(--accent); border-color: var(--accent); }
@@ -430,7 +441,7 @@ a.card:active { background: var(--surface-2); }
 .item-sub { display: block; font-size: var(--fs-small); color: var(--text-2); line-height: 1.3; }
 .item-sub .is-late { color: var(--danger); font-weight: 600; }
 .item.is-done .item-sub { color: var(--text-3); }
-.item-who.is-me { background: var(--accent-soft); color: var(--accent); }
+.item-who.is-me { background: var(--accent-soft); color: var(--accent-ink); }
 
 /* Barvy podle toho, čí věc je: pruh vlevo a značka vpravo */
 .who-1 { --who: var(--who-1); --who-soft: var(--who-1-soft); }
@@ -464,7 +475,7 @@ a.card:active { background: var(--surface-2); }
 
 /* Úkol pro oba, který jsem odškrtl jen já: napůl plné kolečko */
 .item.is-mine .check { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
-.item-sub .is-part { color: var(--accent); }
+.item-sub .is-part { color: var(--accent-ink); }
 .item-note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
 .check.is-empty { border-color: transparent; }
 .card-meta.is-late { color: var(--danger); }
@@ -477,7 +488,7 @@ textarea.input { padding: var(--s2) var(--s3); min-height: 84px; line-height: 1.
 .seg-bar { margin-top: var(--s2); }
 .filter-bar { margin: 0 0 var(--s3); }
 .filter-bar button { font-size: var(--fs-small); white-space: nowrap; padding: 0 2px; }
-.seg-count { font-size: var(--fs-small); color: var(--accent); font-weight: 600; }
+.seg-count { font-size: var(--fs-small); color: var(--accent-ink); font-weight: 600; }
 
 .quick-row { display: flex; gap: var(--s2); flex-wrap: wrap; margin: calc(var(--s1) * -1) 0 var(--s3); }
 .chip-btn {
@@ -498,7 +509,7 @@ textarea.input { padding: var(--s2) var(--s3); min-height: 84px; line-height: 1.
 .sum-cell { flex: 1; min-width: 0; }
 .sum-label { display: block; font-size: var(--fs-small); color: var(--text-2); }
 .sum-value { display: block; font-size: var(--fs-section); font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sum-cell.is-total .sum-value { color: var(--accent); }
+.sum-cell.is-total .sum-value { color: var(--accent-ink); }
 .sum-note { display: block; margin-top: var(--s2); font-size: var(--fs-small); color: var(--text-3); }
 
 .item.is-done .check { background: var(--accent); border-color: var(--accent); }
@@ -575,7 +586,7 @@ textarea.input { padding: var(--s2) var(--s3); min-height: 84px; line-height: 1.
 }
 .toast span { flex: 1; }
 .toast button { border: 0; background: transparent; color: var(--accent-soft); font-weight: 600; min-height: 36px; padding: 0 var(--s2); }
-@media (prefers-color-scheme: dark) { .toast button { color: var(--accent); } }
+@media (prefers-color-scheme: dark) { .toast button { color: var(--accent-ink); } }
 @keyframes slide-up-small { from { transform: translateY(12px); opacity: 0; } }
 
 /* ---------- Pruh s novou verzí ---------- */
@@ -612,7 +623,7 @@ textarea.input { padding: var(--s2) var(--s3); min-height: 84px; line-height: 1.
   font-weight: 500;
 }
 .tab svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.tab.is-active { color: var(--accent); }
+.tab.is-active { color: var(--accent-ink); }
 
 /* ---------- Kolečko s větší plochou na ťuknutí ---------- */
 .check-tap {
@@ -635,7 +646,7 @@ textarea.input { padding: var(--s2) var(--s3); min-height: 84px; line-height: 1.
   min-height: 44px;
   margin: calc(var(--s2) * -1) 0 var(--s1) calc(var(--s2) * -1);
   padding-right: var(--s3);
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
   font-weight: 500;
 }
@@ -692,7 +703,7 @@ button.opt:active { background: var(--surface-2); }
 .opt .legend-dot { margin: 0; }
 .opt.who-1, .opt.who-2, .opt.who-both { background: var(--who-soft); border-color: transparent; color: var(--who); font-weight: 600; }
 .opt.who-any .legend-dot { background: var(--text-3); }
-.opt.is-set { color: var(--accent); border-color: var(--accent); }
+.opt.is-set { color: var(--accent-ink); border-color: var(--accent); }
 .opt.is-late { color: var(--danger); border-color: var(--danger); font-weight: 600; }
 .opt.is-static { border-style: dashed; }
 .opt[data-opt="priority"] { padding: 0 var(--s2); }
@@ -714,13 +725,13 @@ button.opt:active { background: var(--surface-2); }
   overflow: hidden;
 }
 .note-view.is-open { display: block; -webkit-line-clamp: unset; line-clamp: unset; }
-.note-add, .note-more { min-height: 36px; padding: 0 var(--s1); border: 0; background: transparent; color: var(--accent); font-size: var(--fs-text); }
+.note-add, .note-more { min-height: 36px; padding: 0 var(--s1); border: 0; background: transparent; color: var(--accent-ink); font-size: var(--fs-text); }
 .note-add { color: var(--text-2); }
 .note-input { font-size: var(--fs-text); }
 
 .pick-list { display: grid; gap: var(--s2); }
 .pick { justify-content: flex-start; width: 100%; }
-.pick[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.pick[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .pick.who-1, .pick.who-2, .pick.who-both { color: var(--who); }
 
 /* Kroky: vidět jen po ťuknutí na tlačítko Kroky */
@@ -807,7 +818,7 @@ button.opt:active { background: var(--surface-2); }
   place-items: center;
 }
 .notify-btn svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.notify-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.notify-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
 .notify-btn[aria-pressed="true"] svg { fill: currentColor; }
 
 /* Úkoly: lišta jen se záložkami, nový úkol je tlačítko + nahoře */
@@ -818,7 +829,7 @@ button.opt:active { background: var(--surface-2); }
 .opt-bell.is-set svg { fill: currentColor; }
 
 /* Nepřečtený komentář: tečka a barva v řádku úkolu, tečka u záložky Úkoly */
-.item-sub .is-unread { color: var(--accent); font-weight: 600; }
+.item-sub .is-unread { color: var(--accent-ink); font-weight: 600; }
 .item-sub .is-unread::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: var(--s1); border-radius: 50%; background: var(--accent); vertical-align: 1px; }
 .tab { position: relative; }
 .tab.has-dot::after {
@@ -843,7 +854,7 @@ button.opt:active { background: var(--surface-2); }
   width: 36px;
   height: 44px;
   margin: 1px calc(var(--s2) * -1) 0 calc(var(--s3) * -1);
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .back-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .detail-head .back-btn + .check-tap { margin-left: calc(var(--s1) * -1); }
@@ -1097,7 +1108,7 @@ textarea.step-note { min-height: 40px; padding: var(--s2) var(--s3); font-size: 
   padding: 0 var(--s2);
   border-radius: var(--radius);
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: var(--fs-small);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1117,7 +1128,7 @@ textarea.step-note { min-height: 40px; padding: var(--s2) var(--s3); font-size: 
 .rstep-line .rstep-num.is-b { margin: var(--s2) var(--s2) 0 0; background: var(--surface-2); color: var(--text-2); }
 textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: var(--s2) var(--s3); font-size: var(--fs-text); line-height: 1.35; resize: none; overflow: hidden; }
 .rstep .icon-btn { font-size: var(--fs-section); line-height: 1; color: var(--text-3); width: 36px; height: 42px; }
-.rstep .rstep-split { font-size: var(--fs-small); font-weight: 700; color: var(--accent); }
+.rstep .rstep-split { font-size: var(--fs-small); font-weight: 700; color: var(--accent-ink); }
 .rstep.is-held { position: relative; z-index: 2; background: var(--bg); border-radius: var(--radius-sm); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
 
 /* Připravené pole pro další souběžnou část (C, D…): zatím nenápadné */
@@ -1127,7 +1138,7 @@ textarea.rstep-input { flex: 1; min-width: 0; min-height: 42px; padding: var(--s
 
 /* ---------- Recept v receptu ---------- */
 .ing-row.is-recipe .ing-name { gap: var(--s2); font-weight: 600; }
-.ing-recipe-icon { flex: none; width: 18px; height: 18px; color: var(--accent); }
+.ing-recipe-icon { flex: none; width: 18px; height: 18px; color: var(--accent-ink); }
 .ing-recipe-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .recipe-tabs { transition: transform 200ms ease, opacity 160ms ease; }
 .recipe-tabs.is-away { transform: translateY(-24px); opacity: 0; pointer-events: none; }
@@ -1213,7 +1224,7 @@ textarea.note-body { min-height: 220px; resize: none; overflow: hidden; line-hei
 .hint-term, .skill-term { text-decoration-color: var(--text-3); }
 .chip::before { color: var(--text-2); }
 .stepper button { color: var(--text); }
-.opt.is-set { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.opt.is-set { color: var(--accent-ink); border-color: var(--accent); background: var(--accent-soft); }
 .note-more { color: var(--text-2); }
 .sum-cell.is-total .sum-value { color: var(--text); }
 .pantry-count { background: var(--text); color: var(--bg); }
@@ -1398,7 +1409,7 @@ a.card.tile { display: flex; flex-direction: column; justify-content: space-betw
 .fold-items > .item:first-child .item-main { border-top: 1px solid var(--border); }
 /* Čipy kategorií v panelu platby: vybraná je aktivní stav */
 .chip.pick-chip::before { content: none; }
-.chip.pick-chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.chip.pick-chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
 .field + .chips { margin: calc(var(--s2) * -1) calc(var(--gutter) * -1) var(--s3); padding-top: 0; }
 .money-cats { margin-bottom: var(--s4); }
 
@@ -1454,7 +1465,7 @@ a.opt { display: inline-flex; align-items: center; justify-content: center; text
 .chart-balance-change { display: block; font-size: var(--fs-small); color: var(--text-2); font-variant-numeric: tabular-nums; }
 .chart-stat-range { white-space: normal; }
 .chart-pick { display: flex; align-items: center; gap: var(--s2); }
-.chart-pick .menu-check { flex: none; width: 18px; height: 18px; color: var(--accent); }
+.chart-pick .menu-check { flex: none; width: 18px; height: 18px; color: var(--accent-ink); }
 .chart-pick .menu-check svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .chart-pick .menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .chart-pick .menu-sum { flex: none; font-size: var(--fs-small); font-weight: 400; color: var(--text-2); font-variant-numeric: tabular-nums; }
@@ -1555,7 +1566,7 @@ a.opt { display: inline-flex; align-items: center; justify-content: center; text
   .side-item.mod-bucketlist .side-icon { color: var(--mod-bucketlist); }
   .side-item.mod-info .side-icon { color: var(--mod-info); }
   .side-label { flex: 1; min-width: 0; }
-  .side-item.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .side-item.is-active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
   .side-badge:empty { display: none; }
   .side-badge { min-width: 22px; padding: 0 var(--s1); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-small); text-align: center; }
   .side-item.has-dot .side-label::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: var(--s2); border-radius: 50%; background: var(--accent); vertical-align: 0.15em; }
@@ -1633,7 +1644,7 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .shop-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--s5); align-items: start; }
   .shop-catalog { display: block; position: sticky; top: 0; max-height: calc(100dvh - 140px); overflow-y: auto; padding-bottom: var(--s5); }
   .catalog-cats { flex-wrap: wrap; overflow: visible; margin: 0 0 var(--s3); padding: 0; }
-  .catalog-cats .cat-chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+  .catalog-cats .cat-chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); }
 
   /* Peníze: vlevo sloupec s platbami, vpravo Skutečnost a graf */
   .money-desk { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: var(--s5); align-items: start; }
@@ -1663,7 +1674,7 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .side-group.is-open .side-sub-wrap { grid-template-rows: 1fr; }
   .side-sub { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
   .side-subitem { display: flex; align-items: center; min-height: 36px; padding: 0 var(--s3) 0 calc(var(--s3) + 22px + var(--s3)); border-radius: var(--radius-sm); color: var(--text-2); text-decoration: none; font-size: var(--fs-small); }
-  .side-subitem.is-active { color: var(--accent); font-weight: 600; background: var(--accent-soft); }
+  .side-subitem.is-active { color: var(--accent-ink); font-weight: 600; background: var(--accent-soft); }
   .side-sub > .side-subitem:last-child { margin-bottom: var(--s1); }
   /* Zúžení na ikony */
   .side-collapse { display: grid; place-items: center; width: 44px; height: 36px; margin: var(--s2) 0 0 var(--s1); padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-3); }
@@ -1702,7 +1713,7 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   /* Přepínače, které dublují levý panel */
   .money-segments, .recipe-toolbar { display: none; }
   /* Aktivní podsekce stejně jako aktivní modul */
-  .side-subitem.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: var(--fs-text); }
+  .side-subitem.is-active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; font-size: var(--fs-text); }
 }
 
 @media (min-width: 1024px) {
@@ -1725,7 +1736,7 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .mt-table tbody th { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; font-weight: 400; color: var(--text); min-width: 200px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
   .mt-table thead th.mt-corner { left: 0; z-index: 3; }
   .mt-month { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
-  .mt-month:hover { color: var(--accent); }
+  .mt-month:hover { color: var(--accent-ink); }
   .mt-group th { font-size: var(--fs-small); font-weight: 600; color: var(--text-2); background: var(--surface-2) !important; }
   .mt-group td { background: var(--surface-2); }
   .mt-row.has-items th { cursor: pointer; }
@@ -1894,4 +1905,104 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .shop-layout { height: 100%; align-items: stretch; }
   .shop-main, .shop-catalog { min-height: 0; overflow-y: auto; padding-bottom: var(--s5); padding-right: var(--s1); }
   .shop-catalog { position: static; max-height: none; }
+}
+
+/* ---------- Vzhled 0.32: hravější, pořád profesionální ----------
+   Přechod smí být jen na hlavních tlačítkách, v kartě posledního měsíce
+   a v pruzích limitů. Ikona modulu sedí v zaobleném čtverečku v barvě modulu.
+   Stín (--shadow) mají karty jen ve světlém režimu. */
+.mod-ukoly { --mod: var(--mod-ukoly); }
+.mod-nakup { --mod: var(--mod-nakup); }
+.mod-penize { --mod: var(--mod-penize); }
+.mod-recepty { --mod: var(--mod-recepty); }
+.mod-administrativa { --mod: var(--mod-administrativa); }
+.mod-wishlist { --mod: var(--mod-wishlist); }
+.mod-bucketlist { --mod: var(--mod-bucketlist); }
+.mod-info { --mod: var(--mod-info); }
+.mod-ukoly, .mod-nakup, .mod-penize, .mod-recepty, .mod-administrativa, .mod-wishlist, .mod-bucketlist, .mod-info {
+  --mod-ink: color-mix(in srgb, var(--mod) var(--ink), var(--text));
+}
+
+/* Hlavní tlačítka: přechod --accent → --accent-2 */
+.add-btn, .btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: var(--on-accent);
+}
+
+/* Karty: stín ve světlém režimu */
+.card, .group { box-shadow: var(--shadow); }
+.card.is-muted { box-shadow: none; }
+
+/* Karta posledního měsíce (Peníze, Domů): jemný přechod do barvy */
+.flow-card, a.home-month {
+  background: linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--accent) 8%, var(--surface)));
+}
+
+/* Ikona modulu v zaobleném čtverečku */
+.tile .card-icon, .home-card-head .card-icon, .side-icon, .demo-icon-box {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--mod, var(--text-2)) 15%, transparent);
+  color: var(--mod, var(--text-2));
+}
+.tile .card-icon { width: 40px; height: 40px; padding: var(--s2); }
+.demo-icon-box { width: 40px; height: 40px; padding: var(--s2); }
+.demo-icon-box svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.home-card-head .card-icon { width: 32px; height: 32px; padding: 6px; }
+.tile .card-icon svg, .home-card-head .card-icon svg { width: 100%; height: 100%; }
+
+/* Kolečko: splnění ho vyplní barvou osoby (bez osoby hlavní barvou) a fajfka
+   se dokreslí. Přechod, ne animace: řádky vykreslené už hotové se nehýbou. */
+.who-1 { --fill: var(--who-1); }
+.who-2 { --fill: var(--who-2); }
+.who-both { --fill: var(--who-both); }
+.check { transition: background-color 180ms ease, border-color 180ms ease; }
+.check svg { stroke: var(--on-fill); opacity: 1; }
+.check svg path { stroke-dasharray: 22; stroke-dashoffset: 22; transition: stroke-dashoffset 200ms ease 60ms; }
+.item.is-done .check, .step.is-done .check, .detail.is-done .detail-head .check, .cook-ing.is-done .check, .catalog-row.is-on .check {
+  background: var(--fill, var(--accent));
+  border-color: var(--fill, var(--accent));
+}
+.item.is-done .check svg path, .step.is-done .check svg path, .detail.is-done .detail-head .check svg path, .cook-ing.is-done .check svg path, .catalog-row.is-on .check svg path { stroke-dashoffset: 0; }
+.item.is-mine .check, .detail.is-mine .detail-head .check {
+  border-color: var(--fill, var(--accent));
+  background: linear-gradient(90deg, var(--fill, var(--accent)) 50%, transparent 50%);
+}
+
+/* Pruhy limitů a cílů při vykreslení dojedou na hodnotu */
+.budget-bar > span { transform-origin: left center; animation: bar-in 200ms ease-out; }
+@keyframes bar-in { from { transform: scaleX(0); } }
+
+/* Stisk tlačítka */
+.btn, .add-btn, .chip, .chip-btn, .opt, .icon-btn, .notify-btn, .segmented button { transition: transform 120ms ease, filter 120ms ease; }
+.btn:active, .add-btn:active, .chip:active, .chip-btn:active, .opt:active, .icon-btn:active, .notify-btn:active { transform: scale(0.97); }
+
+/* Najetí myší na kartu nebo dlaždici ji zvedne o 1 px a zesílí stín */
+@media (hover: hover) and (pointer: fine) {
+  a.card, button.card, .home-card { transition: transform 160ms ease, box-shadow 160ms ease; }
+  a.card:hover, button.card:hover, .home-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+}
+
+@media (min-width: 1024px) {
+  /* Aktivní modul v levém panelu v barvě modulu; --accent zůstává hlavním akcím */
+  .side-icon { width: 32px; height: 32px; padding: 6px; margin-left: -5px; }
+  .side-item.is-active { background: color-mix(in srgb, var(--mod, var(--accent)) 14%, transparent); color: var(--mod-ink, var(--accent-ink)); }
+  .side-group:has(.side-item.mod-ukoly) { --mod: var(--mod-ukoly); }
+  .side-group:has(.side-item.mod-penize) { --mod: var(--mod-penize); }
+  .side-group:has(.side-item.mod-recepty) { --mod: var(--mod-recepty); }
+  .side-group:has(.side-item.mod-administrativa) { --mod: var(--mod-administrativa); }
+  .side-group.has-subs { --mod-ink: color-mix(in srgb, var(--mod) var(--ink), var(--text)); }
+  .side-subitem.is-active { background: color-mix(in srgb, var(--mod, var(--accent)) 14%, transparent); color: var(--mod-ink, var(--accent-ink)); }
+  .sidenav.is-narrow .side-icon { margin-left: 0; }
+  .side-subitem { padding-left: calc(var(--s3) + 27px + var(--s3)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .check, .check svg path, .btn, .add-btn, .chip, .chip-btn, .opt, .icon-btn, .notify-btn, a.card, button.card, .home-card { transition: none; }
+  .budget-bar > span { animation: none; }
+  .btn:active, .add-btn:active, .chip:active, .chip-btn:active, .opt:active, .icon-btn:active, .notify-btn:active,
+  a.card:hover, button.card:hover, .home-card:hover { transform: none; }
 }

@@ -14,9 +14,25 @@ export const title = 'Dnes';
 const plural = (n, one, few, many) => `${n} ${n === 1 ? one : n >= 2 && n <= 4 ? few : many}`;
 const late = (text) => `<span class="is-late">${text}</span>`;
 
+// Oslovení v 5. pádě: Tom → Tome, Jana → Jano, Domi zůstane
+function vocative(name) {
+  if (/[aA]$/.test(name)) return `${name.slice(0, -1)}o`;
+  if (/[khg]$/i.test(name)) return `${name}u`;
+  if (/[bcčdďfjlmnňprřsštťvzž]$/i.test(name)) return `${name}e`;
+  return name;
+}
+
+// Pozdrav podle denní doby a jména přihlášeného
+export function greeting(name, date = new Date()) {
+  const h = date.getHours();
+  const part = h >= 4 && h < 9 ? 'Dobré ráno' : h >= 9 && h < 12 ? 'Dobré dopoledne' : h >= 12 && h < 18 ? 'Dobré odpoledne' : 'Dobrý večer';
+  return name ? `${part}, ${vocative(name)}` : part;
+}
+
 export async function render(el, { subEl }) {
   subEl.textContent = todayLabel();
   subEl.hidden = false;
+  document.getElementById('screen-title').textContent = greeting(await store.getMe());
   // Počítač: přehled ve dvou sloupcích místo dlaždic (moduly jsou v levém panelu)
   if (isDesktop()) return renderOverview(el);
 

@@ -35,7 +35,7 @@ export async function render(el, { extraEl }) {
 
   const root = document.createElement('div');
   el.append(root);
-  const swatches = ['bg', 'surface', 'surface-2', 'border', 'text', 'text-2', 'text-3', 'accent', 'accent-soft', 'danger', 'who-1', 'who-2', 'who-both', 'flow-in', 'flow-out', 'flow-move', 'chart-1', 'chart-2', 'chart-3'];
+  const swatches = ['bg', 'surface', 'surface-2', 'border', 'text', 'text-2', 'text-3', 'accent', 'accent-2', 'accent-soft', 'danger', 'who-1', 'who-2', 'who-both', 'flow-in', 'flow-out', 'flow-move', 'chart-1', 'chart-2', 'chart-3'];
   root.innerHTML = `
     <p class="section-label">Písmo</p>
     <section class="card">
@@ -47,6 +47,17 @@ export async function render(el, { extraEl }) {
 
     <p class="section-label">Barvy</p>
     <div class="demo-row">${swatches.map((name) => `<span class="demo-swatch" style="background: var(--${name})" title="${name}"></span>`).join('')}</div>
+
+    <p class="section-label">Ikony modulů v podkladu</p>
+    <div class="demo-row">${[['ukoly', 'tasks'], ['nakup', 'cart'], ['penize', 'wallet'], ['recepty', 'recipe'], ['administrativa', 'folder'], ['wishlist', 'gift'], ['bucketlist', 'star'], ['info', 'home']]
+      .map(([mod, icon]) => `<span class="demo-icon-box mod-${mod}" title="${mod}">${ICONS[icon]}</span>`).join('')}</div>
+
+    <p class="section-label">Přechod, stín, karta měsíce</p>
+    <div class="demo-row">
+      <span class="demo-swatch" style="background: linear-gradient(135deg, var(--accent), var(--accent-2))" title="hlavní tlačítko"></span>
+      <span class="demo-swatch" style="background: var(--surface); box-shadow: var(--shadow)" title="--shadow"></span>
+      <span class="demo-swatch flow-card" title="karta posledního měsíce"></span>
+    </div>
 
     <p class="section-label">Rozestupy 4 / 8 / 12 / 16 / 24</p>
     <div class="demo-row">${[1, 2, 3, 4, 5].map((n) => `<span class="demo-swatch" style="width: var(--s${n}); background: var(--text-3)"></span>`).join('')}</div>

@@ -80,7 +80,7 @@ Posluchače událostí věšet na vlastní prvky uvnitř pohledu, ne přímo na 
 - Celé UI česky. V textech jen krátká pomlčka `-`, nikdy dlouhá `—`.
 - Mobile-first, dotykové plochy aspoň 44 px, písmo v polích aspoň 16 px (iOS jinak zoomuje).
 - Barvy jen přes CSS proměnné z `:root`, ať funguje tmavý režim. Hlavní barva je teplá
-  (terakota), tyrkysová se nepoužívá. Barvy „čí to je“: Domi růžová, Tom modrá, společné světlejší zelená. V řádcích
+  (korálově oranžová), tyrkysová se nepoužívá. Barvy „čí to je“: Domi růžová, Tom modrá, společné světlejší zelená. V řádcích
   je ukazuje jen širší pruh vlevo, kolečko s iniciálou tam není. Důležitost: šedá, okrová,
   malinová.
 - Žádné knihovny z CDN bez dobrého důvodu, appka musí fungovat offline.
@@ -242,16 +242,38 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
 - Rozestupy, jen jedna škála: `--s1` 4, `--s2` 8, `--s3` 12, `--s4` 16, `--s5` 24. Jiné hodnoty
   v `padding`, `margin` a `gap` nepoužívat (výjimka jsou vlasové 1-3 px a `calc` se safe-area).
 - Zaoblení: `--radius` 14 (karty, panely, nabídka), `--radius-sm` 10 (tlačítka, čipy, pole).
+- Podklad a text (0.32.0): světlý `--bg` #FAF6F0, `--surface` #FFF, `--surface-2` #F4EDE3,
+  `--border` #EADFD1, `--text` #211B15, `--text-2` #6F6559; tmavý `--bg` #15120E, `--surface`
+  #1F1A15, `--surface-2` #2A241D, `--border` #3A3128, `--text` #F5EFE7, `--text-2` #A99D90.
+- Kontrast textu aspoň 4.5:1 v obou režimech. Text v barvě (aktivní záložka, vedlejší
+  tlačítko, aktivní modul v panelu) jde přes `--accent-ink` / `--mod-ink`: ve světlém režimu
+  je barva namíchaná se `--text` (`--ink` 60 %), v tmavém čistá. Text na `--accent` je tmavý
+  (`--on-accent`), fajfka v plném kolečku `--on-fill`.
+- Přechod (gradient) smí být jen na třech místech: hlavní tlačítka (`.add-btn`,
+  `.btn-primary`: 135° `--accent` → `--accent-2`), karta posledního měsíce v Penězích a na
+  Domů (`.flow-card`, `.home-month`: `--surface` → 8 % `--accent`) a pruhy limitů. Nikde jinde.
+- Stín `--shadow` mají karty (`.card`, `.group`) jen ve světlém režimu, v tmavém je `none`
+  a stačí `--border`. Při najetí myší `--shadow-hover`.
+- Ikona modulu na Domů (dlaždice i karta), v levém panelu a v hlavičce karty sedí
+  v zaobleném čtverečku (`--radius-sm`) s podkladem 15 % barvy modulu. Třída `.mod-<trasa>`
+  nastaví `--mod` a `--mod-ink`. Aktivní modul i podsekce v levém panelu: podklad 14 % barvy
+  modulu a text `--mod-ink`.
+- Animace jen drobné, do 200 ms, `prefers-reduced-motion` je vypne: najetí na kartu nebo
+  dlaždici ji zvedne o 1 px a zesílí stín, stisk tlačítka `scale(0.97)`, splnění úkolu /
+  koupení položky vyplní kolečko barvou osoby (`--fill` z `.who-*`, bez osoby `--accent`)
+  a dokreslí fajfku (přechod, ne animace, takže řádky vykreslené už hotové se nehýbou), pruhy
+  limitů a cílů při vykreslení dojedou na hodnotu.
 - Barvy s pevným významem:
-  - `--accent` (oranžová) jen pro hlavní akci (tlačítko +, Přidat) a aktivní stav
-    (aktivní záložka, zapnutý zámek / zvonek / opakování). Nic dalšího.
+  - `--accent` (korálově oranžová, `--accent-2` světlejší konec přechodu, `--accent-soft`
+    14 %) jen pro hlavní akci (tlačítko +, Přidat) a aktivní stav (aktivní záložka spodní
+    lišty, zapnutý zámek / zvonek / opakování, aktivní přepínače). Nic dalšího.
   - barvy osob jen pro osoby: `--who-2` Tom modrá, `--who-1` Domi růžová, `--who-both` oba
     zelená, kdokoliv neutrální (`whoClass()` z `ui.js`).
   - `--danger` (červená) jen pro „po termínu“ a mazání, **vždy s ikonou** (třída `.is-late`
     přidá hodiny, `.btn-danger` a `.menu-item.is-danger` koš), ať se neplete s růžovou Domi.
   - každý modul má vlastní barvu ikony na Domů (`--mod-*`, třída `.mod-<trasa>`): Úkoly
-    jantarová, Nákup terakota, Peníze tmavě zlatá, Recepty světle oranžová, Administrativa
-    hnědá, Wishlist fialová, Bucketlist žlutá, Byt šedofialová. Nikdy modrá, růžová, zelená
+    jantarová, Nákup terakota, Peníze zlatá, Recepty meruňková, Administrativa oříšková,
+    Wishlist švestková, Bucketlist slunečnicová, Byt šedofialová. Nikdy modrá, růžová, zelená
     ani červená. Nový modul dostane další teplý odstín, který ještě není použitý.
   - Peníze, skutečnost: kategorie jsou běžné řádky seznamu bez pruhu osoby, bez barev
     a ikon, `items` šedé podřádky `.money-shop` (ukázka na `#/ukazka`).
@@ -696,6 +718,11 @@ Hotovo (0.31.1): Domů na počítači jako karty pěti sekcí ve třech (dvou) s
 
 Hotovo (0.31.2): Domů na počítači se vejde bez posouvání na každou výšku okna, karty ukazují
 jen řádky, které se vejdou; Nákup na počítači posouvá seznam a katalog zvlášť; tenké posuvníky.
+
+Hotovo (0.32.0): hravější vzhled (viz Design systém, Tokeny): teplejší podklady,
+korálová hlavní barva s přechodem na hlavních tlačítkách, ikony modulů ve čtverečku,
+stíny karet, drobné animace, pozdrav na Domů podle denní doby („Dobré odpoledne, Tome“,
+`greeting` v `home.js`).
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
