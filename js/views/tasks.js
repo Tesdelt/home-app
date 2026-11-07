@@ -12,7 +12,7 @@
 
 import * as store from '../store.js';
 import { splitView } from '../split.js';
-import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, emptyState } from '../ui.js';
+import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, emptyState, isDesktop } from '../ui.js';
 import { navigate } from '../router.js';
 import { renderTask, NEW } from './task.js';
 import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
@@ -96,6 +96,30 @@ async function renderPage(el, { params, subEl, extraEl }) {
   sortBtn.type = 'button';
   sortBtn.className = 'btn btn-small shop-btn';
   toolbar.append(sortBtn);
+  // Filtr podle toho, pro koho úkol je (jen počítač, nastavuje ho i levý panel)
+  const filterBtn = document.createElement('button');
+  filterBtn.type = 'button';
+  filterBtn.className = 'btn btn-small shop-btn';
+  if (isDesktop()) toolbar.append(filterBtn);
+  let filter = await store.getMeta('taskFilter', 'all');
+  const filterOptions = () => {
+    const other = members.find((m) => m !== me);
+    return [['all', 'Všechny'], ['me', 'Pro mě'], ...(other ? [['other', `Pro ${other}`]] : []), ['both', 'Pro oba']];
+  };
+  filterBtn.addEventListener('click', () => {
+    openMenu(filterBtn, (menu, close) => {
+      menu.innerHTML = filterOptions()
+        .map(([value, name]) => `<button type="button" class="menu-item" data-value="${value}" aria-pressed="${value === filter}">${escapeHtml(name)}</button>`)
+        .join('');
+      menu.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-value]');
+        if (!btn) return;
+        close();
+        await store.setLocal('taskFilter', btn.dataset.value);
+        renderList();
+      });
+    });
+  });
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.className = 'add-btn';
@@ -198,9 +222,11 @@ async function renderPage(el, { params, subEl, extraEl }) {
     [me, members, comments, unread, sort] = await Promise.all([
       store.getMe(), store.listMembers(), store.commentCounts(), store.unreadComments(), store.getMeta('taskSort', 'due'),
     ]);
+    filter = await store.getMeta('taskFilter', 'all');
     if (token !== renderToken) return;
 
     sortBtn.textContent = SORTS.find(([value]) => value === sort)?.[1] ?? 'Termín';
+    filterBtn.textContent = filterOptions().find(([value]) => value === filter)?.[1] ?? 'Všechny';
 
     toolbar.hidden = !tasks.some((t) => !t.done);
     if (!tasks.length) {
@@ -208,8 +234,12 @@ async function renderPage(el, { params, subEl, extraEl }) {
       return;
     }
 
-    // Jeden souvislý seznam, skupiny jen jako malý nadpis uvnitř
-    const groups = sortTasks(tasks, sort, members);
+    // Jeden souvislý seznam, skupiny jen jako malý nadpis uvnitř. Na počítači
+    // jen úkoly podle filtru (pro mě, pro druhého, pro oba).
+    const other = members.find((m) => m !== me);
+    const wanted = { me, other, both: store.BOTH }[filter];
+    const shown = isDesktop() && wanted ? tasks.filter((t) => t.done || t.assignee === wanted) : tasks;
+    const groups = sortTasks(shown, sort, members);
     const rows = groups
       .map((group) => `${group.label ? `<li class="cat-head">${escapeHtml(group.label)}</li>` : ''}${group.tasks.map((t) => row(t)).join('')}`)
       .join('');

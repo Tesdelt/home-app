@@ -202,6 +202,14 @@ export async function render(el, { extraEl }) {
       <div class="split-detail"><div class="detail-head"><span class="detail-name">Vynést odpad</span></div></div>
     </div>
 
+    <p class="section-label">Počítač: levý panel s rozbalenými podsekcemi</p>
+    <div class="demo-side" style="margin-bottom: var(--s3)">
+      <div class="side-group has-subs is-open"><div class="side-row"><a href="#/ukazka" class="side-item mod-penize is-active"><span class="side-icon">${ICONS.wallet}</span><span class="side-label">Peníze</span><span class="side-badge">2</span></a><button type="button" class="side-toggle" aria-expanded="true"></button></div>
+        <div class="side-sub-wrap"><div class="side-sub"><a href="#/ukazka" class="side-subitem is-active">Tom</a><a href="#/ukazka" class="side-subitem">Domi</a><a href="#/ukazka" class="side-subitem">Společné</a><a href="#/ukazka" class="side-subitem">Grafy</a></div></div></div>
+      <div class="side-group has-subs"><div class="side-row"><a href="#/ukazka" class="side-item mod-recepty"><span class="side-icon">${ICONS.recipe}</span><span class="side-label">Recepty</span><span class="side-badge"></span></a><button type="button" class="side-toggle" aria-expanded="false"></button></div>
+        <div class="side-sub-wrap"><div class="side-sub"><a href="#/ukazka" class="side-subitem">Recepty</a></div></div></div>
+    </div>
+
     <p class="section-label">Ikony</p>
     <div class="demo-row">${Object.keys(ICONS).map((name) => `<span class="card-icon" title="${name}">${ICONS[name]}</span>`).join('')}</div>
 
@@ -233,6 +241,8 @@ export async function render(el, { extraEl }) {
 
   root.addEventListener('click', (e) => {
     if (e.target.closest('a[href="#/ukazka"]')) e.preventDefault();
+    const sideToggle = e.target.closest('.demo-side .side-toggle');
+    if (sideToggle) sideToggle.closest('.side-group').classList.toggle('is-open');
     const head = e.target.closest('.fold-head');
     if (head) {
       toggleFold(head.closest('.fold'));

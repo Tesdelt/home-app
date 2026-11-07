@@ -24,6 +24,7 @@ const NEW = 'novy';
 
 // Která část je otevřená, vydrží, dokud je appka otevřená
 let scope = 'shared';
+export const scopeNow = () => scope;
 
 const categoryName = (id) => store.DOC_CATEGORIES.find(([value]) => value === id)?.[1] ?? 'Ostatní';
 
@@ -307,5 +308,11 @@ async function renderDoc(el, id) {
 // Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
 export const split = true;
 export function render(el, ctx) {
+  // #/administrativa/spolecne a /osobni otevřou danou část (podsekce v levém panelu)
+  const [first] = ctx.params ?? [];
+  if (first === 'spolecne' || first === 'osobni') {
+    scope = first === 'osobni' ? 'private' : 'shared';
+    ctx = { ...ctx, params: [] };
+  }
   return splitView(el, ctx, renderPage, { key: 'administrativa', empty: ['folder', 'Vyberte dokument', 'Otevře se tady i s naskenovanými stránkami, třeba záruka na pračku.'] });
 }

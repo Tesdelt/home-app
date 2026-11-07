@@ -170,10 +170,15 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   zůstatek přihlášeného), ostatní jednu jako na mobilu.
 - Nákup na počítači: vlevo pole a seznam, vpravo trvale otevřený katalog kategorií
   (`catalogPanel` v `catalogui.js`, stejné řádky jako katalog v panelu), přidání kliknutím.
+- Podsekce levého panelu nastavují stav modulu: segment Peněz (meta `moneySegment`), filtr
+  Úkolů (meta `taskFilter`: all / me / other / both, jen na počítači, i tlačítko v `.toolbar`
+  Úkolů), záložku Receptů (`#/recepty/recepty`, `#/recepty/skills`, `#/recepty/zasoby`)
+  a část Administrativy (`#/administrativa/spolecne`, `/osobni`). „Grafy“ u Peněz vede na
+  `#/penize/grafy`, které na počítači vykreslí Peníze a odroluje na graf.
 - Peníze na počítači: vlevo (400 px) segmenty, souhrn, Cíle a platby; vpravo Skutečnost a
   pod ní graf (`renderCharts(..., { embedded: true, onMonth })` z `moneycharts.js`, stejné
   volby a meta `moneyChart`). Ťuknutí na měsíc v grafu přepne Skutečnost (`onSelect`
-  v `drawChart`). `#/penize/grafy/<segment>` na počítači přesměruje na `#/penize`.
+  v `drawChart`). `#/penize/grafy/<segment>` na počítači vykreslí Peníze a odroluje na graf.
 - Nastavení na počítači: karty ve 2 sloupcích.
 - Klávesnice: Esc zavře nabídku, dialog i otevřený detail (předtím opustí pole, ať se
   změna uloží), fokus je vidět (outline `--text-2`).
@@ -258,9 +263,17 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
 
 ### Počítač
 
-- **Levý panel** `.sidenav` (240 px): název Domácnost, moduly s ikonou v barvě modulu
-  (`--mod-*`), aktivní položka `--accent-soft` + `--accent` jako aktivní záložka, tečka
-  nepřečtených u Úkolů, počet k zaplacení u Peněz (`.side-badge`).
+- **Levý panel** `.sidenav` (240 px, `js/sidenav.js`): název Domácnost, moduly s ikonou
+  v barvě modulu (`--mod-*`), aktivní položka `--accent-soft` + `--accent` jako aktivní
+  záložka, tečka nepřečtených u Úkolů, počet k zaplacení u Peněz (`.side-badge`).
+  Moduly s podsekcemi (`.side-group.has-subs`) se rozbalí šipkou `.side-toggle` (klik na
+  název otevře modul), plynule jako `toggleFold`, víc modulů může být rozbalených.
+  Podsekce `.side-subitem` bez ikon, s menším odsazením, aktivní zvýrazněná:
+  Peníze (členové, Společné, Grafy), Recepty (Recepty, Co uvařit, Skills), Úkoly (Všechny,
+  Pro mě, Pro druhého, Pro oba), Administrativa (Společné, Osobní).
+  Pořadí modulů jde změnit přetažením (`dragSort`), Nastavení zůstává dole. Tlačítko
+  `.side-collapse` dole zúží panel na ikony (64 px, název v `title` při najetí myší).
+  Pořadí, rozbalené moduly a zúžení si pamatuje každý počítač (meta `sidebar`).
 - Obsah vpravo, max. 1200 px, centrovaný. **Dialog** místo spodního panelu: `openSheet`
   se na počítači vykreslí uprostřed (max. 520 px, `--radius`, ztmavené pozadí). `openMenu`
   zůstává nabídka u tlačítka (u pravého tlačítka myši u kurzoru).
@@ -608,6 +621,12 @@ Hotovo (0.27.0), počítač, část 2: seznam a detail vedle sebe (`js/split.js`
 
 Hotovo (0.28.0), počítač, část 3: Domů ve 3-4 sloupcích s více řádky, Nákup s trvalým
 katalogem, Peníze se Skutečností a grafem vedle plateb, Nastavení ve 2 sloupcích.
+
+Hotovo (0.28.1):
+- Levý panel: podsekce rozbalované šipkou, filtr Úkolů podle toho, pro koho jsou, pořadí
+  modulů přetažením, zúžení na ikony; vše se pamatuje na každém počítači (meta `sidebar`).
+- Oprava: Recepty si nenačítaly `emptyState`, prázdná záložka Skills (a prázdný seznam
+  receptů) spadla s chybou. Chyba tu byla od 0.16.0.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

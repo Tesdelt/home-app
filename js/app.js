@@ -13,6 +13,7 @@ import * as recipes from './views/recipes.js';
 import { wishlist, bucketlist } from './views/wishes.js';
 import * as docs from './views/docs.js';
 import * as notes from './views/notes.js';
+import { initSidenav, drawSidenav, markSidenav, updateBadges } from './sidenav.js';
 import * as demo from './views/demo.js';
 
 // Pořadí = pořadí v liště. První trasa je výchozí.
@@ -40,26 +41,6 @@ const tabbar = document.querySelector('.tabbar');
 const appEl = document.getElementById('app');
 const sidenav = document.querySelector('.sidenav');
 
-// Levý panel na počítači: všechny moduly v pevném pořadí, dole Nastavení.
-// Ikona v barvě modulu (--mod-*), Domů a Nastavení neutrálně.
-const SIDE = [
-  ['domu', 'home', 'Domů'],
-  ['nakup', 'cart', 'Nákup'],
-  ['ukoly', 'tasks', 'Úkoly'],
-  ['penize', 'wallet', 'Peníze'],
-  ['recepty', 'recipe', 'Recepty'],
-  ['administrativa', 'folder', 'Administrativa'],
-  ['wishlist', 'gift', 'Wishlist'],
-  ['bucketlist', 'star', 'Bucketlist'],
-  ['info', 'house', 'Byt'],
-];
-const sideLink = ([route, icon, label]) => `<a href="#/${route}" data-route="${route}" class="side-item mod-${route}">
-    <span class="side-icon">${ICONS[icon]}</span><span class="side-label">${label}</span><span class="side-badge"></span>
-  </a>`;
-sidenav.innerHTML = `<p class="side-title">Domácnost</p>
-  <div class="side-list">${SIDE.map(sideLink).join('')}</div>
-  <div class="side-bottom">${sideLink(['vice', 'gear', 'Nastavení'])}</div>`;
-const sideItems = sidenav.querySelectorAll('.side-item');
 
 init();
 
@@ -89,6 +70,7 @@ async function init() {
     tabbar.hidden = !inside;
     sidenav.hidden = !inside;
     if (inside) {
+      drawSidenav();
       if (rerender) rerender();
       else rerender = startRouter(route);
       return;
@@ -116,7 +98,7 @@ async function init() {
     // liště, na Domů mají dlaždici jako ostatní). Bez šipky je jen Domů a Nastavení.
     // Na počítači je navigace v levém panelu, šipka zůstává jen na podstránkách.
     // Seznam a detail vedle sebe (view.split) šipku na počítači nepotřebují vůbec.
-    backEl.hidden = isDesktop() ? !params?.length || Boolean(view.split) : name === 'domu' || name === 'vice';
+    backEl.hidden = isDesktop() ? !params?.length || Boolean(view.split) || name === 'penize' : name === 'domu' || name === 'vice';
     backEl.href = `#/${view.tab && view.tab !== name ? view.tab : 'domu'}`;
     // Pohled si horní lištu může schovat (stránka úkolu), každý další začíná s ní
     appEl.classList.remove('no-topbar');
@@ -127,15 +109,6 @@ async function init() {
     viewEl.scrollTop = 0;
     document.title = `${view.title} · Domácnost`;
 
-    // Levý panel zvýrazní přímo modul (Recepty, Byt…), spodní lišta jeho záložku
-    const side = SIDE.some(([route]) => route === name) ? name : (view.tab ?? name);
-    sideItems.forEach((item) => {
-      const active = item.dataset.route === side;
-      item.classList.toggle('is-active', active);
-      if (active) item.setAttribute('aria-current', 'page');
-      else item.removeAttribute('aria-current');
-    });
-
     tabs.forEach((tabEl) => {
       const active = tabEl.dataset.route === (view.tab ?? name);
       tabEl.classList.toggle('is-active', active);
@@ -145,6 +118,8 @@ async function init() {
 
     try {
       cleanup = await view.render(viewEl, { params, extraEl, subEl });
+      // Levý panel zvýrazní přímo modul (Recepty, Byt…) a jeho podsekci
+      markSidenav(name, params ?? [], view.tab ?? null);
     } catch (err) {
       console.error(err);
       viewEl.innerHTML = `<section class="card"><h2 class="card-title">Něco se pokazilo</h2>
@@ -155,15 +130,12 @@ async function init() {
   // Tečka u záložky Úkoly, dokud je někde nepřečtený komentář
   // V levém panelu navíc počet plateb k zaplacení u Peněz
   const tasksTab = document.querySelector('.tab[data-route="ukoly"]');
-  const tasksSide = sidenav.querySelector('[data-route="ukoly"]');
-  const moneyBadge = sidenav.querySelector('[data-route="penize"] .side-badge');
   const updateDots = async () => {
     if (auth.getState().status !== 'ready') return;
     const [unread, due] = await Promise.all([store.unreadComments(), store.duePayments(7)]);
     const dot = Object.keys(unread).length > 0;
     tasksTab.classList.toggle('has-dot', dot);
-    tasksSide.classList.toggle('has-dot', dot);
-    moneyBadge.textContent = due.length ? String(due.length) : '';
+    updateBadges({ dot, due: due.length });
   };
   store.subscribe(updateDots);
   auth.onChange(updateDots);
@@ -181,6 +153,8 @@ async function init() {
     document.activeElement?.blur?.();
     setTimeout(() => { location.hash = `#/${parts[0]}`; }, 0);
   });
+
+  initSidenav({ onRerender: () => rerender?.() });
 
   tabbar.hidden = true;
   login.render(viewEl, auth.getState());

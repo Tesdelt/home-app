@@ -80,13 +80,10 @@ let pickedMonth = null;
 export async function render(el, { params, extraEl, subEl }) {
   // #/penize/grafy/<segment> jsou grafy Skutečnosti
   // Na počítači je graf rovnou vedle Skutečnosti, podstránka grafů tam nemá smysl
-  if (params?.[0] === 'grafy') {
-    if (isDesktop()) {
-      location.replace('#/penize');
-      return undefined;
-    }
-    return renderCharts(el, params[1] || store.SPLIT, { subEl });
-  }
+  // Na počítači #/penize/grafy vykreslí Peníze a odroluje na graf vedle Skutečnosti
+  const chartFocus = params?.[0] === 'grafy';
+  if (chartFocus && !isDesktop()) return renderCharts(el, params[1] || store.SPLIT, { subEl });
+  if (chartFocus && params[1]) await store.setLocal('moneySegment', params[1]);
 
   const desktop = isDesktop();
   const root = document.createElement('div');
@@ -132,6 +129,7 @@ export async function render(el, { params, extraEl, subEl }) {
         draw();
       },
     });
+    if (chartFocus) chartRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   const segEl = root.querySelector('.segmented');

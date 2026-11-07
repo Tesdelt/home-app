@@ -11,7 +11,7 @@ import { splitView } from '../split.js';
 import { parseEntry, normalize } from '../categories.js';
 import { findProduct } from '../catalog.js';
 import { productChips } from '../catalogui.js';
-import { escapeHtml, ICONS, toast, undoToast, openMenu, openSheet, dragSort, holdKeyboard, squarePhoto } from '../ui.js';
+import { escapeHtml, ICONS, toast, undoToast, openMenu, openSheet, dragSort, holdKeyboard, squarePhoto, emptyState } from '../ui.js';
 import { navigate } from '../router.js';
 
 export const title = 'Recepty';
@@ -940,5 +940,14 @@ async function renderPantry(el) {
 // Na počítači vlevo seznam a vpravo otevřená položka (js/split.js)
 export const split = true;
 export function render(el, ctx) {
+  // #/recepty/recepty a #/recepty/skills otevřou seznam na dané záložce (podsekce v levém panelu)
+  const [first] = ctx.params ?? [];
+  if (first === 'recepty' || first === 'skills') {
+    listTab = first === 'skills' ? 'skills' : 'recipes';
+    ctx = { ...ctx, params: [] };
+  }
   return splitView(el, ctx, renderPage, { key: 'recepty', empty: ['recipe', 'Vyberte recept', 'Otevře se tady s postupem, třeba lasagne.'], fullWhenEmpty: true });
 }
+
+// Která záložka seznamu je otevřená (pro zvýraznění podsekce v levém panelu)
+export const listTabNow = () => listTab;

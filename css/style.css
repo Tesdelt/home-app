@@ -1644,3 +1644,46 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
   .settings { column-count: 2; column-gap: var(--s5); }
   .settings > .card, .settings > .section-label { break-inside: avoid; }
 }
+
+/* ---------- Levý panel: podsekce, přetahování, zúžení ---------- */
+.side-collapse { display: none; }
+@media (min-width: 1024px) {
+  .side-list { gap: 0; }
+  .side-group { border-radius: var(--radius-sm); }
+  .side-group.is-held { background: var(--surface); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22); }
+  .side-row { position: relative; display: flex; align-items: center; }
+  .side-row .side-item { flex: 1; min-width: 0; }
+  .side-item, .side-subitem { -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
+  .side-toggle { flex: none; position: absolute; right: 0; width: 32px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; }
+  .side-toggle::after { content: ""; display: block; width: 7px; height: 7px; margin: auto; border-right: 1.8px solid var(--text-3); border-bottom: 1.8px solid var(--text-3); transform: rotate(-45deg); transition: transform 200ms ease; }
+  .side-group.is-open .side-toggle::after { transform: rotate(45deg); }
+  .side-group.has-subs .side-item { padding-right: 36px; }
+  /* Podsekce: bez ikon, menší odsazení pod modulem, plynulé rozbalení */
+  .side-sub-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 200ms ease; }
+  .side-group.is-open .side-sub-wrap { grid-template-rows: 1fr; }
+  .side-sub { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .side-subitem { display: flex; align-items: center; min-height: 36px; padding: 0 var(--s3) 0 calc(var(--s3) + 22px + var(--s3)); border-radius: var(--radius-sm); color: var(--text-2); text-decoration: none; font-size: var(--fs-small); }
+  .side-subitem.is-active { color: var(--accent); font-weight: 600; background: var(--accent-soft); }
+  .side-sub > .side-subitem:last-child { margin-bottom: var(--s1); }
+  /* Zúžení na ikony */
+  .side-collapse { display: grid; place-items: center; width: 44px; height: 36px; margin: var(--s2) 0 0 var(--s1); padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-3); }
+  .side-collapse::after { content: "«"; font-size: var(--fs-section); line-height: 1; }
+  .sidenav.is-narrow .side-collapse::after { content: "»"; }
+  #app.side-narrow { grid-template-columns: 64px minmax(0, 1fr); }
+  .side-narrow .toast-root { left: 64px; }
+  .sidenav.is-narrow { padding-left: var(--s2); padding-right: var(--s2); }
+  .sidenav.is-narrow .side-title { font-size: 0; margin: 0 0 var(--s3); height: var(--fs-section); }
+  .sidenav.is-narrow .side-label, .sidenav.is-narrow .side-toggle, .sidenav.is-narrow .side-sub-wrap { display: none; }
+  .sidenav.is-narrow .side-item { justify-content: center; padding: 0; }
+  .sidenav.is-narrow .side-badge { position: absolute; top: 0; right: 0; min-width: 18px; font-size: var(--fs-small); }
+  .sidenav.is-narrow .side-item.has-dot::after { content: ""; position: absolute; top: 8px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
+  .side-subitem:not(.is-active):hover, .side-toggle:hover, .side-collapse:hover { background: var(--surface-2); }
+}
+
+/* Ukázka levého panelu na #/ukazka (jen počítač) */
+.demo-side { display: none; }
+@media (min-width: 1024px) {
+  .demo-side { display: block; width: 240px; padding: var(--s2); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+}
