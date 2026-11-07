@@ -1241,6 +1241,123 @@ export async function listMoneyMonths(account) {
     .sort((a, b) => b.month.localeCompare(a.month));
 }
 
+// ---------- Nezařazené položky a pravidla ----------
+// Pravidlo: { id, account, pattern, kind: 'expense' | 'income', category, itemName }.
+// Nezařazená položka měsíce (money_months.unsorted): { key, name, amount, kind };
+// výdaj je zároveň položkou name v categories["Ostatní"], příjem v incomes["Od lidí"].
+export const UNSORTED_HOME = { expense: 'Ostatní', income: 'Od lidí' };
+const groupField = (kind) => (kind === 'income' ? 'incomes' : 'categories');
+const sameKey = (a, b) => String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
+
+export async function listRules(account) {
+  const members = await listMembers();
+  return (await live('rules')).filter((r) => inPaymentSegment({ payer: r.account }, account, members));
+}
+
+// Uloží pravidlo (stejný pattern v segmentu se přepíše). Vrací { rule, before }.
+export async function addRule(account, { pattern, kind = 'expense', category, itemName = '' }) {
+  const before = (await live('rules')).find((r) => r.account === account && sameKey(r.pattern, pattern)) ?? null;
+  const now = Date.now();
+  const rule = {
+    id: before?.id ?? db.newId(), account, pattern: String(pattern).trim(), kind: kind === 'income' ? 'income' : 'expense',
+    category: String(category ?? '').trim(), itemName: String(itemName ?? '').trim(),
+    createdAt: before?.createdAt ?? now, updatedAt: now,
+  };
+  await save('rules', [rule]);
+  emit();
+  return { rule, before };
+}
+
+// Kategorie výdajů / příjmů segmentu od nejpoužívanější (počet měsíců, kde jsou)
+export async function moneyCategories(account, kind = 'expense') {
+  const counts = new Map();
+  for (const m of await listMoneyMonths(account)) {
+    for (const name of Object.keys(m[groupField(kind)] ?? {})) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'cs')).map(([name]) => name);
+}
+
+const round2 = (n) => Math.round(n * 100) / 100;
+const asGroup = (value) => (typeof value === 'object' && value
+  ? { total: Number(value.total) || 0, items: { ...(value.items ?? {}) } }
+  : { total: Number(value) || 0, items: {} });
+// Součet skupiny: z položek, když nějaké má, jinak dosavadní součet + změna
+const settle = (group, hadItems, delta) => {
+  const names = Object.keys(group.items);
+  group.total = round2(hadItems || names.length ? names.reduce((sum, n) => sum + (Number(group.items[n]) || 0), 0) : group.total + delta);
+  return group;
+};
+
+// Zařadí nezařazenou položku key do kategorie: v měsíci monthId i ve všech dalších
+// měsících segmentu se stejným key přesune částku z Ostatní (Od lidí) do kategorie,
+// odebere ji z unsorted a uloží pravidlo. category = UNSORTED_HOME[kind] (Nechat
+// v Ostatní) jen odebere z unsorted. Vrací { before, rule, others } pro Zpět.
+export async function sortUnsorted(account, monthId, key, category) {
+  const months = await listMoneyMonths(account);
+  const first = months.find((m) => m.id === monthId);
+  const entry = first?.unsorted?.find((u) => u.key === key);
+  if (!entry) return null;
+  const kind = entry.kind === 'income' ? 'income' : 'expense';
+  const target = String(category ?? '').trim() || UNSORTED_HOME[kind];
+  const field = groupField(kind);
+  const home = UNSORTED_HOME[kind];
+  const now = Date.now();
+  const before = [];
+  const after = [];
+  for (const m of months) {
+    const hits = (m.unsorted ?? []).filter((u) => u.key === key);
+    if (!hits.length) continue;
+    before.push(m);
+    const groups = { ...(m[field] ?? {}) };
+    if (target !== home) {
+      for (const u of hits) {
+        const amount = Number(u.amount) || 0;
+        // Z Ostatní (Od lidí) pryč
+        const fromHad = typeof groups[home] === 'object' && groups[home] && Object.keys(groups[home].items ?? {}).length > 0;
+        const from = asGroup(groups[home]);
+        if (from.items[u.name] != null) {
+          const left = round2((Number(from.items[u.name]) || 0) - amount);
+          if (Math.abs(left) < 0.005) delete from.items[u.name];
+          else from.items[u.name] = left;
+        }
+        settle(from, fromHad, -amount);
+        if (!Object.keys(from.items).length && Math.abs(from.total) < 0.005) delete groups[home];
+        else groups[home] = from;
+        // Do vybrané kategorie
+        const toHad = typeof groups[target] === 'object' && groups[target] && Object.keys(groups[target].items ?? {}).length > 0;
+        const to = asGroup(groups[target]);
+        to.items[u.name] = round2((Number(to.items[u.name]) || 0) + amount);
+        groups[target] = settle(to, toHad, amount);
+      }
+    }
+    after.push({ ...m, [field]: groups, unsorted: (m.unsorted ?? []).filter((u) => u.key !== key), updatedAt: now });
+  }
+  await save('moneymonths', after);
+  const { rule, before: ruleBefore } = await addRule(account, { pattern: key, kind, category: target, itemName: entry.name });
+  emit();
+  return { before, rule, ruleBefore, others: after.length - 1 };
+}
+
+// Nezařazené v posledním měsíci přihlášeného (Domů, levý panel):
+// { count, label: „2 nezařazené“, href na Skutečnost toho měsíce }
+export async function latestUnsorted() {
+  const [members, me] = await Promise.all([listMembers(), getMe()]);
+  const segment = members.includes(me) ? me : SPLIT;
+  const last = (await listMoneyMonths(segment))[0];
+  const count = last?.unsorted?.length ?? 0;
+  const word = count === 1 ? 'nezařazená' : count >= 2 && count <= 4 ? 'nezařazené' : 'nezařazených';
+  return { count, label: `${count} ${word}`, href: last ? `#/penize/mesic/${last.month}/${encodeURIComponent(segment)}` : '#/penize' };
+}
+
+// Zpět po zařazení: měsíce jak byly a pravidlo jak bylo (nebo žádné)
+export async function undoSortUnsorted({ before, rule, ruleBefore }) {
+  const now = Date.now();
+  await save('moneymonths', before.map((m) => ({ ...m, updatedAt: now })));
+  if (ruleBefore) await save('rules', [{ ...ruleBefore, updatedAt: now }]);
+  else await markDeleted('rules', [rule]);
+  emit();
+}
+
 // ---------- Zůstatek ----------
 // balance v money_months je zůstatek všech účtů segmentu dohromady ke konci měsíce
 // (u Toma Plus účet + spořák). Přesuny mezi nimi (INTERNAL_MOVES) ho nemění.
@@ -1377,7 +1494,7 @@ export async function exportAll() {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Sklady s řádky podle id, které se synchronizují stejným způsobem
-const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes', 'documents', 'notes', 'moneymonths', 'budgets', 'goals'];
+const ID_STORES = ['items', 'tasks', 'payments', 'comments', 'recipes', 'wishes', 'documents', 'notes', 'moneymonths', 'budgets', 'goals', 'rules'];
 
 export async function importAll(backup) {
   if (backup?.app !== 'home-app' || !backup.data) throw new Error('Tohle není záloha této aplikace.');

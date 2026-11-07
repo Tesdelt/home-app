@@ -60,11 +60,15 @@ const MIGRATIONS = [
     db.createObjectStore('budgets', { keyPath: 'id' });
     db.createObjectStore('goals', { keyPath: 'id' });
   },
+  // v12: Peníze, pravidla zařazení obchodníků (Nezařazené)
+  (db) => {
+    db.createObjectStore('rules', { keyPath: 'id' });
+  },
 ];
 
 export const DB_VERSION = MIGRATIONS.length;
 // Sklady, které jdou do zálohy. Fronta outbox mezi ně nepatří.
-export const STORES = ['meta', 'items', 'history', 'tasks', 'payments', 'shops', 'comments', 'recipes', 'wishes', 'documents', 'notes', 'moneymonths', 'budgets', 'goals'];
+export const STORES = ['meta', 'items', 'history', 'tasks', 'payments', 'shops', 'comments', 'recipes', 'wishes', 'documents', 'notes', 'moneymonths', 'budgets', 'goals', 'rules'];
 
 let dbPromise = null;
 

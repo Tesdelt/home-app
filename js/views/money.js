@@ -99,6 +99,13 @@ export async function render(el, { params, extraEl, subEl }) {
     });
   }
 
+  // #/penize/mesic/<RRRR-MM>/<segment>: Skutečnost toho měsíce (z Domů a panelu)
+  const monthFocus = params?.[0] === 'mesic' && /^\d{4}-\d{2}$/.test(params[1] ?? '');
+  if (monthFocus) {
+    pickedMonth = params[1];
+    if (params[2]) await store.setLocal('moneySegment', params[2]);
+  }
+
   // Na počítači #/penize/grafy vykreslí Peníze a odroluje na graf vedle Skutečnosti
   const chartFocus = params?.[0] === 'grafy';
   if (chartFocus && !isDesktop()) return renderCharts(el, params[1] || store.SPLIT, { subEl });
@@ -362,7 +369,14 @@ export async function render(el, { params, extraEl, subEl }) {
     };
     // Všechny skupiny jsou v jednom seznamu, takže rozbalená je nejvýš jedna
     // kategorie napříč všemi. Prázdná skupina se nezobrazí.
-    const lists = groups
+    // Nezařazené (obchodníci, které pravidla nepoznala): nad skupinami, rozbalovací
+    // řádek; klik na položku nabídne kategorii (viz pickUnsorted)
+    const unsorted = row.unsorted ?? [];
+    const unsortedFold = unsorted.length ? `<li class="item fold money-cat has-items unsorted-fold${openCat === 'unsorted' ? ' is-open' : ''}" data-fold="unsorted">
+        <button type="button" class="item-main fold-head" aria-expanded="${openCat === 'unsorted'}"><span class="unsorted-icon">${ICONS.help}</span><span class="item-text"><span class="item-name">Nezařazené (${unsorted.length})</span></span></button>
+        <div class="fold-body"><ul class="money-shops">${unsorted.map((u) => `<li class="money-shop is-unsorted"><button type="button" class="unsorted-item" data-unsorted="${escapeHtml(u.key)}"><span>${escapeHtml(u.name)}</span><span>${money(u.amount)}</span></button></li>`).join('')}</ul></div>
+      </li>` : '';
+    const lists = unsortedFold + groups
       .filter(([, , cats]) => cats.length)
       .map(([id, label, cats]) => `<li class="cat-head"><span class="flow-dot flow-${id}"></span>${label}</li>${cats.map(fold(id)).join('')}`)
       .join('');
@@ -516,6 +530,44 @@ export async function render(el, { params, extraEl, subEl }) {
     });
   }
 
+  // Nezařazená položka: nabídka kategorií (výdaje nebo příjmy podle druhu) od
+  // nejpoužívanější, nahoře pole Nová kategorie, dole Nechat v Ostatní. Výběr
+  // zařadí položku v tomto i dalších měsících segmentu a uloží pravidlo.
+  async function pickUnsorted(btn) {
+    holdKeyboard();
+    const row = months.find((m) => m.month === pickedMonth) ?? months[0];
+    const entry = row?.unsorted?.find((u) => u.key === btn.dataset.unsorted);
+    if (!entry) return;
+    const kind = entry.kind === 'income' ? 'income' : 'expense';
+    const home = store.UNSORTED_HOME[kind];
+    const cats = (await store.moneyCategories(segment, kind)).filter((c) => c !== home);
+    const choose = async (category) => {
+      const result = await store.sortUnsorted(segment, row.id, entry.key, category);
+      if (!result) return;
+      const label = category === home ? `${entry.name}: zůstává v ${home}` : `${entry.name}: ${category}`;
+      undoToast(result.others ? `Zařazeno i v ${result.others} dalších měsících` : label, () => store.undoSortUnsorted(result));
+    };
+    openMenu(btn, (menu, close) => {
+      menu.innerHTML = `<form class="menu-new"><input class="input" name="cat" placeholder="Nová kategorie" aria-label="Nová kategorie" autocomplete="off" enterkeyhint="done"></form>
+        ${cats.map((c) => `<button type="button" class="menu-item" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('')}
+        <button type="button" class="menu-item menu-quiet" data-cat="${escapeHtml(home)}">Nechat v ${escapeHtml(home)}</button>`;
+      menu.querySelector('form').addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        const name = ev.target.elements.cat.value.trim();
+        if (!name) return;
+        close();
+        choose(name);
+      });
+      menu.addEventListener('click', (ev) => {
+        const item = ev.target.closest('[data-cat]');
+        if (!item) return;
+        close();
+        choose(item.dataset.cat);
+      });
+      requestAnimationFrame(() => menu.querySelector('input').focus());
+    });
+  }
+
   // Hlavička rozbalovacího řádku nemá rowGestures, podržení se hlídá tady
   let press = null;
   let swallowClick = false;
@@ -546,6 +598,11 @@ export async function render(el, { params, extraEl, subEl }) {
     }
     if (e.target.closest('[data-action="goals"]')) {
       openGoals();
+      return;
+    }
+    const unsortedBtn = e.target.closest('[data-unsorted]');
+    if (unsortedBtn) {
+      pickUnsorted(unsortedBtn);
       return;
     }
     // Kategorie (Skutečnost i platby) se rozbalí na místě, viz toggleFold
@@ -760,6 +817,8 @@ export async function render(el, { params, extraEl, subEl }) {
   const endGesture = rowGestures(listRoot, { onTap: tap, onPress: openEdit, onSwipe: deletePayment });
 
   await draw();
+  // Z Domů na Skutečnost konkrétního měsíce: na mobilu se k ní sjede
+  if (monthFocus && !desktop) actualRoot.scrollIntoView({ block: 'start' });
   const unsubscribe = store.subscribe(draw);
   return () => {
     unsubscribe();

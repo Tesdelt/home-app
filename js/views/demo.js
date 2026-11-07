@@ -152,6 +152,8 @@ export async function render(el, { extraEl }) {
     </section>
     <section class="card summary flow-card">${planMeter(37000, 40000)}${planMeter(46800, 40000)}</section>
     <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
+      <li class="item fold money-cat has-items unsorted-fold" data-fold="u"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="unsorted-icon">${ICONS.help}</span><span class="item-text"><span class="item-name">Nezařazené (2)</span></span></button>
+        <div class="fold-body"><ul class="money-shops"><li class="money-shop is-unsorted"><button type="button" class="unsorted-item"><span>SkyShowtime</span><span>239 Kč</span></button></li><li class="money-shop is-unsorted"><button type="button" class="unsorted-item"><span>Petr Novák</span><span>500 Kč</span></button></li></ul></div></li>
       <li class="cat-head"><span class="flow-dot flow-in"></span>Příjmy</li>
       <li class="item fold money-cat has-items" data-fold="w"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="item-text"><span class="item-name">Práce</span></span><span class="item-amount">45 000 Kč</span></button>
         <div class="fold-body"><ul class="money-shops"><li class="money-shop"><span>Zaměstnavatel</span><span>45 000 Kč</span></li></ul></div></li>

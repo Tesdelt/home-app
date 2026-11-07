@@ -41,11 +41,11 @@ new ResizeObserver(() => document.getElementById('app').style.setProperty('--top
 
 async function updateDots() {
   if (auth.getState().status !== 'ready') return;
-  const [unread, due, news] = await Promise.all([store.unreadComments(), store.duePayments(7), store.moduleNews()]);
+  const [unread, due, news, unsorted] = await Promise.all([store.unreadComments(), store.duePayments(7), store.moduleNews(), store.latestUnsorted()]);
   const dots = new Set(Object.keys(news));
   if (Object.keys(unread).length) dots.add('ukoly');
   document.querySelectorAll('.tab[data-route]').forEach((tab) => tab.classList.toggle('has-dot', dots.has(tab.dataset.route)));
-  updateBadges({ dots, due: due.length });
+  updateBadges({ dots, due: due.length, unsorted });
 }
 const subEl = document.getElementById('screen-sub');
 const backEl = document.getElementById('topbar-back');

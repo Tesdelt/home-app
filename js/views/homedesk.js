@@ -153,9 +153,9 @@ export async function renderOverview(el) {
       Object.values(news).flat().forEach((id) => markNew(id, { soft: true }));
     }
     const segment = members.includes(me) ? me : store.SPLIT;
-    const [months, budgetRows, goals, due, summary] = await Promise.all([
+    const [months, budgetRows, goals, due, summary, unsorted] = await Promise.all([
       store.listMoneyMonths(segment), store.listBudgets(segment), store.listGoals(segment), store.duePayments(7),
-      store.paymentsSummary(segment),
+      store.paymentsSummary(segment), store.latestUnsorted(),
     ]);
     if (mine !== token) return;
     const day = today();
@@ -191,8 +191,8 @@ export async function renderOverview(el) {
     const plan = summary.total + budgetRows.reduce((sum, b) => sum + (Number(b.monthlyLimit) || 0), 0);
     if (row) {
       const saved = Object.values(row.moves ?? {}).reduce((s, v) => s + totalOf(v), 0);
-      top += `<a class="home-month" href="#/penize">
-        <span class="sum-label">${escapeHtml(monthName(row.month))}</span>
+      top += `<a class="home-month" href="${unsorted.count ? unsorted.href : '#/penize'}">
+        <span class="home-month-head"><span class="sum-label">${escapeHtml(monthName(row.month))}</span>${unsorted.count ? `<span class="home-unsorted">${unsorted.label}</span>` : ''}</span>
         <div class="sum-row">
           <div class="sum-cell"><span class="sum-label">Přišlo</span><span class="sum-value flow-in">${money(row.income)}</span></div>
           <div class="sum-cell"><span class="sum-label">Utraceno</span><span class="sum-value flow-out">${money(row.outgo)}</span></div>

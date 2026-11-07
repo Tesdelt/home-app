@@ -86,6 +86,7 @@ function item(route) {
         </a>
         ${list.length ? `<button type="button" class="side-toggle" aria-label="Rozbalit ${escapeHtml(label)}" aria-expanded="${open}"></button>` : ''}
       </div>
+      ${route === 'penize' ? '<a class="side-note" hidden></a>' : ''}
       ${list.length ? `<div class="side-sub-wrap"><div class="side-sub">${list.map((s) => `<a href="${s.href}" class="side-subitem" data-sub="${escapeHtml(s.key)}"${s.meta ? ` data-meta="${escapeHtml(s.meta[0])}" data-value="${escapeHtml(s.meta[1])}"` : ''} draggable="false">${escapeHtml(s.label)}</a>`).join('')}</div></div>` : ''}
     </div>`;
 }
@@ -146,8 +147,17 @@ export async function markSidenav(name, params = [], tab = null) {
 
 // Poslední stav teček a počtů, ať je překreslení panelu neztratí
 let badges = { dots: new Set(), due: 0 };
-export function updateBadges({ dots = new Set(), due }) {
-  badges = { dots, due };
+export function updateBadges({ dots = new Set(), due, unsorted = null }) {
+  badges = { dots, due, unsorted };
+  // Pod Penězi šedě počet nezařazených v posledním měsíci, klik otevře Skutečnost
+  const note = panel.querySelector('.side-note');
+  if (note) {
+    note.hidden = !unsorted?.count;
+    if (unsorted?.count) {
+      note.textContent = unsorted.label;
+      note.href = unsorted.href;
+    }
+  }
   panel.querySelectorAll('.side-item[data-route]').forEach((el) => el.classList.toggle('has-dot', dots.has(el.dataset.route)));
   const badge = panel.querySelector('.side-group[data-route="penize"] .side-badge');
   if (badge) badge.textContent = due ? String(due) : '';

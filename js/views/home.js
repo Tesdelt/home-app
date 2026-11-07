@@ -42,10 +42,10 @@ export async function render(el, { subEl }) {
   el.append(root);
 
   async function draw() {
-    const [items, tasks, payments, summary, soon, recipes, docs, wishes, buckets, notes, news, unread] = await Promise.all([
+    const [items, tasks, payments, summary, soon, recipes, docs, wishes, buckets, notes, news, unread, unsorted] = await Promise.all([
       store.listItems(), store.listTasks(), store.listPayments(), store.paymentsSummary(), store.duePayments(7),
       store.listRecipes(), store.listDocs(), store.listWishes('wish'), store.listWishes('bucket'), store.listNotes(),
-      store.moduleNews(), store.unreadComments(),
+      store.moduleNews(), store.unreadComments(), store.latestUnsorted(),
     ]);
     const dots = new Set(Object.keys(news));
     if (Object.keys(unread).length) dots.add('ukoly');
@@ -79,10 +79,14 @@ export async function render(el, { subEl }) {
       ['bucketlist', 'star', 'Bucketlist', bucketCount ? plural(bucketCount, 'nápad', 'nápady', 'nápadů') : ''],
       ['info', 'house', 'Byt', notes.length ? plural(notes.length, 'poznámka', 'poznámky', 'poznámek') : ''],
     ];
-    root.innerHTML = `<div class="tiles">${tiles.map(([route, icon, name, info]) => `<a class="card tile mod-${route}${dots.has(route) ? ' has-dot' : ''}" href="#/${route}">
+    // Peníze s nezařazenými: druhý šedý řádek a dlaždice otevře Skutečnost měsíce
+    const extra = { penize: unsorted.count ? unsorted.label : '' };
+    const href = (route) => (route === 'penize' && unsorted.count ? unsorted.href : `#/${route}`);
+    root.innerHTML = `<div class="tiles">${tiles.map(([route, icon, name, info]) => `<a class="card tile mod-${route}${dots.has(route) ? ' has-dot' : ''}" href="${href(route)}">
         <span class="card-icon">${ICONS[icon]}</span>
         <h2 class="card-title">${name}</h2>
         <p class="card-line">${info || 'Prázdné'}</p>
+        ${extra[route] ? `<p class="card-line is-quiet">${extra[route]}</p>` : ''}
       </a>`).join('')}</div>`;
   }
 

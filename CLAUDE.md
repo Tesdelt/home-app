@@ -634,7 +634,7 @@ Hotovo (0.18.0):
   měsíců). Měsíce bez něj appka dopočítá: income - outgo - součet moves BEZ kategorií
   „Na spořák“ a „Ze spořáku“ (přesuny uvnitř zůstatku, `INTERNAL_MOVES` v `moneycharts.js`).
   Unikátní je (household_id, account, month).
-- **Kdo do ní píše:** appka řádky jen čte a zobrazuje. Zapisuje je zvenku Claude přes SQL
+- **Kdo do ní píše:** appka řádky čte a zobrazuje (od 0.34.0 smí upravit jen zařazení nezařazených, viz 0.34.0). Zapisuje je zvenku Claude přes SQL
   z výpisů z banky, které mu Tom dá (`insert ... on conflict (household_id, account, month)
   do update set ..., updated_at = now()`; bez novějšího `updated_at` trigger `keep_newer`
   změnu zahodí). **Jednotlivé transakce se nikam neukládají, jen měsíční součty.**
@@ -805,6 +805,27 @@ Hotovo (0.33.5): počítač bez přežitků z mobilu. Nic se neposouvá do stran
 Seznam / Sloupce, bublinky v Nákupu, sloupce úkolů, tabulka). Levý panel: rozbalený je jen
 aktivní modul, šipka modul ukotví. Seznam s detailem: hlavička jen nad seznamem, detail od
 horního okraje, bez textu „Vyberte…“; + vedle názvu stránky.
+
+Hotovo (0.34.0), Peníze, Nezařazené:
+- Tabulka `money_rules` (sklad `rules`): account (jako u money_months), pattern (text
+  obchodníka / protiúčtu z výpisu, porovnává se bez ohledu na velikost písmen jako
+  „obsahuje“), kind `expense` | `income`, category, item_name. Unikátní (household_id,
+  account, pattern). Edituje je appka, **čte je Claude při zpracování výpisů**: obchodník,
+  kterého pravidlo pozná, jde rovnou do kategorie pod názvem item_name.
+- `money_months.unsorted` (jsonb, výchozí `[]`): `[{ key, name, amount, kind }]` = součty
+  za obchodníka, které pravidla nepoznala. Výdaj je zároveň položkou name
+  v `categories["Ostatní"]`, příjem v `incomes["Od lidí"]`, takže součty sedí.
+- Skutečnost: nad skupinami rozbalovací řádek „Nezařazené (3)“ s ikonou otazníku (`help`).
+  Klik na položku = nabídka: pole Nová kategorie, kategorie od nejpoužívanější
+  (`moneyCategories`), dole „Nechat v Ostatní“ / „Nechat v Od lidí“. Výběr
+  (`sortUnsorted` ve `store.js`) přesune částku z Ostatní do kategorie v tomto i ve všech
+  dalších měsících segmentu se stejným key, odebere z unsorted a uloží pravidlo; toast se
+  Zpět (`undoSortUnsorted`). „Nechat v…“ uloží pravidlo s kategorií Ostatní a položku jen
+  odebere z unsorted. **Výjimka z pravidla „appka money_months jen čte“:** smí upravit jen
+  categories / incomes / unsorted (totaly = součet položek, updated_at = teď).
+- Domů (dlaždice i karta na počítači) a levý panel pod Penězi: šedě „2 nezařazené“
+  z posledního měsíce přihlášeného (`latestUnsorted`), klik otevře
+  `#/penize/mesic/<RRRR-MM>/<segment>` (Skutečnost toho měsíce).
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
