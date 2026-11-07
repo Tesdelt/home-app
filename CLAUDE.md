@@ -113,9 +113,10 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   Secrets (lokálně v `supabase/.secrets/`, které je v `.gitignore`). Funkce `send-reminders`
   je volatelná bez přihlášení, proto nesmí vracet nic kromě počtu odeslaných zpráv a každému
   členovi posílá nejvýš jeden ranní přehled denně (tabulka `morning_reminders`; starší
-  `payment_reminders` zůstává, už se nepoužívá). Nasazuje se ručně v Supabase dashboardu
-  (vypnuté „Verify JWT“), po změně `index.ts` ji tam znovu vložit (Claude ji nasadit nesmí,
-  nástroj to odmítne jako nasazení do produkce). Text notifikace obsahuje názvy úkolů
+  `payment_reminders` zůstává, už se nepoužívá). Po každé změně `index.ts` ji Claude sám
+  nasadí přes Supabase MCP (`deploy_edge_function`, povolené v `.claude/settings.local.json`),
+  vždy s `verify_jwt: false`, a pak `get_edge_function` ověří, že nasazený kód sedí
+  s repozitářem. Tom to dělat nemusí (přání Toma, 7. 11. 2026). Text notifikace obsahuje názvy úkolů
   a názvy a částky plateb a jde přes servery Applu / Googlu. Soukromý úkol jen majiteli.
 - Odhlášení zruší na telefonu odběr notifikací (po dalším přihlášení se zapnou sama).
 - Jednou zapnutá upozornění zůstávají zapnutá, dokud je uživatel sám nevypne (meta

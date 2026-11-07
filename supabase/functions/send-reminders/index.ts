@@ -20,8 +20,8 @@
 //   * Do databáze chodí servisním klíčem, který Supabase funkci dodá sám.
 //     V kódu žádný klíč není. Soukromý VAPID klíč je v Supabase Secrets.
 //
-// Nasazení: Supabase dashboard -> Edge Functions, název send-reminders,
-// vypnuté "Verify JWT", Secrets VAPID_PUBLIC_KEY a VAPID_PRIVATE_KEY.
+// Nasazení: Claude přes Supabase MCP (deploy_edge_function), název send-reminders,
+// vždy vypnuté "Verify JWT" (verify_jwt: false), Secrets VAPID_PUBLIC_KEY a VAPID_PRIVATE_KEY.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
