@@ -220,6 +220,15 @@ export async function render(el, { extraEl }) {
         <tr class="mt-row"><th><span class="mt-name">Oblečení</span></th><td>3 274</td><td></td><td>11 834</td><td class="mt-sum">5 036</td><td class="mt-limit"><span class="mt-add">+</span></td></tr>
       </tbody></table></div>
 
+    <p class="section-label">Počítač: úkoly ve sloupcích (cílový sloupec při přetahování zvýrazněný)</p>
+    <div class="kb demo-kb" style="margin-bottom: var(--s3)">
+      <section class="kb-col"><p class="section-label kb-head">Dnes<span class="kb-count">1</span></p><ul class="item-list kb-list">
+        <li class="item kb-card who-1"><button type="button" class="item-main has-stripe"><span class="check-tap"><span class="check">${ICONS.check}</span></span><span class="item-text"><span class="item-name">Vynést odpad</span><span class="item-sub">dnes 18:00</span></span></button></li></ul></section>
+      <section class="kb-col is-target"><p class="section-label kb-head">Tento týden<span class="kb-count"></span></p><ul class="item-list kb-list"></ul></section>
+      <section class="kb-col"><p class="section-label kb-head">Bez termínu<span class="kb-count">1</span></p><ul class="item-list kb-list">
+        <li class="item kb-card who-any"><button type="button" class="item-main has-stripe"><span class="check-tap"><span class="check">${ICONS.check}</span></span><span class="item-text"><span class="item-name">Koupit dárek</span></span></button></li></ul></section>
+    </div>
+
     <p class="section-label">Ikony</p>
     <div class="demo-row">${Object.keys(ICONS).map((name) => `<span class="card-icon" title="${name}">${ICONS[name]}</span>`).join('')}</div>
 

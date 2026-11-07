@@ -1756,3 +1756,34 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
 
 .demo-mt { display: none; }
 @media (min-width: 1024px) { .demo-mt { display: block; } }
+
+/* ---------- Úkoly ve sloupcích (jen počítač) ---------- */
+.kb-switch { flex: none; }
+@media (max-width: 1023px) { .kb-switch, .kb-root { display: none !important; } }
+@media (min-width: 1024px) {
+  .split.is-kanban:not(.has-detail) { grid-template-columns: minmax(0, 1fr); }
+  .split.is-kanban:not(.has-detail) .split-detail { display: none; }
+  .split.is-kanban.has-detail { grid-template-columns: minmax(0, 1.5fr) minmax(360px, 1fr); }
+  .kb-switch { width: 200px; margin-left: auto; }
+  .kb { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 1fr); gap: var(--s3); overflow-x: auto; padding-bottom: var(--s3); }
+  .kb-col { min-width: 0; padding: var(--s2); border-radius: var(--radius); background: var(--surface-2); transition: background 120ms ease, box-shadow 120ms ease; }
+  .kb-col.is-target { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+  .kb-head { display: flex; justify-content: space-between; margin: var(--s1) var(--s1) var(--s2); }
+  .kb-count { color: var(--text-3); font-weight: 400; }
+  .kb-list { display: flex; flex-direction: column; gap: var(--s2); min-height: 60px; }
+  .kb-card { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: grab; user-select: none; -webkit-user-select: none; }
+  .kb-card .item-more, .kb-card .item-bg { display: none; }
+  .item + .kb-card .item-main, .kb-card + .kb-card .item-slide, .kb-card + .kb-card .item-main { border-top: 0; }
+  .kb-card.is-lifted { opacity: 0.3; }
+  .kb-card.is-selected { box-shadow: 0 0 0 2px var(--accent-soft); }
+  .kb-ghost { position: fixed; z-index: 60; margin: 0; list-style: none; pointer-events: none; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25); cursor: grabbing; }
+  .kb-ghost .item-more, .kb-ghost .item-bg { display: none; }
+}
+@media (min-width: 1024px) {
+  .toolbar > .kb-switch { flex: none; width: 200px; margin-left: auto; }
+  .kb { grid-auto-columns: minmax(230px, 1fr); }
+  .kb-card .item-name { overflow-wrap: normal; word-break: normal; hyphens: auto; }
+}
+
+.demo-kb { display: none !important; }
+@media (min-width: 1024px) { .demo-kb { display: grid !important; } }

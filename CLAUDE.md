@@ -184,6 +184,14 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   volby a meta `moneyChart`). Ťuknutí na měsíc v grafu přepne Skutečnost (`onSelect`
   v `drawChart`). `#/penize/grafy/<segment>` na počítači vykreslí Peníze a odroluje na graf.
 - Nastavení na počítači: karty ve 2 sloupcích.
+- Úkoly ve sloupcích (`js/views/taskcolumns.js`, jen počítač): v `.toolbar` Úkolů přepínač
+  Seznam / Sloupce (meta `taskLayout`). Sloupce podle řazení: Termín (Po termínu, Dnes, Tento
+  týden, Později, Bez termínu) nebo Pro koho (členové, Oba, Kdokoliv); ostatní řazení mají
+  sloupce podle termínu. Karta = stejný obsah jako řádek. Přetažení karty myší do jiného
+  sloupce změní termín (Dnes = dnes, Tento týden = za 3 dny, Později = za 14 dní, Bez termínu
+  = bez termínu; do Po termínu nejde) nebo pro koho, toast se Zpět. Klik otevře detail vpravo
+  a sloupce se zúží (posouvají se vodorovně). Klávesa N kdekoliv v Úkolech (mimo psaní do
+  pole) = nový úkol.
 - Peníze > Tabulka (`#/penize/tabulka/<segment>`, `js/views/moneytable.js`, jen počítač, na
   mobilu přesměruje na `#/penize`): řádky kategorie výdajů, pod nimi Příjmy a Přesuny,
   sloupce měsíce období (Období sdílí s grafem: `periodMonthsOf`, `openPeriodMenu`,
@@ -293,6 +301,9 @@ po změně vzhledu ji projít ve světlém i tmavém režimu na šířce 375 px.
 - **Tři tečky** `.row-more` v řádku při najetí myší (jen s myší, na mobilu nikdy).
 - Na počítači jsou schované přepínače, které dublují levý panel: Recepty / Skills a Co uvařit
   v Receptech (`.recipe-toolbar`), segmenty v Penězích (`.money-segments`).
+- **Sloupce** `.kb` > `.kb-col` (podklad `--surface-2`, cíl přetažení `.is-target`
+  `--accent-soft` s orámováním) > `.kb-list` s kartami `.kb-card` (řádek seznamu jako karta);
+  tažená karta jede jako kopie `.kb-ghost` a plynule dosedne.
 - **Tabulka** `.mt-wrap` > `table.mt-table`: čísla bez „Kč“, tabulková číslice, sticky záhlaví
   (`thead th`) a první sloupec (`tbody th`), skupina `tr.mt-group`, rozbalitelný řádek
   `tr.mt-row.has-items`, položky `tr.mt-item`, souhrnný sloupec `.mt-sum`, limit `.mt-limit`.
@@ -649,6 +660,8 @@ Hotovo (0.28.2):
   dublující přepínače, aktivní podsekce panelu zvýrazněná a rozbalená, Domů jako přehled.
 
 Hotovo (0.29.0): Peníze > Tabulka na počítači (viz Počítač a tablet).
+
+Hotovo (0.30.0): Úkoly ve sloupcích na počítači a klávesa N pro nový úkol.
 
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).

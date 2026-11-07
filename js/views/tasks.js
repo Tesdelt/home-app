@@ -13,6 +13,7 @@
 import * as store from '../store.js';
 import { splitView } from '../split.js';
 import { escapeHtml, ICONS, undoToast, rowGestures, openMenu, holdKeyboard, whoClass, emptyState, isDesktop } from '../ui.js';
+import { kanban } from './taskcolumns.js';
 import { navigate } from '../router.js';
 import { renderTask, NEW } from './task.js';
 import { today, dayStr, addDays, dueLabel, dueTimeLabel, timeLabel, isSameDay } from '../dates.js';
@@ -90,7 +91,11 @@ async function renderPage(el, { params, subEl, extraEl }) {
   toolbar.className = 'toolbar';
   const listRoot = document.createElement('div');
   listRoot.className = 'list-root';
-  el.append(toolbar, listRoot);
+  // Sloupce (jen počítač): vlastní kontejner, gesta řádků se jich netýkají
+  const kbRoot = document.createElement('div');
+  kbRoot.className = 'kb-root';
+  kbRoot.hidden = true;
+  el.append(toolbar, listRoot, kbRoot);
 
   const sortBtn = document.createElement('button');
   sortBtn.type = 'button';
@@ -101,6 +106,19 @@ async function renderPage(el, { params, subEl, extraEl }) {
   filterBtn.type = 'button';
   filterBtn.className = 'btn btn-small shop-btn';
   if (isDesktop()) toolbar.append(filterBtn);
+  // Seznam / Sloupce (jen počítač, pamatuje se v meta taskLayout)
+  const layoutEl = document.createElement('div');
+  layoutEl.className = 'segmented kb-switch';
+  layoutEl.innerHTML = '<button type="button" data-layout="list">Seznam</button><button type="button" data-layout="columns">Sloupce</button>';
+  if (isDesktop()) toolbar.append(layoutEl);
+  let layout = await store.getMeta('taskLayout', 'list');
+  layoutEl.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-layout]');
+    if (!btn) return;
+    layout = btn.dataset.layout;
+    await store.setLocal('taskLayout', layout);
+    renderList();
+  });
   let filter = await store.getMeta('taskFilter', 'all');
   const filterOptions = () => {
     const other = members.find((m) => m !== me);
@@ -239,6 +257,16 @@ async function renderPage(el, { params, subEl, extraEl }) {
     const other = members.find((m) => m !== me);
     const wanted = { me, other, both: store.BOTH }[filter];
     const shown = isDesktop() && wanted ? tasks.filter((t) => t.done || t.assignee === wanted) : tasks;
+    // Sloupce na počítači: podle termínu, nebo podle toho, pro koho úkol je
+    const columns = isDesktop() && layout === 'columns';
+    layoutEl.querySelectorAll('[data-layout]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.layout === (columns ? 'columns' : 'list')));
+    listRoot.hidden = columns;
+    kbRoot.hidden = !columns;
+    el.closest('.split')?.classList.toggle('is-kanban', columns);
+    if (columns) {
+      board.draw(shown.filter((t) => !t.done), { sort, members, me, row });
+      return;
+    }
     const groups = sortTasks(shown, sort, members);
     const rows = groups
       .map((group) => `${group.label ? `<li class="cat-head">${escapeHtml(group.label)}</li>` : ''}${group.tasks.map((t) => row(t)).join('')}`)
@@ -303,6 +331,29 @@ async function renderPage(el, { params, subEl, extraEl }) {
     if (removed.length) undoToast(`Smazáno hotových: ${removed.length}`, () => store.restoreTasks(removed));
   }
 
+  // ---------- Sloupce ----------
+  // Ťuknutí na kolečko splní, na kartu otevře; přetažení do jiného sloupce změní
+  // termín nebo pro koho (toast se Zpět)
+  const board = kanban(kbRoot, {
+    onOpen: (id) => navigate(`ukoly/${id}`),
+    onToggle: (li) => toggle(li),
+    onMove: async (task, patch, label) => {
+      const before = { due: task.due ?? null, time: task.time ?? null, assignee: task.assignee ?? null };
+      await store.updateTask(task.id, patch);
+      undoToast(`${task.title}: ${label}`, () => store.updateTask(task.id, before));
+    },
+  });
+
+  // N kdekoliv v Úkolech (mimo psaní do pole) = nový úkol
+  const onN = (e) => {
+    if (e.key !== 'n' && e.key !== 'N') return;
+    if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    if (document.querySelector('.menu-backdrop, .sheet-backdrop')) return;
+    e.preventDefault();
+    navigate(`ukoly/${NEW}`);
+  };
+  document.addEventListener('keydown', onN);
+
   // ---------- Gesta ----------
 
   const endGesture = rowGestures(listRoot, {
@@ -340,7 +391,9 @@ async function renderPage(el, { params, subEl, extraEl }) {
   return () => {
     unsubscribe();
     endGesture();
+    board.destroy();
     document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', onN);
     renderToken += 1;
   };
 }

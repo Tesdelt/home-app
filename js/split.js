@@ -23,7 +23,7 @@ export async function splitView(el, ctx, renderPage, { key, empty, fullWhenEmpty
   if (!isDesktop() || (fullWhenEmpty && !selected)) return renderPage(el, ctx);
 
   const root = document.createElement('div');
-  root.className = 'split';
+  root.className = `split${selected ? ' has-detail' : ''}`;
   root.innerHTML = '<div class="split-list"></div><div class="split-detail"></div>';
   el.append(root);
   const listEl = root.querySelector('.split-list');
