@@ -197,7 +197,7 @@ export async function renderOverview(el) {
           <div class="sum-cell"><span class="sum-label">Přišlo</span><span class="sum-value flow-in">${money(row.income)}</span></div>
           <div class="sum-cell"><span class="sum-label">Utraceno</span><span class="sum-value flow-out">${money(row.outgo)}</span></div>
           <div class="sum-cell"><span class="sum-label">Odloženo</span><span class="sum-value flow-move">${money(saved)}</span></div>
-        </div>${planMeter(row.outgo, plan)}</a>`;
+        </div>${planMeter(row.outgo, plan)}${row.notes?.length ? `<span class="month-note home-note">${escapeHtml(row.notes[0])}</span>` : ''}</a>`;
       // Nejvýš 3 kategorie přes 90 % limitu, od nejvíc naplněné
       const near = budgetRows
         .map((b) => ({ ...b, spent: totalOf(row.categories?.[b.category]) }))

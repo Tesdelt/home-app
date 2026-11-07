@@ -393,7 +393,8 @@ export async function render(el, { params, extraEl, subEl }) {
           <div class="sum-cell"><span class="sum-label">Odloženo</span><span class="sum-value flow-move">${money(saved)}</span></div>
         </div>
         ${summary.total + limitSum > 0 ? planMeter(row.outgo, summary.total + limitSum) : ''}
-      </section>`;
+      </section>
+      ${row.notes?.length ? `<section class="card month-notes">${row.notes.map((n) => `<p class="month-note">${escapeHtml(n)}</p>`).join('')}</section>` : ''}`;
     actualCats.innerHTML = lists ? `<ul class="item-list group money-cats">${lists}</ul>` : '';
   }
 

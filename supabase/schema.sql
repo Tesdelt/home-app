@@ -350,6 +350,10 @@ create index if not exists money_rules_household_idx on public.money_rules (hous
 -- příjem v incomes["Od lidí"], takže součty sedí.
 alter table public.money_months add column if not exists unsorted jsonb not null default '[]'::jsonb;
 
+-- Postřehy k měsíci: pole krátkých vět, které zapisuje Claude při zpracování
+-- výpisu („Restaurace o 60 % nad průměrem“). Appka je jen zobrazuje.
+alter table public.money_months add column if not exists notes jsonb not null default '[]'::jsonb;
+
 -- Push notifikace: adresy, na které se telefonům posílají upozornění.
 -- Každý vidí a mění jen své vlastní odběry.
 create table if not exists public.push_subscriptions (

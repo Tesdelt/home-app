@@ -431,6 +431,8 @@ const SPECS = {
       moves: r.moves ?? {},
       balance: r.balance == null ? null : Number(r.balance),
       unsorted: Array.isArray(r.unsorted) ? r.unsorted : [],
+      // Postřehy zapisuje jen Claude, appka je čte (do toRemote nepatří)
+      notes: Array.isArray(r.notes) ? r.notes.filter((n) => typeof n === 'string' && n.trim()) : [],
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
     }),

@@ -2178,3 +2178,9 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-v
 /* Dlaždice s druhým stavovým řádkem (Peníze: nezařazené) */
 .tile .card-line { line-height: 1.4; min-height: 1.4em; }
 .tile .card-line.is-quiet { margin-top: 0; padding-top: 0; }
+
+/* ---------- Peníze: Postřehy k měsíci (zapisuje Claude) ---------- */
+.month-notes { padding-top: var(--s2); padding-bottom: var(--s2); }
+.month-note { position: relative; display: block; margin: 0; padding: var(--s1) 0 var(--s1) var(--s4); color: var(--text-2); font-size: var(--fs-small); line-height: 1.4; }
+.month-note::before { content: ""; position: absolute; left: var(--s1); top: calc(var(--s1) + 0.7em - 2px); width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); }
+.home-note { margin-top: var(--s2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

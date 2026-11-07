@@ -151,6 +151,7 @@ export async function render(el, { extraEl }) {
       ${planMeter(31251, 40000)}
     </section>
     <section class="card summary flow-card">${planMeter(37000, 40000)}${planMeter(46800, 40000)}</section>
+    <section class="card month-notes"><p class="month-note">Restaurace o 60 % nad průměrem</p><p class="month-note">Nové předplatné SkyShowtime 239 Kč</p></section>
     <ul class="item-list group money-cats" style="margin-bottom: var(--s3)">
       <li class="item fold money-cat has-items unsorted-fold" data-fold="u"><button type="button" class="item-main fold-head" aria-expanded="false"><span class="unsorted-icon">${ICONS.help}</span><span class="item-text"><span class="item-name">Nezařazené (2)</span></span></button>
         <div class="fold-body"><ul class="money-shops"><li class="money-shop is-unsorted"><button type="button" class="unsorted-item"><span>SkyShowtime</span><span>239 Kč</span></button></li><li class="money-shop is-unsorted"><button type="button" class="unsorted-item"><span>Petr Novák</span><span>500 Kč</span></button></li></ul></div></li>

@@ -827,6 +827,14 @@ Hotovo (0.34.0), Peníze, Nezařazené:
   z posledního měsíce přihlášeného (`latestUnsorted`), klik otevře
   `#/penize/mesic/<RRRR-MM>/<segment>` (Skutečnost toho měsíce).
 
+Hotovo (0.35.0), Peníze, Postřehy:
+- `money_months.notes` (jsonb, výchozí `[]`): pole krátkých vět, které **zapisuje Claude**
+  při zpracování výpisu („Restaurace o 60 % nad průměrem“, „Nové předplatné SkyShowtime
+  239 Kč“). Appka je jen zobrazuje a do `toRemote` je neposílá.
+- Skutečnost: pod kartou měsíce karta s větami jako šedé řádky s tečkou (`.month-notes`,
+  `.month-note`), bez nadpisu. Na počítači v kartě Peníze na Domů první postřeh pod pruhem
+  plánu.
+
 Další kroky:
 1. Notifikace i na úkoly (jen to, co vyžaduje akci).
 2. Úklid: mazat na serveru staré řádky s `deleted = true` (např. starší než 30 dní).
