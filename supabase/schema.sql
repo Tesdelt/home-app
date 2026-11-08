@@ -738,3 +738,35 @@ begin
   end loop;
 end;
 $$;
+
+-- ---------- Ranní přehled: plánovač v Supabase (8. 11. 2026) ----------
+-- Funkci send-reminders ráno v 8:01 spouští pg_cron přímo v databázi (dřív GitHub
+-- Actions, ty chodily o 5-8 hodin později). Plánovač běží v UTC a nezná letní čas,
+-- proto dva časy (6:01 a 7:01 UTC); private.morning_push funkci zavolá jen v tom,
+-- kdy je v Česku 8 hodin (v zimě i v létě). Hlavička nese jen veřejný publishable
+-- klíč z js/config.js, žádný tajný. Funkce sama pošle každému nejvýš jeden přehled
+-- denně (tabulka morning_reminders).
+
+create extension if not exists pg_net;
+create extension if not exists pg_cron;
+
+create or replace function private.morning_push()
+returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if extract(hour from now() at time zone 'Europe/Prague') = 8 then
+    perform net.http_post(
+      url := 'https://ovzcdryhlgfaechrvsrx.supabase.co/functions/v1/send-reminders',
+      headers := '{"Content-Type": "application/json", "apikey": "sb_publishable_zbQdPcKbLyg4P-plyJwVsQ_Rv06RBQc"}'::jsonb,
+      body := '{}'::jsonb
+    );
+  end if;
+end;
+$$;
+
+revoke all on function private.morning_push() from public, anon, authenticated;
+
+select cron.unschedule(jobid) from cron.job where jobname = 'ranni-prehled';
+select cron.schedule('ranni-prehled', '1 6,7 * * *', 'select private.morning_push()');

@@ -108,7 +108,13 @@ Priorita číslo jedna: data smí vidět jen dva členové domácnosti, nikdo ji
   a skript pustit: nepřihlášený dotaz musí u každé tabulky skončit chybou nebo prázdně.
 - `.github/workflows/denni-kontrola.yml` pouští `check-anon.sh` každý den. Drží tím
   bezplatný projekt Supabase vzhůru (jinak se po týdnu bez dotazů uspí) a při chybě
-  pošle GitHub e-mail. Žádná tajemství v něm nejsou a být nesmí.
+  pošle GitHub e-mail. Žádná tajemství v něm nejsou a být nesmí. Ranní přehled
+  odsud nejde (GitHub běhy chodily o 5-8 hodin později).
+- **Ranní přehled spouští pg_cron v Supabase:** job `ranni-prehled` (`1 6,7 * * *`, UTC)
+  volá `private.morning_push()`, která přes `pg_net` zavolá `send-reminders` jen v 8 hodin
+  českého času (zimní i letní čas). Hlavička nese jen publishable klíč, žádný tajný.
+  Funkce `private.morning_push` nemá práva pro `public`, `anon` ani `authenticated`.
+  Zapsané na konci `supabase/schema.sql`.
 - **Push notifikace:** veřejný VAPID klíč je v `js/config.js`, soukromý jen v Supabase
   Secrets (lokálně v `supabase/.secrets/`, které je v `.gitignore`). Funkce `send-reminders`
   je volatelná bez přihlášení, proto nesmí vracet nic kromě počtu odeslaných zpráv a každému
@@ -460,7 +466,8 @@ Hotovo (0.4.0):
 
 Hotovo (0.5.0):
 - Push notifikace na platby: zapínají se ve Více na každém telefonu zvlášť (`js/push.js`,
-  tabulka `push_subscriptions`). Ráno v 8:01 GitHub Actions zavolá funkci `send-reminders`, ta
+  tabulka `push_subscriptions`). Ráno v 8:01 zavolá funkci `send-reminders` pg_cron v Supabase
+  (job `ranni-prehled`, `private.morning_push`; do 8. 11. 2026 GitHub Actions), ta
   pošle plátci (u společné platby oběma) upozornění na platby splatné dnes nebo po termínu.
   Na iPhonu funguje jen u appky přidané na plochu.
 
@@ -862,7 +869,8 @@ Hotovo (0.36.0), Recepty, Jídelníček (`js/views/meals.js`):
   Lasagne“ (otevře recept), na počítači pod pozdravem „Dnes k jídlu: Lasagne“.
 
 Hotovo (0.37.0), ranní přehled úkolů a plateb:
-- Funkce `send-reminders` (GitHub Actions ráno v 8:01) pošle každému členovi jedno
+- Funkce `send-reminders` (ráno v 8:01 ji spouští pg_cron v Supabase, job `ranni-prehled`,
+  `private.morning_push`) pošle každému členovi jedno
   upozornění, které spojí úkoly (nehotové s termínem dnes nebo po termínu, pro něj, pro
   oba bez jeho odškrtnuté části, pro kohokoliv; soukromé jen majiteli `private_to`)
   a platby splatné dnes / po termínu (plátce, společnou oba). Nadpis „Dnes: 2 úkoly

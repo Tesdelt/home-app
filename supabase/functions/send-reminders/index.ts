@@ -1,7 +1,7 @@
 // Supabase Edge Function: push notifikace. Umí dvě věci.
 //
-// 1. Ranní přehled. Jednou denně ji bez přihlášení zavolá GitHub Actions
-//    (.github/workflows/denni-kontrola.yml). Každý člen dostane nejvýš jedno
+// 1. Ranní přehled. Ráno v 8:01 ji bez přihlášení zavolá plánovač pg_cron v Supabase
+//    (job ranni-prehled, private.morning_push v supabase/schema.sql). Každý člen dostane nejvýš jedno
 //    upozornění, které spojí jeho úkoly (nehotové s termínem dnes nebo po
 //    termínu: pro něj, pro oba, pro kohokoliv; soukromé jen majiteli) a platby
 //    splatné dnes nebo po termínu (plátce, společnou oba). Nadpis „Dnes: 2 úkoly
